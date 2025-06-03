@@ -99,7 +99,7 @@ func (c *DarwinClipboard) Watch(ctx context.Context) <-chan string {
 			case <-ticker.C:
 				// Check changeCount first (fast)
 				currentCount := c.getChangeCount()
-				
+
 				c.mu.RLock()
 				lastCount := c.lastChangeCount
 				c.mu.RUnlock()
@@ -113,7 +113,7 @@ func (c *DarwinClipboard) Watch(ctx context.Context) <-chan string {
 
 					// Verify content actually changed (avoid duplicates)
 					newHash := c.hashContent(content)
-					
+
 					c.mu.Lock()
 					if newHash != c.lastHash {
 						c.lastHash = newHash
@@ -157,7 +157,7 @@ func (c *DarwinClipboard) getChangeCount() int {
 		set pb to current application's NSPasteboard's generalPasteboard()
 		return pb's changeCount() as integer
 	`)
-	
+
 	output, err := cmd.Output()
 	if err != nil {
 		// Fallback to -1 to indicate error

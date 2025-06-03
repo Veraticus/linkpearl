@@ -142,14 +142,14 @@ func TestConfigValidate(t *testing.T) {
 func TestConfigLoadFromEnv(t *testing.T) {
 	// Save current env and restore after test
 	origEnv := map[string]string{
-		"LINKPEARL_SECRET":           os.Getenv("LINKPEARL_SECRET"),
-		"LINKPEARL_NODE_ID":          os.Getenv("LINKPEARL_NODE_ID"),
-		"LINKPEARL_MODE":             os.Getenv("LINKPEARL_MODE"),
-		"LINKPEARL_LISTEN":           os.Getenv("LINKPEARL_LISTEN"),
-		"LINKPEARL_JOIN":             os.Getenv("LINKPEARL_JOIN"),
-		"LINKPEARL_POLL_INTERVAL":    os.Getenv("LINKPEARL_POLL_INTERVAL"),
+		"LINKPEARL_SECRET":            os.Getenv("LINKPEARL_SECRET"),
+		"LINKPEARL_NODE_ID":           os.Getenv("LINKPEARL_NODE_ID"),
+		"LINKPEARL_MODE":              os.Getenv("LINKPEARL_MODE"),
+		"LINKPEARL_LISTEN":            os.Getenv("LINKPEARL_LISTEN"),
+		"LINKPEARL_JOIN":              os.Getenv("LINKPEARL_JOIN"),
+		"LINKPEARL_POLL_INTERVAL":     os.Getenv("LINKPEARL_POLL_INTERVAL"),
 		"LINKPEARL_RECONNECT_BACKOFF": os.Getenv("LINKPEARL_RECONNECT_BACKOFF"),
-		"LINKPEARL_VERBOSE":          os.Getenv("LINKPEARL_VERBOSE"),
+		"LINKPEARL_VERBOSE":           os.Getenv("LINKPEARL_VERBOSE"),
 	}
 	defer func() {
 		for k, v := range origEnv {

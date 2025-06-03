@@ -50,7 +50,7 @@ var clipboardTools = []clipboardTool{
 // newPlatformClipboard returns a Linux clipboard implementation
 func newPlatformClipboard() (Clipboard, error) {
 	c := &LinuxClipboard{}
-	
+
 	// Find the first available clipboard tool
 	for _, tool := range clipboardTools {
 		if _, err := exec.LookPath(tool.name); err == nil {
@@ -191,7 +191,7 @@ func (c *LinuxClipboard) watchWithClipnotify(ctx context.Context, ch chan<- stri
 
 			// Check if content actually changed
 			newHash := c.hashContent(content)
-			
+
 			c.mu.Lock()
 			if newHash != c.lastHash {
 				c.lastHash = newHash
@@ -236,7 +236,7 @@ func (c *LinuxClipboard) watchWithPolling(ctx context.Context, ch chan<- string)
 			}
 
 			newHash := c.hashContent(content)
-			
+
 			c.mu.RLock()
 			lastHash := c.lastHash
 			c.mu.RUnlock()
