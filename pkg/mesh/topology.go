@@ -1,3 +1,7 @@
+// topology.go implements the core mesh topology that manages peer connections and message routing.
+// This file contains the main implementation of the Topology interface, which orchestrates
+// all the components of the mesh network.
+
 package mesh
 
 import (
@@ -10,7 +14,15 @@ import (
 	"github.com/Veraticus/linkpearl/pkg/transport"
 )
 
-// topology implements the Topology interface
+// topology implements the Topology interface, providing the core mesh network functionality.
+// It manages peer connections, handles message routing, and maintains the overlay network
+// topology. The implementation is thread-safe and supports both full nodes (which accept
+// incoming connections) and client nodes (which only make outgoing connections).
+//
+// The topology maintains persistent connections to configured peers, automatically
+// reconnecting with exponential backoff when connections fail. It provides both
+// unicast and broadcast messaging capabilities, along with an event system for
+// monitoring topology changes.
 type topology struct {
 	self      Node
 	transport transport.Transport
@@ -37,7 +49,16 @@ type topology struct {
 	wg     sync.WaitGroup
 }
 
-// NewTopology creates a new topology
+// NewTopology creates a new topology instance with the provided configuration.
+// It validates the configuration, applies defaults for any missing values, and
+// initializes all the internal components including the peer manager, event pump,
+// message router, and backoff manager.
+//
+// The topology is created in a stopped state - you must call Start() to begin
+// accepting connections and connecting to configured peers.
+//
+// Returns an error if the configuration is invalid or if required components
+// cannot be initialized.
 func NewTopology(config *TopologyConfig) (Topology, error) {
 	if config == nil {
 		return nil, fmt.Errorf("config is required")
@@ -72,7 +93,14 @@ func NewTopology(config *TopologyConfig) (Topology, error) {
 		config:    config,
 		joinAddrs: make([]string, 0, len(config.JoinAddrs)),
 		peers:     newPeerManager(),
-		backoffs:  newBackoffManager(DefaultBackoff),
+		backoffs:  newBackoffManager(func() *ExponentialBackoff {
+			return NewExponentialBackoff(
+				config.ReconnectInterval,
+				config.MaxReconnectInterval,
+				2.0,  // 2x factor
+				0.1,  // 10% jitter
+			)
+		}),
 		events:    newEventPump(config.EventBufferSize),
 		messages:  make(chan Message, config.MessageBufferSize),
 		ctx:       ctx,
@@ -260,7 +288,10 @@ func (t *topology) Messages() <-chan Message {
 	return t.messages
 }
 
-// acceptLoop accepts incoming connections
+// acceptLoop accepts incoming connections for full nodes.
+// This method runs in a separate goroutine and continuously accepts new connections
+// from the transport layer. Each accepted connection is handled in its own goroutine
+// to avoid blocking the accept loop. The loop continues until the topology is stopped.
 func (t *topology) acceptLoop() {
 	defer t.wg.Done()
 
@@ -318,7 +349,14 @@ func (t *topology) handleIncomingConnection(conn transport.Conn) {
 	t.handleConnection(p)
 }
 
-// maintainConnection maintains a connection to a configured address
+// maintainConnection maintains a persistent connection to a configured address.
+// This method implements the reconnection logic for outbound connections, using
+// exponential backoff to avoid overwhelming the target peer with rapid reconnection
+// attempts. It runs in a separate goroutine and continues until the topology is stopped.
+//
+// The method handles connection establishment, peer deduplication, and connection
+// lifecycle management. If a connection fails, it automatically retries with
+// increasing delays up to the configured maximum reconnection interval.
 func (t *topology) maintainConnection(addr string) {
 	defer t.wg.Done()
 
@@ -405,7 +443,7 @@ func (t *topology) handleConnection(p *peer) {
 	// Read messages until connection closes
 	for {
 		var msg interface{}
-		if err := p.conn.Receive(&msg); err != nil {
+		if err := p.Receive(&msg); err != nil {
 			t.config.Logger.Debug("connection closed", "node", p.ID, "error", err)
 			break
 		}
@@ -463,7 +501,12 @@ func (t *topology) sendPeerList(p *peer) {
 	}
 
 	msg := PeerListMessage{Peers: nodes}
-	if err := t.router.SendToPeer(p.ID, MessageTypePeerList, msg); err != nil {
+	data, err := marshalMessage(MessageTypePeerList, t.self.ID, msg)
+	if err != nil {
+		t.config.Logger.Error("failed to marshal peer list", "error", err)
+		return
+	}
+	if err := p.Send(data); err != nil {
 		t.config.Logger.Error("failed to send peer list", "to", p.ID, "error", err)
 	}
 }

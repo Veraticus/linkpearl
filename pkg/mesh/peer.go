@@ -1,3 +1,7 @@
+// peer.go implements peer management for the mesh topology.
+// This file contains the peer representation and the peer manager that tracks
+// all connected peers in the network.
+
 package mesh
 
 import (
@@ -9,7 +13,14 @@ import (
 	"github.com/Veraticus/linkpearl/pkg/transport"
 )
 
-// peer represents a connected peer in the topology
+// peer represents a connected peer in the topology.
+// It encapsulates the connection state, transport connection, and metadata
+// about a remote node. Peers can be either inbound (accepted connections)
+// or outbound (initiated connections).
+//
+// The peer struct is thread-safe and manages its own lifecycle. For outbound
+// peers, it tracks reconnection information to support automatic reconnection
+// on disconnect.
 type peer struct {
 	Node
 	conn      transport.Conn
@@ -94,6 +105,19 @@ func (p *peer) Send(msg interface{}) error {
 	return conn.Send(msg)
 }
 
+// Receive receives a message from the peer
+func (p *peer) Receive(msg interface{}) error {
+	p.mu.RLock()
+	if !p.connected || p.conn == nil {
+		p.mu.RUnlock()
+		return fmt.Errorf("peer %s not connected", p.ID)
+	}
+	conn := p.conn
+	p.mu.RUnlock()
+
+	return conn.Receive(msg)
+}
+
 // setConnection updates the peer's connection
 func (p *peer) setConnection(conn transport.Conn) {
 	p.mu.Lock()
@@ -133,7 +157,13 @@ func (p *peer) stop() {
 	p.wg.Wait()
 }
 
-// peerManager manages all peers in the topology
+// peerManager manages all peers in the topology.
+// It provides thread-safe operations for adding, removing, and querying peers,
+// as well as sending messages to individual peers or broadcasting to all peers.
+//
+// The peer manager ensures that only one peer connection exists per node ID,
+// preventing duplicate connections. It also provides callbacks for peer lifecycle
+// events, allowing the topology to react to connections and disconnections.
 type peerManager struct {
 	peers map[string]*peer
 	mu    sync.RWMutex

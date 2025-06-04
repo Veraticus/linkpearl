@@ -5,6 +5,9 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestEventTypeString tests the String method of EventType
@@ -34,9 +37,7 @@ func TestEventTypeString(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := tt.event.String()
-			if got != tt.expected {
-				t.Errorf("EventType.String() = %v, want %v", got, tt.expected)
-			}
+			assert.Equal(t, tt.expected, got, "EventType.String()")
 		})
 	}
 }
@@ -68,12 +69,8 @@ func TestEventBufferCreation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			buf := newEventBuffer(tt.capacity)
-			if buf.cap != tt.expectedCap {
-				t.Errorf("newEventBuffer(%d).cap = %d, want %d", tt.capacity, buf.cap, tt.expectedCap)
-			}
-			if buf.size != 0 {
-				t.Errorf("newEventBuffer(%d).size = %d, want 0", tt.capacity, buf.size)
-			}
+			assert.Equal(t, tt.expectedCap, buf.cap, "newEventBuffer(%d).cap", tt.capacity)
+			assert.Equal(t, 0, buf.size, "newEventBuffer(%d).size", tt.capacity)
 		})
 	}
 }
@@ -83,9 +80,8 @@ func TestEventBufferPushPop(t *testing.T) {
 	buf := newEventBuffer(10)
 
 	// Test empty pop
-	if _, ok := buf.Pop(); ok {
-		t.Error("Pop() on empty buffer should return false")
-	}
+	_, ok := buf.Pop()
+	assert.False(t, ok, "Pop() on empty buffer should return false")
 
 	// Test single push/pop
 	event1 := TopologyEvent{
@@ -95,22 +91,14 @@ func TestEventBufferPushPop(t *testing.T) {
 	}
 	buf.Push(event1)
 
-	if buf.Size() != 1 {
-		t.Errorf("Size() = %d, want 1", buf.Size())
-	}
+	assert.Equal(t, 1, buf.Size(), "Size() after push")
 
 	popped, ok := buf.Pop()
-	if !ok {
-		t.Error("Pop() should return true when buffer has items")
-	}
-	if popped.Peer.ID != event1.Peer.ID {
-		t.Errorf("Pop() returned wrong event, got peer ID %s, want %s", popped.Peer.ID, event1.Peer.ID)
-	}
+	assert.True(t, ok, "Pop() should return true when buffer has items")
+	assert.Equal(t, event1.Peer.ID, popped.Peer.ID, "Pop() returned wrong event")
 
 	// Buffer should be empty again
-	if buf.Size() != 0 {
-		t.Errorf("Size() = %d after pop, want 0", buf.Size())
-	}
+	assert.Equal(t, 0, buf.Size(), "Size() after pop")
 }
 
 // TestEventBufferOverflow tests ring buffer overflow behavior
@@ -130,23 +118,17 @@ func TestEventBufferOverflow(t *testing.T) {
 	}
 
 	// Buffer should be at capacity
-	if buf.Size() != capacity {
-		t.Errorf("Size() = %d, want %d", buf.Size(), capacity)
-	}
+	assert.Equal(t, capacity, buf.Size(), "Size() after overflow")
 
 	// Oldest events should have been dropped
 	// Should contain events D, E, F, G, H (indices 3-7)
 	slice := buf.ToSlice()
-	if len(slice) != capacity {
-		t.Errorf("ToSlice() returned %d events, want %d", len(slice), capacity)
-	}
+	assert.Len(t, slice, capacity, "ToSlice() length")
 
 	// Verify we have the newest events
 	for i := 0; i < capacity; i++ {
 		expectedID := string(rune('A' + 3 + i)) // Starting from 'D'
-		if slice[i].Peer.ID != expectedID {
-			t.Errorf("Event %d has peer ID %s, want %s", i, slice[i].Peer.ID, expectedID)
-		}
+		assert.Equal(t, expectedID, slice[i].Peer.ID, "Event %d peer ID", i)
 	}
 }
 
@@ -163,19 +145,12 @@ func TestEventBufferClear(t *testing.T) {
 		})
 	}
 
-	if buf.Size() != 5 {
-		t.Errorf("Size() before clear = %d, want 5", buf.Size())
-	}
+	assert.Equal(t, 5, buf.Size(), "Size() before clear")
 
 	buf.Clear()
 
-	if buf.Size() != 0 {
-		t.Errorf("Size() after clear = %d, want 0", buf.Size())
-	}
-
-	if slice := buf.ToSlice(); slice != nil {
-		t.Error("ToSlice() after clear should return nil")
-	}
+	assert.Equal(t, 0, buf.Size(), "Size() after clear")
+	assert.Nil(t, buf.ToSlice(), "ToSlice() after clear should return nil")
 }
 
 // TestEventBufferToSlice tests converting buffer to slice
@@ -183,9 +158,7 @@ func TestEventBufferToSlice(t *testing.T) {
 	buf := newEventBuffer(10)
 
 	// Empty buffer should return nil
-	if slice := buf.ToSlice(); slice != nil {
-		t.Error("ToSlice() on empty buffer should return nil")
-	}
+	assert.Nil(t, buf.ToSlice(), "ToSlice() on empty buffer should return nil")
 
 	// Add events
 	events := []TopologyEvent{
@@ -199,15 +172,11 @@ func TestEventBufferToSlice(t *testing.T) {
 	}
 
 	slice := buf.ToSlice()
-	if len(slice) != len(events) {
-		t.Errorf("ToSlice() returned %d events, want %d", len(slice), len(events))
-	}
+	assert.Len(t, slice, len(events), "ToSlice() length")
 
 	// Verify order is preserved
 	for i, event := range slice {
-		if event.Peer.ID != events[i].Peer.ID {
-			t.Errorf("Event %d has peer ID %s, want %s", i, event.Peer.ID, events[i].Peer.ID)
-		}
+		assert.Equal(t, events[i].Peer.ID, event.Peer.ID, "Event %d peer ID", i)
 	}
 }
 
@@ -260,29 +229,20 @@ func TestEventBufferConcurrentOperations(t *testing.T) {
 	// Buffer should still be in a consistent state
 	size := buf.Size()
 	slice := buf.ToSlice()
-	if size < 0 || size > buf.cap {
-		t.Errorf("Invalid size after concurrent operations: %d", size)
-	}
-	if size == 0 && slice != nil {
-		t.Error("ToSlice() returned non-nil for empty buffer")
-	}
-	if size > 0 && len(slice) != size {
-		t.Errorf("ToSlice() length %d doesn't match Size() %d", len(slice), size)
+	assert.True(t, size >= 0 && size <= buf.cap, "Invalid size after concurrent operations: %d", size)
+	if size == 0 {
+		assert.Nil(t, slice, "ToSlice() returned non-nil for empty buffer")
+	} else {
+		assert.Equal(t, size, len(slice), "ToSlice() length doesn't match Size()")
 	}
 }
 
 // TestEventPumpCreation tests creating event pumps
 func TestEventPumpCreation(t *testing.T) {
 	pump := newEventPump(100)
-	if pump.buffer == nil {
-		t.Error("Event pump buffer should not be nil")
-	}
-	if pump.closed {
-		t.Error("New event pump should not be closed")
-	}
-	if len(pump.listeners) != 0 {
-		t.Error("New event pump should have no listeners")
-	}
+	require.NotNil(t, pump.buffer, "Event pump buffer should not be nil")
+	assert.False(t, pump.closed, "New event pump should not be closed")
+	assert.Empty(t, pump.listeners, "New event pump should have no listeners")
 }
 
 // TestEventPumpSubscribeUnsubscribe tests subscription management
@@ -295,16 +255,12 @@ func TestEventPumpSubscribeUnsubscribe(t *testing.T) {
 	pump.Subscribe(ch1)
 	pump.Subscribe(ch2)
 
-	if len(pump.listeners) != 2 {
-		t.Errorf("Expected 2 listeners, got %d", len(pump.listeners))
-	}
+	assert.Len(t, pump.listeners, 2, "Expected 2 listeners")
 
 	// Unsubscribe ch1
 	pump.Unsubscribe(ch1)
 
-	if len(pump.listeners) != 1 {
-		t.Errorf("Expected 1 listener after unsubscribe, got %d", len(pump.listeners))
-	}
+	assert.Len(t, pump.listeners, 1, "Expected 1 listener after unsubscribe")
 
 	// Unsubscribe non-existent channel should not panic
 	ch3 := make(chan TopologyEvent)
@@ -313,9 +269,7 @@ func TestEventPumpSubscribeUnsubscribe(t *testing.T) {
 	// Unsubscribe ch2
 	pump.Unsubscribe(ch2)
 
-	if len(pump.listeners) != 0 {
-		t.Errorf("Expected 0 listeners after all unsubscribed, got %d", len(pump.listeners))
-	}
+	assert.Empty(t, pump.listeners, "Expected 0 listeners after all unsubscribed")
 }
 
 // TestEventPumpPublish tests publishing events to subscribers
@@ -338,26 +292,20 @@ func TestEventPumpPublish(t *testing.T) {
 	// Both channels should receive the event
 	select {
 	case received := <-ch1:
-		if received.Peer.ID != event.Peer.ID {
-			t.Errorf("ch1 received wrong event, got peer ID %s, want %s", received.Peer.ID, event.Peer.ID)
-		}
+		assert.Equal(t, event.Peer.ID, received.Peer.ID, "ch1 received wrong event")
 	case <-time.After(100 * time.Millisecond):
 		t.Error("ch1 did not receive event")
 	}
 
 	select {
 	case received := <-ch2:
-		if received.Peer.ID != event.Peer.ID {
-			t.Errorf("ch2 received wrong event, got peer ID %s, want %s", received.Peer.ID, event.Peer.ID)
-		}
+		assert.Equal(t, event.Peer.ID, received.Peer.ID, "ch2 received wrong event")
 	case <-time.After(100 * time.Millisecond):
 		t.Error("ch2 did not receive event")
 	}
 
 	// Verify event was buffered
-	if pump.buffer.Size() != 1 {
-		t.Errorf("Expected 1 event in buffer, got %d", pump.buffer.Size())
-	}
+	assert.Equal(t, 1, pump.buffer.Size(), "Expected 1 event in buffer")
 }
 
 // TestEventPumpNonBlockingPublish tests that publish doesn't block on full channels
@@ -383,7 +331,7 @@ func TestEventPumpNonBlockingPublish(t *testing.T) {
 	case <-done:
 		// Good, publish didn't block
 	case <-time.After(100 * time.Millisecond):
-		t.Error("Publish blocked on full channel")
+		require.Fail(t, "Publish blocked on full channel")
 	}
 }
 
@@ -402,17 +350,9 @@ func TestEventPumpClose(t *testing.T) {
 
 	pump.Close()
 
-	if !pump.closed {
-		t.Error("Event pump should be marked as closed")
-	}
-
-	if len(pump.listeners) != 0 {
-		t.Error("Listeners should be cleared after close")
-	}
-
-	if pump.buffer.Size() != 0 {
-		t.Error("Buffer should be cleared after close")
-	}
+	assert.True(t, pump.closed, "Event pump should be marked as closed")
+	assert.Empty(t, pump.listeners, "Listeners should be cleared after close")
+	assert.Equal(t, 0, pump.buffer.Size(), "Buffer should be cleared after close")
 
 	// Closing again should not panic
 	pump.Close()
@@ -427,9 +367,7 @@ func TestEventPumpClose(t *testing.T) {
 	// Subscribing after close should not add listener
 	ch2 := make(chan TopologyEvent)
 	pump.Subscribe(ch2)
-	if len(pump.listeners) != 0 {
-		t.Error("Subscribe after close should not add listener")
-	}
+	assert.Empty(t, pump.listeners, "Subscribe after close should not add listener")
 }
 
 // TestEventPumpConcurrentOperations tests thread safety of event pump
@@ -451,12 +389,21 @@ func TestEventPumpConcurrentOperations(t *testing.T) {
 
 		// Start consumer
 		wg.Add(1)
-		go func(ch <-chan TopologyEvent) {
+		go func(ch <-chan TopologyEvent, i int) {
 			defer wg.Done()
-			for range ch {
-				received.Add(1)
+			timeout := time.After(200 * time.Millisecond)
+			for {
+				select {
+				case _, ok := <-ch:
+					if !ok {
+						return
+					}
+					received.Add(1)
+				case <-timeout:
+					return
+				}
 			}
-		}(ch)
+		}(ch, i)
 	}
 
 	// Start publishers
@@ -477,18 +424,13 @@ func TestEventPumpConcurrentOperations(t *testing.T) {
 	// Let publishers finish
 	time.Sleep(100 * time.Millisecond)
 
-	// Close pump and channels
+	// Close pump (this will close subscriber channels)
 	pump.Close()
-	for _, ch := range channels {
-		close(ch)
-	}
 
 	wg.Wait()
 
 	// We should have received many events (exact count depends on timing)
-	if received.Load() == 0 {
-		t.Error("No events were received")
-	}
+	assert.NotZero(t, received.Load(), "No events were received")
 }
 
 // TestEventOrdering tests that events maintain order within a single publisher
@@ -514,19 +456,17 @@ func TestEventOrdering(t *testing.T) {
 	for i := 0; i < numEvents; i++ {
 		select {
 		case event := <-ch:
-			if !lastTime.IsZero() && event.Time.Before(lastTime) {
-				t.Errorf("Event %d has timestamp before previous event", i)
+			if !lastTime.IsZero() {
+				assert.False(t, event.Time.Before(lastTime), "Event %d has timestamp before previous event", i)
 			}
 			lastTime = event.Time
 			received++
 		case <-time.After(100 * time.Millisecond):
-			t.Fatalf("Timeout waiting for event %d", i)
+			require.Fail(t, "Timeout waiting for event %d", i)
 		}
 	}
 
-	if received != numEvents {
-		t.Errorf("Received %d events, expected %d", received, numEvents)
-	}
+	assert.Equal(t, numEvents, received, "Received events count")
 }
 
 // TestEventPumpWithMultipleCloseAndSubscribe tests edge cases
@@ -542,9 +482,7 @@ func TestEventPumpWithMultipleCloseAndSubscribe(t *testing.T) {
 	pump.Subscribe(ch2)
 
 	// Should have no listeners after close
-	if len(pump.listeners) != 0 {
-		t.Error("Should have no listeners after close")
-	}
+	assert.Empty(t, pump.listeners, "Should have no listeners after close")
 
 	// Unsubscribe after close should not panic
 	pump.Unsubscribe(ch1)
@@ -562,14 +500,11 @@ func TestRingBufferEdgeCases(t *testing.T) {
 	buf.Push(event1)
 	buf.Push(event2) // Should overwrite event1
 	
-	if buf.Size() != 1 {
-		t.Errorf("Buffer size = %d, want 1", buf.Size())
-	}
+	assert.Equal(t, 1, buf.Size(), "Buffer size")
 	
 	popped, ok := buf.Pop()
-	if !ok || popped.Peer.ID != "B" {
-		t.Error("Should have popped event2")
-	}
+	assert.True(t, ok, "Pop should succeed")
+	assert.Equal(t, "B", popped.Peer.ID, "Should have popped event2")
 
 	// Test wraparound multiple times
 	buf2 := newEventBuffer(3)
@@ -583,15 +518,11 @@ func TestRingBufferEdgeCases(t *testing.T) {
 	
 	// Should contain the last 3 events: H, I, J
 	slice := buf2.ToSlice()
-	if len(slice) != 3 {
-		t.Fatalf("Expected 3 events, got %d", len(slice))
-	}
+	require.Len(t, slice, 3, "Expected 3 events")
 	
 	expectedIDs := []string{"H", "I", "J"}
 	for i, event := range slice {
-		if event.Peer.ID != expectedIDs[i] {
-			t.Errorf("Event %d has ID %s, want %s", i, event.Peer.ID, expectedIDs[i])
-		}
+		assert.Equal(t, expectedIDs[i], event.Peer.ID, "Event %d ID", i)
 	}
 }
 

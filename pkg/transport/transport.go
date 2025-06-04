@@ -1,3 +1,20 @@
+// transport.go implements the TCP-based transport layer for LinkPearl.
+//
+// This file contains the main transport implementation that handles:
+//   - TCP socket management and connection lifecycle
+//   - Server mode with listening and accepting connections
+//   - Client mode with outbound connection establishment  
+//   - Integration with the authentication and TLS layers
+//   - Node information exchange after secure channel setup
+//   - Connection tracking and graceful shutdown
+//
+// The transport follows a specific connection establishment flow:
+//  1. TCP connection establishment
+//  2. Authentication handshake (HMAC-based shared secret)
+//  3. TLS upgrade with ephemeral certificates
+//  4. Node information exchange (ID, mode, version)
+//  5. Ready for application-level messaging
+//
 package transport
 
 import (
@@ -10,7 +27,9 @@ import (
 	"time"
 )
 
-// tcpTransport implements Transport interface using TCP
+// tcpTransport implements the Transport interface using TCP sockets.
+// It manages both server and client operations, maintaining a registry
+// of active connections and ensuring proper cleanup on shutdown.
 type tcpTransport struct {
 	config   *TransportConfig
 	auth     Authenticator
@@ -22,7 +41,12 @@ type tcpTransport struct {
 	conns  map[string]*secureConn
 }
 
-// NewTCPTransport creates a new TCP transport
+// NewTCPTransport creates a new TCP transport instance.
+// The provided configuration must include:
+//   - NodeID: unique identifier for this node
+//   - Mode: operational mode (e.g., "standard", "relay")
+//   - Secret: shared secret for authentication
+//   - Logger: optional logger (defaults to no-op if nil)
 func NewTCPTransport(config *TransportConfig) Transport {
 	if config.Logger == nil {
 		config.Logger = DefaultLogger()
@@ -36,7 +60,9 @@ func NewTCPTransport(config *TransportConfig) Transport {
 	}
 }
 
-// Listen starts accepting connections (server mode)
+// Listen starts accepting connections on the specified address (server mode).
+// The address format follows Go's net.Listen conventions (e.g., ":8080", "0.0.0.0:8080").
+// Only one listener can be active per transport instance.
 func (t *tcpTransport) Listen(addr string) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -61,7 +87,15 @@ func (t *tcpTransport) Listen(addr string) error {
 	return nil
 }
 
-// Accept returns the next incoming connection
+// Accept returns the next incoming connection from the listener.
+// This method blocks until a connection is available or an error occurs.
+// The returned connection is fully authenticated and encrypted.
+// 
+// The acceptance process includes:
+//   - TCP connection acceptance with keepalive settings
+//   - Authentication handshake as server
+//   - TLS upgrade with server-side certificate
+//   - Node information exchange
 func (t *tcpTransport) Accept() (Conn, error) {
 	t.mu.RLock()
 	if t.closed {
@@ -135,7 +169,15 @@ func (t *tcpTransport) Accept() (Conn, error) {
 	return conn, nil
 }
 
-// Connect establishes an outbound connection
+// Connect establishes an outbound connection to the specified address.
+// The context can be used to cancel the connection attempt.
+// Returns a fully authenticated and encrypted connection.
+//
+// The connection process includes:
+//   - TCP dial with timeout and keepalive
+//   - Authentication handshake as client
+//   - TLS upgrade with client-side certificate  
+//   - Node information exchange
 func (t *tcpTransport) Connect(ctx context.Context, addr string) (Conn, error) {
 	t.mu.RLock()
 	if t.closed {
@@ -204,7 +246,11 @@ func (t *tcpTransport) Connect(ctx context.Context, addr string) (Conn, error) {
 	return conn, nil
 }
 
-// exchangeNodeInfo exchanges node information after TLS upgrade
+// exchangeNodeInfo exchanges node information after TLS upgrade.
+// This method implements a coordinated exchange where:
+//   - Server receives first, then sends
+//   - Client sends first, then receives
+// This ensures both sides have each other's information without deadlock.
 func (t *tcpTransport) exchangeNodeInfo(conn *tls.Conn, isServer bool) (*NodeInfo, error) {
 	// Create our node info
 	ourInfo := &NodeInfo{
@@ -252,7 +298,12 @@ func (t *tcpTransport) exchangeNodeInfo(conn *tls.Conn, isServer bool) (*NodeInf
 	return &remoteInfo, nil
 }
 
-// Close shuts down the transport
+// Close shuts down the transport gracefully.
+// This method:
+//   - Marks the transport as closed to prevent new operations
+//   - Closes all active connections
+//   - Stops the listener if running
+//   - Returns any error from closing the listener
 func (t *tcpTransport) Close() error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -279,7 +330,10 @@ func (t *tcpTransport) Close() error {
 	return nil
 }
 
-// Addr returns the listener address (nil if not listening)
+// Addr returns the listener address if the transport is in server mode.
+// Returns nil if the transport is not currently listening.
+// The returned address can be used to determine the actual port when
+// listening on port 0 (OS-assigned port).
 func (t *tcpTransport) Addr() net.Addr {
 	t.mu.RLock()
 	defer t.mu.RUnlock()

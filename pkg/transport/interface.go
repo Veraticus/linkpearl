@@ -1,3 +1,54 @@
+// Package transport provides a secure networking layer for LinkPearl nodes.
+//
+// The transport package implements a comprehensive networking solution that handles:
+//   - Secure peer-to-peer communication between LinkPearl nodes
+//   - Mutual authentication using shared secrets and HMAC-based handshakes
+//   - Automatic TLS encryption with ephemeral certificates
+//   - Node identification and version exchange
+//   - Message serialization and deserialization
+//   - Connection lifecycle management
+//
+// # Architecture Overview
+//
+// The transport layer is built on a modular design with clear separation of concerns:
+//
+//   - Transport interface: Manages listening, accepting, and establishing connections
+//   - Conn interface: Represents authenticated, encrypted connections between nodes
+//   - Authenticator: Handles the security handshake and TLS setup
+//   - Message passing: JSON-based protocol for inter-node communication
+//
+// # Security Model
+//
+// Security is implemented in multiple layers:
+//
+//  1. Authentication: Nodes authenticate using a shared secret and HMAC-based
+//     challenge-response protocol with time-bound nonces
+//  2. Encryption: All data is encrypted using TLS 1.3 with strong cipher suites
+//  3. Certificate Management: Ephemeral certificates are generated per connection
+//  4. Message Integrity: JSON encoding with size limits prevents malformed data
+//
+// # Usage Example
+//
+//	config := &TransportConfig{
+//	    NodeID: "node-123",
+//	    Mode:   "standard",
+//	    Secret: "shared-secret-key",
+//	    Logger: myLogger,
+//	}
+//
+//	transport := NewTCPTransport(config)
+//
+//	// Server mode
+//	err := transport.Listen(":8080")
+//	conn, err := transport.Accept()
+//
+//	// Client mode
+//	conn, err := transport.Connect(ctx, "localhost:8080")
+//
+//	// Send/receive messages
+//	err = conn.Send(myMessage)
+//	err = conn.Receive(&receivedMessage)
+//
 package transport
 
 import (
@@ -25,7 +76,10 @@ var (
 // Version is the current protocol version
 const Version = "1.0.0"
 
-// Transport defines the interface for secure network communication
+// Transport defines the interface for secure network communication.
+// Implementations of this interface provide the core networking functionality
+// for LinkPearl nodes, including connection management, authentication,
+// and encrypted communication channels.
 type Transport interface {
 	// Listen starts accepting connections (server mode)
 	Listen(addr string) error
@@ -43,7 +97,12 @@ type Transport interface {
 	Addr() net.Addr
 }
 
-// Conn represents a secure, authenticated connection
+// Conn represents a secure, authenticated connection between LinkPearl nodes.
+// Each connection is:
+//   - Mutually authenticated using the shared secret protocol
+//   - Encrypted using TLS 1.3 with ephemeral certificates
+//   - Identified by the remote node's ID, mode, and version
+//   - Capable of bidirectional message exchange with JSON serialization
 type Conn interface {
 	// NodeID returns the remote node's ID
 	NodeID() string
@@ -79,7 +138,9 @@ type Conn interface {
 	SetWriteDeadline(t time.Time) error
 }
 
-// Message is a generic message type for transport
+// Message is a generic message type for transport communication.
+// All messages exchanged between nodes should implement this interface
+// to ensure proper type identification and routing.
 type Message interface {
 	// Type returns the message type identifier
 	Type() string
@@ -94,7 +155,9 @@ const KeepAliveInterval = 30 * time.Second
 // MaxMessageSize is the maximum allowed message size (1MB)
 const MaxMessageSize = 1024 * 1024
 
-// TransportConfig holds configuration for creating a transport
+// TransportConfig holds configuration for creating a transport instance.
+// This configuration defines the node's identity, operational mode,
+// authentication credentials, and optional TLS settings.
 type TransportConfig struct {
 	// NodeID is this node's unique identifier
 	NodeID string
@@ -113,7 +176,9 @@ type TransportConfig struct {
 	Logger Logger
 }
 
-// Logger interface for transport logging
+// Logger interface for transport logging.
+// Implementations should provide structured logging with support
+// for different log levels (Debug, Info, Error) and key-value pairs.
 type Logger interface {
 	Debug(msg string, args ...interface{})
 	Info(msg string, args ...interface{})

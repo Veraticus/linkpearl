@@ -3,6 +3,9 @@ package mesh
 import (
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestExponentialBackoff(t *testing.T) {
@@ -10,18 +13,10 @@ func TestExponentialBackoff(t *testing.T) {
 		b := DefaultBackoff()
 
 		// Check defaults
-		if b.initial != time.Second {
-			t.Errorf("initial = %v, want %v", b.initial, time.Second)
-		}
-		if b.max != 5*time.Minute {
-			t.Errorf("max = %v, want %v", b.max, 5*time.Minute)
-		}
-		if b.factor != 2.0 {
-			t.Errorf("factor = %v, want %v", b.factor, 2.0)
-		}
-		if b.jitter != 0.1 {
-			t.Errorf("jitter = %v, want %v", b.jitter, 0.1)
-		}
+		assert.Equal(t, time.Second, b.initial)
+		assert.Equal(t, 5*time.Minute, b.max)
+		assert.Equal(t, 2.0, b.factor)
+		assert.Equal(t, 0.1, b.jitter)
 	})
 
 	t.Run("ExponentialProgression", func(t *testing.T) {
@@ -29,39 +24,27 @@ func TestExponentialBackoff(t *testing.T) {
 
 		// First attempt
 		d1 := b.Next()
-		if d1 != 100*time.Millisecond {
-			t.Errorf("1st duration = %v, want %v", d1, 100*time.Millisecond)
-		}
+		assert.Equal(t, 100*time.Millisecond, d1, "1st duration")
 
 		// Second attempt (2x)
 		d2 := b.Next()
-		if d2 != 200*time.Millisecond {
-			t.Errorf("2nd duration = %v, want %v", d2, 200*time.Millisecond)
-		}
+		assert.Equal(t, 200*time.Millisecond, d2, "2nd duration")
 
 		// Third attempt (4x)
 		d3 := b.Next()
-		if d3 != 400*time.Millisecond {
-			t.Errorf("3rd duration = %v, want %v", d3, 400*time.Millisecond)
-		}
+		assert.Equal(t, 400*time.Millisecond, d3, "3rd duration")
 
 		// Fourth attempt (8x)
 		d4 := b.Next()
-		if d4 != 800*time.Millisecond {
-			t.Errorf("4th duration = %v, want %v", d4, 800*time.Millisecond)
-		}
+		assert.Equal(t, 800*time.Millisecond, d4, "4th duration")
 
 		// Fifth attempt (would be 16x but capped at max)
 		d5 := b.Next()
-		if d5 != time.Second {
-			t.Errorf("5th duration = %v, want %v (max)", d5, time.Second)
-		}
+		assert.Equal(t, time.Second, d5, "5th duration (max)")
 
 		// Sixth attempt (still at max)
 		d6 := b.Next()
-		if d6 != time.Second {
-			t.Errorf("6th duration = %v, want %v (max)", d6, time.Second)
-		}
+		assert.Equal(t, time.Second, d6, "6th duration (max)")
 	})
 
 	t.Run("Jitter", func(t *testing.T) {
@@ -77,15 +60,12 @@ func TestExponentialBackoff(t *testing.T) {
 			// Check within jitter range (±50%)
 			min := 500 * time.Millisecond
 			max := 1500 * time.Millisecond
-			if d < min || d > max {
-				t.Errorf("duration %v outside jitter range [%v, %v]", d, min, max)
-			}
+			assert.GreaterOrEqual(t, d, min, "duration should be >= min")
+			assert.LessOrEqual(t, d, max, "duration should be <= max")
 		}
 
 		// Should see some variation
-		if len(seen) < 2 {
-			t.Error("jitter not producing varied results")
-		}
+		assert.GreaterOrEqual(t, len(seen), 2, "jitter not producing varied results")
 	})
 
 	t.Run("Reset", func(t *testing.T) {
@@ -96,22 +76,16 @@ func TestExponentialBackoff(t *testing.T) {
 		b.Next()
 		b.Next()
 
-		if b.Attempts() != 3 {
-			t.Errorf("attempts = %d, want 3", b.Attempts())
-		}
+		assert.Equal(t, 3, b.Attempts())
 
 		// Reset
 		b.Reset()
 
-		if b.Attempts() != 0 {
-			t.Errorf("attempts after reset = %d, want 0", b.Attempts())
-		}
+		assert.Equal(t, 0, b.Attempts(), "attempts after reset")
 
 		// Next should be initial again
 		d := b.Next()
-		if d != 100*time.Millisecond {
-			t.Errorf("duration after reset = %v, want %v", d, 100*time.Millisecond)
-		}
+		assert.Equal(t, 100*time.Millisecond, d, "duration after reset")
 	})
 
 	t.Run("Duration", func(t *testing.T) {
@@ -119,24 +93,18 @@ func TestExponentialBackoff(t *testing.T) {
 
 		// Duration should return current without advancing
 		d1 := b.Duration()
-		if d1 != 100*time.Millisecond {
-			t.Errorf("initial duration = %v, want %v", d1, 100*time.Millisecond)
-		}
+		assert.Equal(t, 100*time.Millisecond, d1, "initial duration")
 
 		// Still the same
 		d2 := b.Duration()
-		if d2 != 100*time.Millisecond {
-			t.Errorf("duration (no advance) = %v, want %v", d2, 100*time.Millisecond)
-		}
+		assert.Equal(t, 100*time.Millisecond, d2, "duration (no advance)")
 
 		// Advance
 		b.Next()
 
 		// Now should be doubled
 		d3 := b.Duration()
-		if d3 != 200*time.Millisecond {
-			t.Errorf("duration after Next = %v, want %v", d3, 200*time.Millisecond)
-		}
+		assert.Equal(t, 200*time.Millisecond, d3, "duration after Next")
 	})
 
 	t.Run("InvalidParameters", func(t *testing.T) {
@@ -198,17 +166,17 @@ func TestExponentialBackoff(t *testing.T) {
 			t.Run(tt.name, func(t *testing.T) {
 				b := NewExponentialBackoff(tt.initial, tt.max, tt.factor, tt.jitter)
 				
-				if tt.wantInitial != 0 && b.initial != tt.wantInitial {
-					t.Errorf("initial = %v, want %v", b.initial, tt.wantInitial)
+				if tt.wantInitial != 0 {
+					assert.Equal(t, tt.wantInitial, b.initial, "initial")
 				}
-				if tt.wantMax != 0 && b.max != tt.wantMax {
-					t.Errorf("max = %v, want %v", b.max, tt.wantMax)
+				if tt.wantMax != 0 {
+					assert.Equal(t, tt.wantMax, b.max, "max")
 				}
-				if tt.wantFactor != 0 && b.factor != tt.wantFactor {
-					t.Errorf("factor = %v, want %v", b.factor, tt.wantFactor)
+				if tt.wantFactor != 0 {
+					assert.Equal(t, tt.wantFactor, b.factor, "factor")
 				}
-				if tt.wantJitter != 0 && b.jitter != tt.wantJitter {
-					t.Errorf("jitter = %v, want %v", b.jitter, tt.wantJitter)
+				if tt.wantJitter != 0 {
+					assert.Equal(t, tt.wantJitter, b.jitter, "jitter")
 				}
 			})
 		}
@@ -223,15 +191,11 @@ func TestBackoffManager(t *testing.T) {
 
 		// First get creates new
 		b1 := m.Get("test")
-		if b1 == nil {
-			t.Fatal("Get returned nil")
-		}
+		require.NotNil(t, b1, "Get returned nil")
 
 		// Second get returns same instance
 		b2 := m.Get("test")
-		if b1 != b2 {
-			t.Error("Get returned different instance")
-		}
+		assert.Equal(t, b1, b2, "Get returned different instance")
 	})
 
 	t.Run("MultipleKeys", func(t *testing.T) {
@@ -249,9 +213,7 @@ func TestBackoffManager(t *testing.T) {
 		b1.Next()
 
 		// Other should still be at initial
-		if b2.Attempts() != 0 {
-			t.Error("backoffs not independent")
-		}
+		assert.Equal(t, 0, b2.Attempts(), "backoffs not independent")
 	})
 
 	t.Run("Reset", func(t *testing.T) {
@@ -264,9 +226,7 @@ func TestBackoffManager(t *testing.T) {
 		// Reset via manager
 		m.Reset("test")
 
-		if b.Attempts() != 0 {
-			t.Error("Reset didn't reset backoff")
-		}
+		assert.Equal(t, 0, b.Attempts(), "Reset didn't reset backoff")
 	})
 
 	t.Run("Remove", func(t *testing.T) {
@@ -280,12 +240,8 @@ func TestBackoffManager(t *testing.T) {
 
 		// Get again should be new instance at initial state
 		b2 := m.Get("test")
-		if b1 == b2 {
-			t.Error("Remove didn't remove backoff")
-		}
-		if b2.Attempts() != 0 {
-			t.Error("new backoff not at initial state")
-		}
+		assert.NotEqual(t, b1, b2, "Remove didn't remove backoff")
+		assert.Equal(t, 0, b2.Attempts(), "new backoff not at initial state")
 	})
 
 	t.Run("Clear", func(t *testing.T) {
@@ -301,23 +257,17 @@ func TestBackoffManager(t *testing.T) {
 
 		// All should be new
 		b1 := m.Get("key1")
-		if b1.Attempts() != 0 {
-			t.Error("Clear didn't clear all backoffs")
-		}
+		assert.Equal(t, 0, b1.Attempts(), "Clear didn't clear all backoffs")
 	})
 
 	t.Run("NilFactory", func(t *testing.T) {
 		m := newBackoffManager(nil)
 
 		b := m.Get("test")
-		if b == nil {
-			t.Fatal("Get with nil factory returned nil")
-		}
+		require.NotNil(t, b, "Get with nil factory returned nil")
 
 		// Should use DefaultBackoff
-		if b.initial != time.Second {
-			t.Error("nil factory didn't use DefaultBackoff")
-		}
+		assert.Equal(t, time.Second, b.initial, "nil factory didn't use DefaultBackoff")
 	})
 }
 
@@ -383,9 +333,7 @@ func TestCalculateBackoffDuration(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := calculateBackoffDuration(tt.attempt, tt.initial, tt.max, tt.factor)
-			if got != tt.expected {
-				t.Errorf("calculateBackoffDuration() = %v, want %v", got, tt.expected)
-			}
+			assert.Equal(t, tt.expected, got, "calculateBackoffDuration()")
 		})
 	}
 }

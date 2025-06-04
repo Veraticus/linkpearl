@@ -1,3 +1,50 @@
+// Package config provides configuration management for linkpearl nodes.
+// It handles loading, validation, and management of all node settings including
+// network configuration, security parameters, and operational modes.
+//
+// Configuration Sources:
+//
+// Configuration can be loaded from multiple sources with the following precedence:
+//   1. Command-line flags (highest priority)
+//   2. Environment variables
+//   3. Default values (lowest priority)
+//
+// Environment Variables:
+//
+// All configuration options can be set via environment variables:
+//   - LINKPEARL_SECRET: Shared secret for node authentication
+//   - LINKPEARL_NODE_ID: Unique identifier for this node
+//   - LINKPEARL_MODE: Operational mode (client or full)
+//   - LINKPEARL_LISTEN: Address to listen on (full nodes only)
+//   - LINKPEARL_JOIN: Comma-separated list of nodes to connect to
+//   - LINKPEARL_POLL_INTERVAL: Clipboard polling frequency
+//   - LINKPEARL_RECONNECT_BACKOFF: Delay between reconnection attempts
+//   - LINKPEARL_VERBOSE: Enable verbose logging
+//
+// Node Modes:
+//
+// Linkpearl supports two operational modes:
+//
+//   1. Client Mode: Connects to other nodes but doesn't accept connections.
+//      Ideal for devices behind NAT or with limited resources.
+//
+//   2. Full Mode: Accepts incoming connections and fully participates in
+//      the mesh. Requires a publicly accessible address or port forwarding.
+//
+// Security:
+//
+// The shared secret is used for mutual authentication between nodes. All nodes
+// in a mesh must use the same secret. The secret is never logged or displayed
+// in configuration output for security reasons.
+//
+// Validation:
+//
+// The configuration is validated to ensure:
+//   - Required fields are present (secret, node ID)
+//   - Mode-specific requirements are met
+//   - Network addresses are properly formatted
+//   - Duration values are within reasonable bounds
+
 package config
 
 import (
@@ -8,7 +55,8 @@ import (
 	"time"
 )
 
-// NodeMode represents the operational mode of a linkpearl node
+// NodeMode represents the operational mode of a linkpearl node.
+// Different modes have different networking capabilities and requirements.
 type NodeMode string
 
 const (
@@ -18,7 +66,14 @@ const (
 	FullNode NodeMode = "full"
 )
 
-// Config holds all configuration for linkpearl
+// Config holds all configuration for linkpearl nodes.
+// This struct contains all settings needed to run a linkpearl node,
+// from network configuration to behavioral parameters.
+//
+// The configuration is designed to be:
+//   - Simple for basic use cases (minimal required fields)
+//   - Flexible for advanced deployments (many optional settings)
+//   - Secure by default (no sensitive data in logs)
 type Config struct {
 	// Core settings
 	Secret string   `env:"LINKPEARL_SECRET"`
@@ -35,7 +90,18 @@ type Config struct {
 	Verbose          bool          `env:"LINKPEARL_VERBOSE"`
 }
 
-// NewConfig creates a new config with sensible defaults
+// NewConfig creates a new config with sensible defaults suitable for most
+// deployments. The defaults are chosen to work well for client nodes on
+// typical networks.
+//
+// Default values:
+//   - NodeID: Generated from hostname and timestamp
+//   - Mode: Client (doesn't require port forwarding)
+//   - PollInterval: 500ms (responsive without excessive CPU)
+//   - ReconnectBackoff: 1s (quick recovery from disconnections)
+//   - Verbose: false (quiet operation)
+//
+// Users typically only need to set Secret and Join addresses.
 func NewConfig() *Config {
 	return &Config{
 		NodeID:           generateNodeID(),
@@ -47,7 +113,21 @@ func NewConfig() *Config {
 	}
 }
 
-// Validate ensures the configuration is valid
+// Validate ensures the configuration is valid and internally consistent.
+// This method checks all requirements and relationships between settings.
+//
+// Validation rules:
+//   - Secret is required (no default for security)
+//   - NodeID is required (must be unique per node)
+//   - Mode must be either "client" or "full"
+//   - Full nodes must specify a listen address
+//   - Client nodes must not specify a listen address
+//   - Client nodes must have at least one join address
+//
+// The method also performs automatic adjustments:
+//   - If Listen is set, mode is upgraded to FullNode
+//
+// Returns an error describing the first validation failure found.
 func (c *Config) Validate() error {
 	if c.Secret == "" {
 		return fmt.Errorf("secret is required")
@@ -85,7 +165,22 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-// LoadFromEnv loads configuration from environment variables
+// LoadFromEnv loads configuration from environment variables, overriding
+// any existing values. This allows for easy configuration in containerized
+// environments and shell scripts.
+//
+// Environment variable mappings:
+//   - LINKPEARL_SECRET -> Secret (required for security)
+//   - LINKPEARL_NODE_ID -> NodeID (defaults to generated ID)
+//   - LINKPEARL_MODE -> Mode ("client" or "full")
+//   - LINKPEARL_LISTEN -> Listen (e.g., ":8080" or "0.0.0.0:8080")
+//   - LINKPEARL_JOIN -> Join (comma-separated, e.g., "host1:8080,host2:8080")
+//   - LINKPEARL_POLL_INTERVAL -> PollInterval (e.g., "500ms", "1s")
+//   - LINKPEARL_RECONNECT_BACKOFF -> ReconnectBackoff (e.g., "1s", "5s")
+//   - LINKPEARL_VERBOSE -> Verbose ("true" or "false")
+//
+// Invalid values are silently ignored, keeping the existing configuration.
+// This prevents the application from failing due to typos in optional settings.
 func (c *Config) LoadFromEnv() {
 	if secret := os.Getenv("LINKPEARL_SECRET"); secret != "" {
 		c.Secret = secret
@@ -130,7 +225,15 @@ func (c *Config) LoadFromEnv() {
 	}
 }
 
-// generateNodeID creates a unique node identifier
+// generateNodeID creates a unique node identifier for this instance.
+// The ID combines hostname and nanosecond timestamp to ensure uniqueness
+// even when multiple nodes start on the same host.
+//
+// Format: "{hostname}-{nanosecond-timestamp}"
+// Example: "laptop-1234567890123456789"
+//
+// If hostname cannot be determined, "unknown" is used as a fallback.
+// The nanosecond precision makes collisions virtually impossible.
 func generateNodeID() string {
 	hostname, _ := os.Hostname()
 	if hostname == "" {
@@ -140,7 +243,16 @@ func generateNodeID() string {
 	return fmt.Sprintf("%s-%d", hostname, time.Now().UnixNano())
 }
 
-// String returns a string representation of the config (hiding sensitive data)
+// String returns a string representation of the config suitable for logging
+// and debugging. Sensitive data (the secret) is hidden to prevent accidental
+// exposure in logs or console output.
+//
+// The secret is shown as:
+//   - "[hidden]" if set
+//   - "[not set]" if empty
+//
+// This allows operators to verify the configuration without compromising
+// security. All other fields are shown in full for troubleshooting.
 func (c *Config) String() string {
 	secretDisplay := "[hidden]"
 	if c.Secret == "" {

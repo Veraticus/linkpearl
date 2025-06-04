@@ -1,6 +1,42 @@
 //go:build darwin
 // +build darwin
 
+// This file implements clipboard access for macOS using the pbcopy and pbpaste commands.
+//
+// Implementation Details:
+//
+// The macOS implementation leverages the system's built-in pbcopy and pbpaste commands
+// for clipboard operations. These commands interface with NSPasteboard, the macOS
+// clipboard service.
+//
+// Key Features:
+//   - Uses pbpaste to read clipboard contents
+//   - Uses pbcopy to write clipboard contents
+//   - Monitors changes using NSPasteboard's changeCount property
+//   - Implements smart polling with adaptive intervals
+//
+// Change Detection:
+//
+// macOS provides a changeCount property on NSPasteboard that increments whenever
+// the clipboard content changes. This implementation uses AppleScript to access
+// this property, providing more efficient change detection than content polling alone.
+//
+// The Watch method combines changeCount monitoring with content hashing to ensure:
+//   - Fast detection of clipboard changes (via changeCount)
+//   - Accurate change validation (via content hashing)
+//   - No duplicate notifications for the same content
+//
+// Performance Optimizations:
+//   - Adaptive polling intervals: starts at 500ms, slows to 2s when idle
+//   - ChangeCount check is fast and doesn't require reading full content
+//   - Content is only read when changeCount indicates a change
+//   - SHA-256 hashing prevents duplicate notifications
+//
+// Thread Safety:
+//
+// The implementation uses sync.RWMutex to protect shared state (lastHash and
+// lastChangeCount), ensuring thread-safe access from multiple goroutines.
+
 package clipboard
 
 import (
@@ -15,19 +51,24 @@ import (
 	"time"
 )
 
-// DarwinClipboard implements clipboard access on macOS using pbcopy/pbpaste
+// DarwinClipboard implements clipboard access on macOS using pbcopy/pbpaste.
+// It maintains internal state for efficient change detection using both
+// content hashing and NSPasteboard's changeCount.
 type DarwinClipboard struct {
 	mu              sync.RWMutex
-	lastHash        string
-	lastChangeCount int
+	lastHash        string      // SHA-256 hash of last known clipboard content
+	lastChangeCount int         // NSPasteboard changeCount value
 }
 
-// newPlatformClipboard returns a macOS clipboard implementation
+// newPlatformClipboard returns a macOS clipboard implementation.
+// On macOS, clipboard access is always available through pbcopy/pbpaste,
+// so this function never returns an error.
 func newPlatformClipboard() (Clipboard, error) {
 	return &DarwinClipboard{}, nil
 }
 
-// Read returns the current clipboard contents
+// Read returns the current clipboard contents using the pbpaste command.
+// This is a synchronous operation that executes pbpaste and returns its output.
 func (c *DarwinClipboard) Read() (string, error) {
 	cmd := exec.Command("pbpaste")
 	output, err := cmd.Output()
@@ -37,7 +78,9 @@ func (c *DarwinClipboard) Read() (string, error) {
 	return string(output), nil
 }
 
-// Write sets the clipboard contents
+// Write sets the clipboard contents using the pbcopy command.
+// The content is piped to pbcopy's stdin. After a successful write,
+// the internal tracking state is updated to reflect the new content.
 func (c *DarwinClipboard) Write(content string) error {
 	cmd := exec.Command("pbcopy")
 	stdin, err := cmd.StdinPipe()
@@ -70,7 +113,16 @@ func (c *DarwinClipboard) Write(content string) error {
 	return nil
 }
 
-// Watch monitors the clipboard for changes using macOS changeCount
+// Watch monitors the clipboard for changes using macOS changeCount.
+// It returns a channel that emits new clipboard content whenever a change is detected.
+// The monitoring uses a combination of NSPasteboard's changeCount and content hashing
+// to efficiently detect changes while avoiding duplicates.
+//
+// The polling interval adapts based on activity:
+//   - Active: 500ms (when changes are detected)
+//   - Idle: 2s (after 10 consecutive polls with no changes)
+//
+// The channel is closed when the context is cancelled.
 func (c *DarwinClipboard) Watch(ctx context.Context) <-chan string {
 	ch := make(chan string)
 
@@ -149,7 +201,12 @@ func (c *DarwinClipboard) Watch(ctx context.Context) <-chan string {
 	return ch
 }
 
-// getChangeCount retrieves the macOS clipboard change count
+// getChangeCount retrieves the macOS clipboard change count using AppleScript.
+// The changeCount is a property of NSPasteboard that increments each time
+// the clipboard content changes. This provides a fast way to detect changes
+// without reading the actual clipboard content.
+//
+// Returns -1 if the changeCount cannot be retrieved (e.g., AppleScript error).
 func (c *DarwinClipboard) getChangeCount() int {
 	// Use AppleScript to get the pasteboard change count
 	cmd := exec.Command("osascript", "-e", `
@@ -173,7 +230,9 @@ func (c *DarwinClipboard) getChangeCount() int {
 	return count
 }
 
-// hashContent creates a hash of the content for change detection
+// hashContent creates a SHA-256 hash of the content for change detection.
+// This is used to verify that clipboard content has actually changed,
+// as changeCount can increment even when setting the same content.
 func (c *DarwinClipboard) hashContent(content string) string {
 	h := sha256.Sum256([]byte(content))
 	return hex.EncodeToString(h[:])

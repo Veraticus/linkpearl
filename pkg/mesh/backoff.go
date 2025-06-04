@@ -1,13 +1,35 @@
+// backoff.go implements exponential backoff strategies for connection retry logic.
+// This file provides a robust backoff implementation that prevents the mesh from
+// overwhelming peers with rapid reconnection attempts during failures.
+//
+// The backoff algorithm uses exponential growth with configurable parameters:
+//   - Initial delay: The starting delay between attempts
+//   - Maximum delay: The ceiling for backoff duration
+//   - Growth factor: The multiplier applied after each failure
+//   - Jitter: Random variation to prevent synchronized reconnection storms
+//
+// The implementation includes automatic reset logic that returns to the initial
+// delay after a period of successful operation, ensuring that temporary failures
+// don't permanently impact reconnection speed.
+
 package mesh
 
 import (
+	"context"
 	"math"
 	"math/rand"
 	"sync"
 	"time"
 )
 
-// ExponentialBackoff implements an exponential backoff strategy with jitter
+// ExponentialBackoff implements an exponential backoff strategy with jitter.
+// This is used to manage reconnection attempts in a way that provides quick
+// initial retries while avoiding overwhelming the target with repeated attempts
+// during extended failures.
+//
+// The backoff duration grows exponentially with each failure, up to a maximum
+// value. Jitter is added to prevent multiple nodes from synchronizing their
+// reconnection attempts, which could cause thundering herd problems.
 type ExponentialBackoff struct {
 	initial time.Duration
 	max     time.Duration
@@ -121,7 +143,14 @@ func (b *ExponentialBackoff) ShouldReset() bool {
 	return !b.resetTime.IsZero() && time.Now().After(b.resetTime)
 }
 
-// backoffManager manages multiple backoffs by key
+// backoffManager manages multiple backoffs by key.
+// This is used by the topology to maintain separate backoff states for each
+// peer address, ensuring that failures connecting to one peer don't affect
+// the reconnection timing for other peers.
+//
+// The manager automatically creates new backoff instances as needed and
+// provides thread-safe access to them. It also handles cleanup of unused
+// backoff states to prevent memory leaks in dynamic topologies.
 type backoffManager struct {
 	backoffs map[string]*ExponentialBackoff
 	factory  func() *ExponentialBackoff
@@ -192,7 +221,18 @@ func (m *backoffManager) Clear() {
 	m.backoffs = make(map[string]*ExponentialBackoff)
 }
 
-// exponentialBackoff performs an action with exponential backoff
+// exponentialBackoff performs an action with exponential backoff retry logic.
+// This helper function encapsulates the common pattern of retrying an operation
+// with exponential backoff until it succeeds or the context is cancelled.
+//
+// The function will:
+//   - Execute the action
+//   - On success, reset the backoff and return
+//   - On failure, wait for the backoff duration before retrying
+//   - Continue until success or context cancellation
+//
+// This is particularly useful for connection establishment and other operations
+// that may fail temporarily but are expected to eventually succeed.
 func exponentialBackoff(ctx context.Context, backoff *ExponentialBackoff, action func() error) error {
 	for {
 		err := action()

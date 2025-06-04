@@ -1,3 +1,16 @@
+// messages.go implements the message protocol and routing for the mesh topology.
+// This file defines the message types, serialization format, and the routing
+// infrastructure that handles incoming and outgoing messages.
+//
+// The mesh uses a simple JSON-based protocol where each message contains:
+//   - Type: Identifies the message type for routing to appropriate handlers
+//   - From: The node ID of the sender for response routing
+//   - Payload: The actual message content, which varies by message type
+//
+// The message system supports both built-in message types (peer list, ping/pong)
+// and application-defined custom message types. Message handlers can be registered
+// for each message type, enabling extensible protocol implementations.
+
 package mesh
 
 import (
@@ -5,7 +18,9 @@ import (
 	"fmt"
 )
 
-// MessageType identifies the type of mesh message
+// MessageType identifies the type of mesh message.
+// The mesh defines several built-in message types and allows applications
+// to define their own custom types.
 type MessageType string
 
 const (
@@ -73,7 +88,11 @@ func unmarshalMessage(data []byte) (MessageType, string, json.RawMessage, error)
 	return msg.Type, msg.From, msg.Payload, nil
 }
 
-// messageHandler processes incoming messages based on their type
+// messageHandler processes incoming messages based on their type.
+// It maintains a registry of handler functions mapped by message type,
+// allowing different message types to be processed by specific logic.
+// This enables extensible message handling where applications can register
+// their own handlers for custom message types.
 type messageHandler struct {
 	handlers map[MessageType]func(from string, payload json.RawMessage) error
 }
@@ -100,7 +119,14 @@ func (h *messageHandler) Handle(msgType MessageType, from string, payload json.R
 	return handler(from, payload)
 }
 
-// messageRouter routes messages between peers and local handlers
+// messageRouter routes messages between peers and local handlers.
+// It acts as the central message processing component, handling both
+// incoming messages (routing them to appropriate handlers) and outgoing
+// messages (serializing and sending them to peers).
+//
+// The router supports both unicast (peer-to-peer) and broadcast messaging
+// patterns, automatically handling message serialization and adding the
+// sender information to outgoing messages.
 type messageRouter struct {
 	localNode string
 	handler   *messageHandler

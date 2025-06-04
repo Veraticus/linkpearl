@@ -1,3 +1,31 @@
+// auth.go implements the authentication and TLS setup for secure connections.
+//
+// This file provides the security foundation for LinkPearl's transport layer:
+//
+// # Authentication Protocol
+//
+// The authentication uses a mutual HMAC-based challenge-response protocol:
+//  1. Both peers generate a random nonce and current timestamp
+//  2. Each peer creates an HMAC using: nonce + timestamp + shared secret
+//  3. Peers exchange authentication messages simultaneously
+//  4. Each peer verifies the other's HMAC and timestamp validity
+//  5. Timestamps must be within a 5-minute window to prevent replay attacks
+//
+// # TLS Configuration
+//
+// After successful authentication, connections are upgraded to TLS 1.3:
+//   - Ephemeral X.509 certificates are generated per connection
+//   - Certificates are valid for 24 hours (longer than any expected connection)
+//   - Strong cipher suites: AES-256-GCM, AES-128-GCM, ChaCha20-Poly1305
+//   - No client certificate verification (authentication already completed)
+//
+// # Security Considerations
+//
+//   - Shared secrets should be at least 32 bytes of high entropy
+//   - Time synchronization is required (5-minute tolerance)
+//   - Ephemeral certificates prevent long-term key compromise
+//   - HMAC prevents secret disclosure during authentication
+//
 package transport
 
 import (
@@ -17,20 +45,26 @@ import (
 	"time"
 )
 
-// AuthMessage is the authentication message exchanged during handshake
+// AuthMessage is the authentication message exchanged during handshake.
+// It contains a challenge nonce, timestamp for replay protection,
+// and an HMAC proving knowledge of the shared secret.
 type AuthMessage struct {
 	Nonce     string `json:"nonce"`
 	Timestamp int64  `json:"timestamp"`
 	HMAC      string `json:"hmac"`
 }
 
-// AuthResult contains the result of authentication
+// AuthResult contains the result of authentication.
+// Success indicates whether authentication passed,
+// and Error provides details if authentication failed.
 type AuthResult struct {
 	Success bool
 	Error   error
 }
 
-// Authenticator handles the authentication handshake
+// Authenticator handles the authentication handshake and TLS setup.
+// Implementations provide the security layer for transport connections,
+// ensuring only authorized nodes can communicate.
 type Authenticator interface {
 	// Handshake performs shared secret authentication
 	Handshake(conn net.Conn, secret string, isServer bool) (*AuthResult, error)
@@ -40,11 +74,13 @@ type Authenticator interface {
 }
 
 // defaultAuthenticator implements the Authenticator interface
+// using HMAC-based authentication and ephemeral TLS certificates.
 type defaultAuthenticator struct {
 	logger Logger
 }
 
-// NewAuthenticator creates a new authenticator
+// NewAuthenticator creates a new authenticator instance.
+// The logger parameter is optional and defaults to a no-op logger if nil.
 func NewAuthenticator(logger Logger) Authenticator {
 	if logger == nil {
 		logger = DefaultLogger()
@@ -54,7 +90,17 @@ func NewAuthenticator(logger Logger) Authenticator {
 	}
 }
 
-// Handshake performs the authentication handshake
+// Handshake performs the mutual authentication handshake.
+// This method implements a simultaneous exchange protocol where both
+// peers send and receive authentication messages concurrently.
+// The handshake must complete within HandshakeTimeout (10 seconds).
+//
+// Parameters:
+//   - conn: the network connection to authenticate
+//   - secret: the shared secret for HMAC generation
+//   - isServer: whether this peer is the server (affects error handling)
+//
+// Returns AuthResult with Success=true only if authentication succeeds.
 func (a *defaultAuthenticator) Handshake(conn net.Conn, secret string, isServer bool) (*AuthResult, error) {
 	// Set deadline for handshake
 	if err := conn.SetDeadline(time.Now().Add(HandshakeTimeout)); err != nil {
@@ -110,7 +156,9 @@ func (a *defaultAuthenticator) Handshake(conn net.Conn, secret string, isServer 
 	return &AuthResult{Success: true}, nil
 }
 
-// createAuthMessage creates an authentication message
+// createAuthMessage creates an authentication message for the handshake.
+// It generates a cryptographically secure random nonce and combines it
+// with the current timestamp and shared secret to create an HMAC.
 func (a *defaultAuthenticator) createAuthMessage(secret string) (*AuthMessage, error) {
 	// Generate random nonce
 	nonce := make([]byte, 32)
@@ -133,7 +181,11 @@ func (a *defaultAuthenticator) createAuthMessage(secret string) (*AuthMessage, e
 	}, nil
 }
 
-// verifyAuthMessage verifies an authentication message
+// verifyAuthMessage verifies an authentication message from a peer.
+// It checks:
+//   - Timestamp is within acceptable window (±5 minutes)
+//   - HMAC matches the expected value for the given parameters
+// This prevents replay attacks and verifies peer knowledge of the secret.
 func (a *defaultAuthenticator) verifyAuthMessage(msg *AuthMessage, secret string) error {
 	// Check timestamp (5 minute window)
 	now := time.Now().Unix()
@@ -153,7 +205,12 @@ func (a *defaultAuthenticator) verifyAuthMessage(msg *AuthMessage, secret string
 	return nil
 }
 
-// GenerateTLSConfig creates a TLS configuration with ephemeral certificates
+// GenerateTLSConfig creates a TLS configuration with ephemeral certificates.
+// Each connection gets a unique certificate to ensure forward secrecy.
+// The configuration enforces TLS 1.3 with strong cipher suites.
+//
+// For servers: No client certificate is required (already authenticated)
+// For clients: Server certificate verification is skipped (already authenticated)
 func (a *defaultAuthenticator) GenerateTLSConfig(isServer bool) (*tls.Config, error) {
 	// Generate ephemeral certificate
 	cert, err := a.generateCertificate()
@@ -180,7 +237,14 @@ func (a *defaultAuthenticator) GenerateTLSConfig(isServer bool) (*tls.Config, er
 	return config, nil
 }
 
-// generateCertificate creates an ephemeral self-signed certificate
+// generateCertificate creates an ephemeral self-signed certificate.
+// The certificate:
+//   - Uses 2048-bit RSA keys for compatibility
+//   - Is valid for 24 hours (exceeds any connection lifetime)
+//   - Includes localhost and loopback IPs for local testing
+//   - Has both server and client authentication capabilities
+//
+// These certificates are never persisted and exist only for the connection lifetime.
 func (a *defaultAuthenticator) generateCertificate() (tls.Certificate, error) {
 	// Generate RSA key
 	priv, err := rsa.GenerateKey(rand.Reader, 2048)

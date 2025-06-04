@@ -1,3 +1,18 @@
+// events.go implements the event system for the mesh topology.
+// This file provides an asynchronous event notification mechanism that allows
+// applications to monitor topology changes such as peer connections and
+// disconnections.
+//
+// The event system uses a buffered, non-blocking design to ensure that event
+// generation doesn't impact the performance of the mesh topology. Events are
+// stored in a ring buffer and delivered to subscribers through channels.
+//
+// Key features:
+//   - Ring buffer for event storage prevents unbounded memory growth
+//   - Non-blocking event delivery prevents slow consumers from affecting the mesh
+//   - Multiple subscribers can independently consume events
+//   - Thread-safe implementation supports concurrent access
+
 package mesh
 
 import (
@@ -5,7 +20,9 @@ import (
 	"time"
 )
 
-// EventType represents the type of topology event
+// EventType represents the type of topology event.
+// The mesh currently supports connection and disconnection events,
+// which are the primary topology changes applications need to monitor.
 type EventType int
 
 const (
@@ -34,7 +51,14 @@ type TopologyEvent struct {
 	Time time.Time
 }
 
-// eventBuffer implements a ring buffer for topology events
+// eventBuffer implements a ring buffer for topology events.
+// The ring buffer provides bounded storage for events, automatically
+// discarding the oldest events when the buffer is full. This prevents
+// unbounded memory growth while still maintaining a history of recent
+// topology changes.
+//
+// The implementation is thread-safe and optimized for concurrent access
+// patterns where events are produced by one goroutine and consumed by many.
 type eventBuffer struct {
 	events []TopologyEvent
 	head   int
@@ -123,7 +147,15 @@ func (b *eventBuffer) ToSlice() []TopologyEvent {
 	return result
 }
 
-// eventPump manages event distribution to subscribers
+// eventPump manages event distribution to subscribers.
+// It acts as a fan-out mechanism, taking events from producers and
+// distributing them to multiple consumers. The pump maintains a list
+// of subscriber channels and handles the complexity of non-blocking
+// delivery to potentially slow consumers.
+//
+// The event pump also maintains an internal buffer of recent events,
+// allowing new subscribers to potentially receive historical events
+// if needed (though this is not currently exposed in the API).
 type eventPump struct {
 	buffer    *eventBuffer
 	listeners []chan<- TopologyEvent
@@ -198,6 +230,9 @@ func (p *eventPump) Close() {
 	}
 
 	p.closed = true
+	
+	// Don't close channels - let them be garbage collected
+	// Closing would race with Publish
 	p.listeners = nil
 	p.buffer.Clear()
 }
