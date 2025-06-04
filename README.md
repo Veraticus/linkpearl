@@ -56,6 +56,108 @@ make build
 sudo make install
 ```
 
+### NixOS / Nix
+
+Linkpearl can be installed on NixOS or any system with Nix package manager using either flakes or traditional Nix expressions.
+
+#### Using Nix Flakes
+
+```bash
+# Run directly without installation
+nix run github:Veraticus/linkpearl -- --help
+
+# Install to user profile
+nix profile install github:Veraticus/linkpearl
+
+# Or in your flake.nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    linkpearl.url = "github:Veraticus/linkpearl";
+  };
+
+  outputs = { self, nixpkgs, linkpearl }: {
+    # For NixOS system configuration
+    nixosConfigurations.mysystem = nixpkgs.lib.nixosSystem {
+      modules = [
+        linkpearl.nixosModules.default
+        {
+          services.linkpearl = {
+            enable = true;
+            secret = "your-shared-secret";
+            listen = ":8080";
+            join = [ "other-machine:8080" ];
+          };
+        }
+      ];
+    };
+  };
+}
+```
+
+#### Using Traditional Nix
+
+```bash
+# Build from source
+nix-build -E 'with import <nixpkgs> {}; callPackage ./default.nix {}'
+
+# Install using nix-env
+nix-env -f ./default.nix -i
+
+# Or add to configuration.nix
+{ pkgs, ... }:
+let
+  linkpearl = pkgs.callPackage /path/to/linkpearl/default.nix { };
+in
+{
+  environment.systemPackages = [ linkpearl ];
+}
+```
+
+#### Development Shell
+
+```bash
+# Enter development environment with all dependencies
+nix develop
+
+# Or without flakes
+nix-shell -E 'with import <nixpkgs> {}; mkShell { buildInputs = [ go_1_24 gnumake ]; }'
+```
+
+#### NixOS Service Configuration
+
+Linkpearl includes a NixOS module for running as a systemd user service:
+
+```nix
+# In your configuration.nix or home-manager config
+{
+  services.linkpearl = {
+    enable = true;
+    secret = "your-shared-secret";  # Consider using secrets management
+    listen = ":8080";               # Optional: for full nodes
+    join = [                        # Optional: peers to connect to
+      "desktop.local:8080"
+      "server.example.com:8080"
+    ];
+    nodeId = "laptop";              # Optional: custom node ID
+    pollInterval = "500ms";         # Optional: clipboard check interval
+    verbose = true;                 # Optional: enable debug logging
+  };
+}
+```
+
+For secret management, consider using [agenix](https://github.com/ryantm/agenix) or [sops-nix](https://github.com/Mic92/sops-nix):
+
+```nix
+{
+  services.linkpearl = {
+    enable = true;
+    secret = config.age.secrets.linkpearl-secret.path;
+    # ... other options
+  };
+}
+```
+
 ## 🚀 Quick Start
 
 ### Two Computer Setup
