@@ -1,8 +1,11 @@
 # Linkpearl 🔮
 
-[![Go Version](https://img.shields.io/badge/go-1.21+-blue.svg)](https://golang.org/dl/)
+[![Go Version](https://img.shields.io/badge/go-1.24.1+-blue.svg)](https://golang.org/dl/)
+[![Build Status](https://github.com/Veraticus/linkpearl/actions/workflows/test.yml/badge.svg)](https://github.com/Veraticus/linkpearl/actions/workflows/test.yml)
+[![Release](https://img.shields.io/github/release/Veraticus/linkpearl.svg)](https://github.com/Veraticus/linkpearl/releases/latest)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/yourusername/linkpearl)
+[![Go Report Card](https://goreportcard.com/badge/github.com/Veraticus/linkpearl)](https://goreportcard.com/report/github.com/Veraticus/linkpearl)
+[![GoDoc](https://pkg.go.dev/badge/github.com/Veraticus/linkpearl)](https://pkg.go.dev/github.com/Veraticus/linkpearl)
 
 > Secure, peer-to-peer clipboard synchronization for your devices
 
@@ -25,39 +28,32 @@ Download the latest release for your platform:
 
 ```bash
 # macOS (Apple Silicon)
-curl -L https://github.com/yourusername/linkpearl/releases/latest/download/linkpearl-darwin-arm64 -o linkpearl
-chmod +x linkpearl
+curl -L https://github.com/Veraticus/linkpearl/releases/latest/download/linkpearl-darwin-arm64.tar.gz -o linkpearl.tar.gz
+tar -xzf linkpearl.tar.gz
+chmod +x linkpearl-darwin-arm64
 
 # macOS (Intel)
-curl -L https://github.com/yourusername/linkpearl/releases/latest/download/linkpearl-darwin-amd64 -o linkpearl
-chmod +x linkpearl
+curl -L https://github.com/Veraticus/linkpearl/releases/latest/download/linkpearl-darwin-amd64.tar.gz -o linkpearl.tar.gz
+tar -xzf linkpearl.tar.gz
+chmod +x linkpearl-darwin-amd64
 
 # Linux (x64)
-curl -L https://github.com/yourusername/linkpearl/releases/latest/download/linkpearl-linux-amd64 -o linkpearl
-chmod +x linkpearl
+curl -L https://github.com/Veraticus/linkpearl/releases/latest/download/linkpearl-linux-amd64.tar.gz -o linkpearl.tar.gz
+tar -xzf linkpearl.tar.gz
+chmod +x linkpearl-linux-amd64
 ```
 
 ### From Source
 
-Requires Go 1.21 or later:
+Requires Go 1.24.1 or later:
 
 ```bash
-git clone https://github.com/yourusername/linkpearl.git
+git clone https://github.com/Veraticus/linkpearl.git
 cd linkpearl
 make build
 
 # Install to PATH
 sudo make install
-```
-
-### Package Managers
-
-```bash
-# Homebrew (macOS/Linux)
-brew install linkpearl
-
-# AUR (Arch Linux)
-yay -S linkpearl
 ```
 
 ## 🚀 Quick Start
@@ -268,7 +264,7 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/linkpearl.git
+git clone https://github.com/Veraticus/linkpearl.git
 cd linkpearl
 
 # Install dependencies
@@ -296,8 +292,8 @@ Linkpearl is licensed under the MIT License. See [LICENSE](LICENSE) for details.
 
 ## 📮 Support
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/linkpearl/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/linkpearl/discussions)
+- **Issues**: [GitHub Issues](https://github.com/Veraticus/linkpearl/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/Veraticus/linkpearl/discussions)
 - **Security**: Report vulnerabilities to security@example.com
 
 ---

@@ -51,6 +51,11 @@ test:
 	@echo "Running tests..."
 	$(GOTEST) ./...
 
+# Run tests with race detector
+test-race:
+	@echo "Running tests with race detector..."
+	$(GOTEST) -race ./...
+
 # Run tests with verbose output
 test-verbose:
 	@echo "Running tests (verbose)..."

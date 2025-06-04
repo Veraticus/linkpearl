@@ -1,0 +1,142 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  GO_VERSION: '1.24.1'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        draft: false
+        prerelease: false
+        body: |
+          ## Changes in this release
+          
+          Please see the [CHANGELOG](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
+          
+          ## Installation
+          
+          Download the appropriate binary for your platform below and make it executable:
+          
+          ```bash
+          chmod +x linkpearl-*
+          ./linkpearl --help
+          ```
+
+  build-and-upload:
+    name: Build and Upload
+    needs: release
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          # Linux builds
+          - os: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            suffix: linux-amd64
+          - os: ubuntu-latest
+            goos: linux
+            goarch: arm64
+            suffix: linux-arm64
+          - os: ubuntu-latest
+            goos: linux
+            goarch: arm
+            goarm: 7
+            suffix: linux-armv7
+          
+          # macOS builds
+          - os: macos-latest
+            goos: darwin
+            goarch: amd64
+            suffix: darwin-amd64
+          - os: macos-latest
+            goos: darwin
+            goarch: arm64
+            suffix: darwin-arm64
+          
+          # Windows builds (future)
+          # - os: windows-latest
+          #   goos: windows
+          #   goarch: amd64
+          #   suffix: windows-amd64.exe
+          # - os: windows-latest
+          #   goos: windows
+          #   goarch: arm64
+          #   suffix: windows-arm64.exe
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Build binary
+      env:
+        GOOS: ${{ matrix.goos }}
+        GOARCH: ${{ matrix.goarch }}
+        GOARM: ${{ matrix.goarm }}
+      run: |
+        go build -v -ldflags "-s -w -X main.version=${{ github.ref_name }}" -o linkpearl-${{ matrix.suffix }} ./cmd/linkpearl
+
+    - name: Compress binary
+      run: |
+        if [[ "${{ matrix.goos }}" == "windows" ]]; then
+          zip linkpearl-${{ matrix.suffix }}.zip linkpearl-${{ matrix.suffix }}
+        else
+          tar -czf linkpearl-${{ matrix.suffix }}.tar.gz linkpearl-${{ matrix.suffix }}
+        fi
+
+    - name: Generate checksums
+      run: |
+        if [[ "${{ matrix.goos }}" == "windows" ]]; then
+          sha256sum linkpearl-${{ matrix.suffix }}.zip > linkpearl-${{ matrix.suffix }}.zip.sha256
+        else
+          sha256sum linkpearl-${{ matrix.suffix }}.tar.gz > linkpearl-${{ matrix.suffix }}.tar.gz.sha256
+        fi
+
+    - name: Upload Release Asset (Archive)
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.release.outputs.upload_url }}
+        asset_path: ./linkpearl-${{ matrix.suffix }}${{ matrix.goos == 'windows' && '.zip' || '.tar.gz' }}
+        asset_name: linkpearl-${{ matrix.suffix }}${{ matrix.goos == 'windows' && '.zip' || '.tar.gz' }}
+        asset_content_type: ${{ matrix.goos == 'windows' && 'application/zip' || 'application/gzip' }}
+
+    - name: Upload Release Asset (Checksum)
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.release.outputs.upload_url }}
+        asset_path: ./linkpearl-${{ matrix.suffix }}${{ matrix.goos == 'windows' && '.zip.sha256' || '.tar.gz.sha256' }}
+        asset_name: linkpearl-${{ matrix.suffix }}${{ matrix.goos == 'windows' && '.zip.sha256' || '.tar.gz.sha256' }}
+        asset_content_type: text/plain
