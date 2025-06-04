@@ -51,7 +51,9 @@ func TestMockClipboard(t *testing.T) {
 		testContent := "test content"
 		go func() {
 			time.Sleep(50 * time.Millisecond)
-			mock.Write(testContent)
+			if err := mock.Write(testContent); err != nil {
+				t.Errorf("Failed to write to mock clipboard: %v", err)
+			}
 		}()
 
 		select {
@@ -88,7 +90,9 @@ func TestMockClipboard(t *testing.T) {
 
 		// Both watchers should receive the change
 		testContent := "broadcast test"
-		mock.Write(testContent)
+		if err := mock.Write(testContent); err != nil {
+			t.Fatalf("Failed to write to mock clipboard: %v", err)
+		}
 
 		for i, ch := range []<-chan string{ch1, ch2} {
 			select {

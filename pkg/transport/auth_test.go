@@ -92,8 +92,8 @@ func TestAuthenticator(t *testing.T) {
 
 		// Create paired connections
 		client, server := net.Pipe()
-		defer client.Close()
-		defer server.Close()
+		defer func() { _ = client.Close() }()
+		defer func() { _ = server.Close() }()
 
 		// Channel to collect results
 		type result struct {
@@ -136,8 +136,8 @@ func TestAuthenticator(t *testing.T) {
 
 		// Create paired connections
 		client, server := net.Pipe()
-		defer client.Close()
-		defer server.Close()
+		defer func() { _ = client.Close() }()
+		defer func() { _ = server.Close() }()
 
 		// Channel to collect results
 		type result struct {
@@ -180,8 +180,8 @@ func TestAuthenticator(t *testing.T) {
 
 		// Create a connection that doesn't respond
 		client, server := net.Pipe()
-		server.Close() // Close server side immediately
-		defer client.Close()
+		_ = server.Close() // Close server side immediately
+		defer func() { _ = client.Close() }()
 
 		// This should timeout
 		start := time.Now()

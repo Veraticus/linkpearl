@@ -178,7 +178,7 @@ func (t *topology) Stop() error {
 	t.cancel()
 
 	// Close transport
-	t.transport.Close()
+	_ = t.transport.Close()
 
 	// Stop all peers
 	t.peers.Stop()
@@ -341,7 +341,7 @@ func (t *topology) handleIncomingConnection(conn transport.Conn) {
 	// Add to peer manager
 	if err := t.peers.AddPeer(p); err != nil {
 		t.config.Logger.Error("failed to add peer", "node", nodeID, "error", err)
-		conn.Close()
+		_ = conn.Close()
 		return
 	}
 
@@ -399,7 +399,7 @@ func (t *topology) maintainConnection(addr string) {
 		// Check if we already have this peer
 		if existing, _ := t.peers.GetPeer(nodeID); existing != nil {
 			t.config.Logger.Warn("already connected to peer", "node", nodeID)
-			conn.Close()
+			_ = conn.Close()
 			// Wait a bit before retrying
 			select {
 			case <-t.ctx.Done():
@@ -410,20 +410,18 @@ func (t *topology) maintainConnection(addr string) {
 		}
 
 		// Create peer
-		p := newOutboundPeer(
-			Node{
-				ID:   nodeID,
-				Mode: conn.Mode(),
-				Addr: conn.Version(), // Hack: we could get listen addr from version field
-			},
-			addr,
-		)
+		node := Node{
+			ID:   nodeID,
+			Mode: conn.Mode(),
+			Addr: conn.Version(), // Hack: we could get listen addr from version field
+		}
+		p := newOutboundPeer(node, addr)
 		p.setConnection(conn)
 
 		// Add to peer manager
 		if err := t.peers.AddPeer(p); err != nil {
 			t.config.Logger.Error("failed to add peer", "node", nodeID, "error", err)
-			conn.Close()
+			_ = conn.Close()
 			continue
 		}
 
@@ -482,7 +480,7 @@ func (t *topology) handlePeerDisconnected(p *peer) {
 	})
 
 	// Remove from peer manager
-	t.peers.RemovePeer(p.ID)
+	_ = t.peers.RemovePeer(p.ID)
 }
 
 // sendPeerList sends the current peer list to a peer
@@ -533,7 +531,7 @@ func (t *topology) registerMessageHandlers() {
 		}
 
 		// Send pong response
-		pong := PongMessage{Timestamp: msg.Timestamp}
+		pong := PongMessage(msg)
 		return t.router.SendToPeer(from, MessageTypePong, pong)
 	})
 

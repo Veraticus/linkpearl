@@ -84,7 +84,7 @@ func TestEngineLocalChanges(t *testing.T) {
 	require.NoError(t, err)
 	
 	// Start engine in background
-	go engine.Run(ctx)
+	go func() { _ = engine.Run(ctx) }()
 	
 	// Give engine time to initialize
 	time.Sleep(50 * time.Millisecond)
@@ -140,7 +140,7 @@ func TestEngineRemoteChanges(t *testing.T) {
 	require.NoError(t, err)
 	
 	// Start engine
-	go engine.Run(ctx)
+	go func() { _ = engine.Run(ctx) }()
 	time.Sleep(50 * time.Millisecond)
 	
 	// Create remote message
@@ -182,7 +182,7 @@ func TestEngineConflictResolution(t *testing.T) {
 		engine, err := NewEngine(config)
 		require.NoError(t, err)
 		
-		go engine.Run(ctx)
+		go func() { _ = engine.Run(ctx) }()
 		time.Sleep(50 * time.Millisecond)
 		
 		// Remote message with newer timestamp
@@ -222,7 +222,7 @@ func TestEngineConflictResolution(t *testing.T) {
 		engine, err := NewEngine(config)
 		require.NoError(t, err)
 		
-		go engine.Run(ctx)
+		go func() { _ = engine.Run(ctx) }()
 		time.Sleep(50 * time.Millisecond)
 		
 		// Set current state
@@ -266,7 +266,7 @@ func TestEngineDeduplication(t *testing.T) {
 	engine, err := NewEngine(config)
 	require.NoError(t, err)
 	
-	go engine.Run(ctx)
+	go func() { _ = engine.Run(ctx) }()
 	time.Sleep(50 * time.Millisecond)
 	
 	// Send same message multiple times
@@ -303,7 +303,7 @@ func TestEngineSyncLoopDetection(t *testing.T) {
 	engine, err := NewEngine(config)
 	require.NoError(t, err)
 	
-	go engine.Run(ctx)
+	go func() { _ = engine.Run(ctx) }()
 	time.Sleep(50 * time.Millisecond)
 	
 	// Simulate remote change
@@ -344,7 +344,7 @@ func TestEngineTopologyEvents(t *testing.T) {
 	engine, err := NewEngine(config)
 	require.NoError(t, err)
 	
-	go engine.Run(ctx)
+	go func() { _ = engine.Run(ctx) }()
 	time.Sleep(50 * time.Millisecond)
 	
 	// Emit peer connected event
@@ -409,7 +409,7 @@ func TestEngineErrorHandling(t *testing.T) {
 		engine, err := NewEngine(config)
 		require.NoError(t, err)
 		
-		go engine.Run(ctx)
+		go func() { _ = engine.Run(ctx) }()
 		time.Sleep(50 * time.Millisecond)
 		
 		// Trigger local change
@@ -437,7 +437,7 @@ func TestEngineErrorHandling(t *testing.T) {
 		engine, err := NewEngine(config)
 		require.NoError(t, err)
 		
-		go engine.Run(ctx)
+		go func() { _ = engine.Run(ctx) }()
 		time.Sleep(50 * time.Millisecond)
 		
 		// Send invalid message

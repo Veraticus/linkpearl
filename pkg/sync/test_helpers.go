@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"sync"
-	"testing"
-	"time"
 
 	"github.com/Veraticus/linkpearl/pkg/mesh"
 )
@@ -243,15 +241,4 @@ func mustMarshal(v interface{}) []byte {
 		panic(err)
 	}
 	return data
-}
-
-func waitForCondition(t testing.TB, condition func() bool, timeout time.Duration) bool {
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
-		if condition() {
-			return true
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
-	return false
 }

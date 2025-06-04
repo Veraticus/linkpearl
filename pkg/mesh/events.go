@@ -161,7 +161,6 @@ type eventPump struct {
 	listeners []chan<- TopologyEvent
 	mu        sync.RWMutex
 	closed    bool
-	wg        sync.WaitGroup
 }
 
 // newEventPump creates a new event pump

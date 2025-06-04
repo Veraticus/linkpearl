@@ -171,7 +171,7 @@ func (a *defaultAuthenticator) createAuthMessage(secret string) (*AuthMessage, e
 
 	// Create HMAC
 	h := hmac.New(sha256.New, []byte(secret))
-	h.Write([]byte(fmt.Sprintf("%s%d%s", nonceStr, timestamp, secret)))
+	_, _ = fmt.Fprintf(h, "%s%d%s", nonceStr, timestamp, secret)
 	hmacStr := hex.EncodeToString(h.Sum(nil))
 
 	return &AuthMessage{
@@ -195,7 +195,7 @@ func (a *defaultAuthenticator) verifyAuthMessage(msg *AuthMessage, secret string
 
 	// Verify HMAC
 	h := hmac.New(sha256.New, []byte(secret))
-	h.Write([]byte(fmt.Sprintf("%s%d%s", msg.Nonce, msg.Timestamp, secret)))
+	_, _ = fmt.Fprintf(h, "%s%d%s", msg.Nonce, msg.Timestamp, secret)
 	expectedHMAC := hex.EncodeToString(h.Sum(nil))
 
 	if !hmac.Equal([]byte(msg.HMAC), []byte(expectedHMAC)) {

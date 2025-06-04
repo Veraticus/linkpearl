@@ -18,7 +18,7 @@ func TestTCPTransport(t *testing.T) {
 			Logger: DefaultLogger(),
 		}
 		transport := NewTCPTransport(config)
-		defer transport.Close()
+		defer func() { _ = transport.Close() }()
 
 		// Start listening
 		if err := transport.Listen(":0"); err != nil {
@@ -48,7 +48,7 @@ func TestTCPTransport(t *testing.T) {
 			Logger: DefaultLogger(),
 		}
 		serverTransport := NewTCPTransport(serverConfig)
-		defer serverTransport.Close()
+		defer func() { _ = serverTransport.Close() }()
 
 		// Start server
 		if err := serverTransport.Listen(":0"); err != nil {
@@ -74,7 +74,7 @@ func TestTCPTransport(t *testing.T) {
 			Logger: DefaultLogger(),
 		}
 		clientTransport := NewTCPTransport(clientConfig)
-		defer clientTransport.Close()
+		defer func() { _ = clientTransport.Close() }()
 
 		// Connect to server
 		ctx := context.Background()
@@ -82,14 +82,14 @@ func TestTCPTransport(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Connect() error = %v", err)
 		}
-		defer clientConn.Close()
+		defer func() { _ = clientConn.Close() }()
 
 		// Wait for server to accept
 		<-acceptDone
 		if acceptErr != nil {
 			t.Fatalf("Accept() error = %v", acceptErr)
 		}
-		defer serverConn.Close()
+		defer func() { _ = serverConn.Close() }()
 
 		// Verify connection metadata
 		if clientConn.NodeID() != "server" {
@@ -140,7 +140,7 @@ func TestTCPTransport(t *testing.T) {
 			Logger: DefaultLogger(),
 		}
 		serverTransport := NewTCPTransport(serverConfig)
-		defer serverTransport.Close()
+		defer func() { _ = serverTransport.Close() }()
 
 		// Start server
 		if err := serverTransport.Listen(":0"); err != nil {
@@ -154,7 +154,7 @@ func TestTCPTransport(t *testing.T) {
 			defer close(acceptDone)
 			conn, err := serverTransport.Accept()
 			if err == nil {
-				conn.Close()
+				_ = conn.Close()
 				t.Error("Accept() should fail with auth error")
 			}
 		}()
@@ -167,13 +167,13 @@ func TestTCPTransport(t *testing.T) {
 			Logger: DefaultLogger(),
 		}
 		clientTransport := NewTCPTransport(clientConfig)
-		defer clientTransport.Close()
+		defer func() { _ = clientTransport.Close() }()
 
 		// Connect should fail
 		ctx := context.Background()
 		conn, err := clientTransport.Connect(ctx, serverAddr)
 		if err == nil {
-			conn.Close()
+			_ = conn.Close()
 			t.Error("Connect() should fail with wrong secret")
 		}
 
@@ -192,7 +192,7 @@ func TestTCPTransport(t *testing.T) {
 			Logger: DefaultLogger(),
 		}
 		serverTransport := NewTCPTransport(serverConfig)
-		defer serverTransport.Close()
+		defer func() { _ = serverTransport.Close() }()
 
 		if err := serverTransport.Listen(":0"); err != nil {
 			t.Fatalf("Listen() error = %v", err)
@@ -226,7 +226,7 @@ func TestTCPTransport(t *testing.T) {
 				Logger: DefaultLogger(),
 			}
 			clientTransport := NewTCPTransport(clientConfig)
-			defer clientTransport.Close()
+			defer func() { _ = clientTransport.Close() }()
 
 			ctx := context.Background()
 			conn, err := clientTransport.Connect(ctx, serverAddr)
@@ -234,7 +234,7 @@ func TestTCPTransport(t *testing.T) {
 				t.Errorf("Connect() #%d error = %v", i, err)
 				continue
 			}
-			defer conn.Close()
+			defer func() { _ = conn.Close() }()
 		}
 
 		// Wait for all accepts
@@ -243,7 +243,7 @@ func TestTCPTransport(t *testing.T) {
 		// Close all server connections
 		for _, conn := range serverConns {
 			if conn != nil {
-				conn.Close()
+				_ = conn.Close()
 			}
 		}
 	})
@@ -295,7 +295,7 @@ func TestTCPTransport(t *testing.T) {
 			Logger: DefaultLogger(),
 		}
 		transport := NewTCPTransport(config)
-		defer transport.Close()
+		defer func() { _ = transport.Close() }()
 
 		// Use a context with short timeout
 		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
@@ -322,7 +322,7 @@ func TestIntegration(t *testing.T) {
 			Logger: DefaultLogger(),
 		}
 		serverTransport := NewTCPTransport(serverConfig)
-		defer serverTransport.Close()
+		defer func() { _ = serverTransport.Close() }()
 
 		if err := serverTransport.Listen(":0"); err != nil {
 			t.Fatalf("Listen() error = %v", err)
@@ -349,7 +349,7 @@ func TestIntegration(t *testing.T) {
 			Logger: DefaultLogger(),
 		}
 		clientTransport := NewTCPTransport(clientConfig)
-		defer clientTransport.Close()
+		defer func() { _ = clientTransport.Close() }()
 
 		// Connect
 		ctx := context.Background()
@@ -357,13 +357,13 @@ func TestIntegration(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Connect() error = %v", err)
 		}
-		defer clientConn.Close()
+		defer func() { _ = clientConn.Close() }()
 
 		// Get server connection
 		var serverConn Conn
 		select {
 		case serverConn = <-acceptChan:
-			defer serverConn.Close()
+			defer func() { _ = serverConn.Close() }()
 		case err := <-acceptErr:
 			t.Fatalf("Accept() error = %v", err)
 		case <-time.After(5 * time.Second):

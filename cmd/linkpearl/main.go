@@ -61,7 +61,6 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
@@ -191,7 +190,11 @@ func run(cfg *config.Config, log *logger) error {
 	if err != nil {
 		return fmt.Errorf("failed to create transport: %w", err)
 	}
-	defer trans.Close()
+	defer func() {
+		if err := trans.Close(); err != nil {
+			log.Error("failed to close transport", "error", err)
+		}
+	}()
 	
 	// Create topology
 	log.Info("initializing mesh topology")
@@ -199,7 +202,11 @@ func run(cfg *config.Config, log *logger) error {
 	if err != nil {
 		return fmt.Errorf("failed to create topology: %w", err)
 	}
-	defer topo.Stop()
+	defer func() {
+		if err := topo.Stop(); err != nil {
+			log.Error("failed to stop topology", "error", err)
+		}
+	}()
 	
 	// Start topology
 	if err := topo.Start(ctx); err != nil {
@@ -377,8 +384,6 @@ func init() {
 	// Remove timestamp from standard logger as we add our own
 	log.SetFlags(0)
 	
-	// Determine if we should use color output
-	if strings.Contains(os.Getenv("TERM"), "color") {
-		// Could add color support here in the future
-	}
+	// Color output support could be added here in the future
+	// based on TERM environment variable
 }

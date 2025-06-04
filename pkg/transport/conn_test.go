@@ -2,8 +2,6 @@ package transport
 
 import (
 	"bytes"
-	"context"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -17,8 +15,8 @@ func TestSecureConn(t *testing.T) {
 	t.Run("NodeInfo", func(t *testing.T) {
 		// Create test TLS connection using net.Pipe
 		client, server := net.Pipe()
-		defer client.Close()
-		defer server.Close()
+		defer func() { _ = client.Close() }()
+		defer func() { _ = server.Close() }()
 
 		nodeInfo := &NodeInfo{
 			NodeID:  "test-node",
@@ -50,8 +48,8 @@ func TestSecureConn(t *testing.T) {
 	t.Run("SendReceive", func(t *testing.T) {
 		// Create test connection pair
 		clientConn, serverConn := createTestConnPair(t)
-		defer clientConn.Close()
-		defer serverConn.Close()
+		defer func() { _ = clientConn.Close() }()
+		defer func() { _ = serverConn.Close() }()
 
 		// Test message structure
 		type TestMessage struct {
@@ -158,8 +156,8 @@ func TestSecureConn(t *testing.T) {
 	t.Run("LargeMessage", func(t *testing.T) {
 		// Create test connection pair
 		clientConn, serverConn := createTestConnPair(t)
-		defer clientConn.Close()
-		defer serverConn.Close()
+		defer func() { _ = clientConn.Close() }()
+		defer func() { _ = serverConn.Close() }()
 
 		// Test with a message that's within the limit
 		type LargeMessage struct {
@@ -221,8 +219,8 @@ func TestSecureConn(t *testing.T) {
 
 		// Create a pipe for testing message size limit
 		testClient, testServer := net.Pipe()
-		defer testClient.Close()
-		defer testServer.Close()
+		defer func() { _ = testClient.Close() }()
+		defer func() { _ = testServer.Close() }()
 
 		// Create a decoder with size limit
 		decoder := json.NewDecoder(io.LimitReader(testServer, MaxMessageSize))
@@ -233,7 +231,7 @@ func TestSecureConn(t *testing.T) {
 			oversizedMsg := LargeMessage{
 				Data: string(oversizedData),
 			}
-			encoder.Encode(oversizedMsg)
+			_ = encoder.Encode(oversizedMsg)
 		}()
 
 		// Try to receive - should fail due to size limit
@@ -406,23 +404,3 @@ type testConnWrapper struct {
 // These methods make it compatible with what secureConn expects
 func (t *testConnWrapper) LocalAddr() net.Addr  { return t.Conn.LocalAddr() }
 func (t *testConnWrapper) RemoteAddr() net.Addr { return t.Conn.RemoteAddr() }
-
-// mockTLSConn wraps a net.Conn to satisfy the tls.Conn interface for testing
-type mockTLSConn struct {
-	net.Conn
-}
-
-func (m *mockTLSConn) ConnectionState() tls.ConnectionState {
-	return tls.ConnectionState{
-		Version:     tls.VersionTLS13,
-		CipherSuite: tls.TLS_AES_128_GCM_SHA256,
-	}
-}
-
-func (m *mockTLSConn) Handshake() error {
-	return nil
-}
-
-func (m *mockTLSConn) HandshakeContext(ctx context.Context) error {
-	return nil
-}

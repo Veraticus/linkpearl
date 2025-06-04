@@ -96,7 +96,7 @@ func (c *mockTopologyConn) Receive(msg interface{}) error {
 			return json.Unmarshal([]byte(v), msg)
 		default:
 			// For other types, marshal then unmarshal
-			jsonData, err := json.Marshal(v)
+			jsonData, err := json.Marshal(data)
 			if err != nil {
 				return err
 			}
@@ -219,7 +219,7 @@ func (t *mockTopologyTransport) Close() error {
 	}
 	t.mu.Lock()
 	for _, conn := range t.connections {
-		conn.Close()
+		_ = conn.Close()
 	}
 	t.connections = make(map[string]*mockTopologyConn)
 	t.mu.Unlock()
@@ -391,7 +391,7 @@ func TestNewTopology(t *testing.T) {
 				assert.NotNil(t, impl.router)
 				
 				// Clean up
-				topo.Stop()
+				_ = topo.Stop()
 			}
 		})
 	}
@@ -477,7 +477,7 @@ func TestTopologyLifecycle(t *testing.T) {
 		assert.Contains(t, err.Error(), "failed to listen")
 		
 		// Clean up
-		topo.Stop()
+		_ = topo.Stop()
 	})
 
 	t.Run("operations on closed topology", func(t *testing.T) {
@@ -518,7 +518,7 @@ func TestJoinAddressManagement(t *testing.T) {
 
 		topo, err := NewTopology(config)
 		require.NoError(t, err)
-		defer topo.Stop()
+		defer func() { _ = topo.Stop() }()
 
 		impl := topo.(*topology)
 
@@ -564,7 +564,7 @@ func TestJoinAddressManagement(t *testing.T) {
 
 		topo, err := NewTopology(config)
 		require.NoError(t, err)
-		defer topo.Stop()
+		defer func() { _ = topo.Stop() }()
 
 		// Start topology
 		err = topo.Start(context.Background())
@@ -596,7 +596,7 @@ func TestIncomingConnections(t *testing.T) {
 
 		topo, err := NewTopology(config)
 		require.NoError(t, err)
-		defer topo.Stop()
+		defer func() { _ = topo.Stop() }()
 
 		// Subscribe to events
 		events := topo.Events()
@@ -637,7 +637,7 @@ func TestIncomingConnections(t *testing.T) {
 
 		topo, err := NewTopology(config)
 		require.NoError(t, err)
-		defer topo.Stop()
+		defer func() { _ = topo.Stop() }()
 
 		// Start topology
 		err = topo.Start(context.Background())
@@ -668,7 +668,7 @@ func TestIncomingConnections(t *testing.T) {
 
 		topo, err := NewTopology(config)
 		require.NoError(t, err)
-		defer topo.Stop()
+		defer func() { _ = topo.Stop() }()
 
 		// Start topology
 		err = topo.Start(context.Background())
@@ -718,7 +718,7 @@ func TestOutboundConnections(t *testing.T) {
 
 		topo, err := NewTopology(config)
 		require.NoError(t, err)
-		defer topo.Stop()
+		defer func() { _ = topo.Stop() }()
 
 		// Subscribe to events
 		events := topo.Events()
@@ -771,7 +771,7 @@ func TestOutboundConnections(t *testing.T) {
 
 		topo, err := NewTopology(config)
 		require.NoError(t, err)
-		defer topo.Stop()
+		defer func() { _ = topo.Stop() }()
 
 		// Start topology
 		err = topo.Start(context.Background())
@@ -808,7 +808,7 @@ func TestOutboundConnections(t *testing.T) {
 
 		topo, err := NewTopology(config)
 		require.NoError(t, err)
-		defer topo.Stop()
+		defer func() { _ = topo.Stop() }()
 
 		// Start topology
 		err = topo.Start(context.Background())
@@ -834,7 +834,7 @@ func TestMessageRouting(t *testing.T) {
 
 		topo, err := NewTopology(config)
 		require.NoError(t, err)
-		defer topo.Stop()
+		defer func() { _ = topo.Stop() }()
 
 		err = topo.Start(context.Background())
 		require.NoError(t, err)
@@ -877,7 +877,7 @@ func TestMessageRouting(t *testing.T) {
 
 		topo, err := NewTopology(config)
 		require.NoError(t, err)
-		defer topo.Stop()
+		defer func() { _ = topo.Stop() }()
 
 		err = topo.Start(context.Background())
 		require.NoError(t, err)
@@ -920,7 +920,7 @@ func TestMessageRouting(t *testing.T) {
 
 		topo, err := NewTopology(config)
 		require.NoError(t, err)
-		defer topo.Stop()
+		defer func() { _ = topo.Stop() }()
 
 		// Subscribe to messages
 		messages := topo.Messages()
@@ -964,7 +964,7 @@ func TestMessageRouting(t *testing.T) {
 
 		topo, err := NewTopology(config)
 		require.NoError(t, err)
-		defer topo.Stop()
+		defer func() { _ = topo.Stop() }()
 
 		err = topo.Start(context.Background())
 		require.NoError(t, err)
@@ -1025,7 +1025,7 @@ func TestPeerListExchange(t *testing.T) {
 
 	topo, err := NewTopology(config)
 	require.NoError(t, err)
-	defer topo.Stop()
+	defer func() { _ = topo.Stop() }()
 
 	err = topo.Start(context.Background())
 	require.NoError(t, err)
@@ -1096,7 +1096,7 @@ func TestTopologyConcurrentOperations(t *testing.T) {
 
 		topo, err := NewTopology(config)
 		require.NoError(t, err)
-		defer topo.Stop()
+		defer func() { _ = topo.Stop() }()
 
 		err = topo.Start(context.Background())
 		require.NoError(t, err)
@@ -1152,7 +1152,7 @@ func TestTopologyConcurrentOperations(t *testing.T) {
 
 		topo, err := NewTopology(config)
 		require.NoError(t, err)
-		defer topo.Stop()
+		defer func() { _ = topo.Stop() }()
 
 		err = topo.Start(context.Background())
 		require.NoError(t, err)
@@ -1188,7 +1188,7 @@ func TestTopologyConcurrentOperations(t *testing.T) {
 				case 1:
 					topo.PeerCount()
 				case 2:
-					topo.GetPeer(fmt.Sprintf("peer%d", i%5))
+					_, _ = topo.GetPeer(fmt.Sprintf("peer%d", i%5))
 				}
 			}()
 		}
@@ -1205,7 +1205,7 @@ func TestTopologyConcurrentOperations(t *testing.T) {
 
 		topo, err := NewTopology(config)
 		require.NoError(t, err)
-		defer topo.Stop()
+		defer func() { _ = topo.Stop() }()
 
 		// Concurrent adds and removes
 		var wg sync.WaitGroup
@@ -1254,7 +1254,7 @@ func TestErrorHandling(t *testing.T) {
 
 		topo, err := NewTopology(config)
 		require.NoError(t, err)
-		defer topo.Stop()
+		defer func() { _ = topo.Stop() }()
 
 		err = topo.Start(context.Background())
 		require.NoError(t, err)
@@ -1300,7 +1300,7 @@ func TestErrorHandling(t *testing.T) {
 
 		topo, err := NewTopology(config)
 		require.NoError(t, err)
-		defer topo.Stop()
+		defer func() { _ = topo.Stop() }()
 
 		err = topo.Start(context.Background())
 		require.NoError(t, err)
@@ -1321,7 +1321,7 @@ func TestErrorHandling(t *testing.T) {
 
 		topo, err := NewTopology(config)
 		require.NoError(t, err)
-		defer topo.Stop()
+		defer func() { _ = topo.Stop() }()
 
 		err = topo.Start(context.Background())
 		require.NoError(t, err)
@@ -1338,10 +1338,11 @@ func TestErrorHandling(t *testing.T) {
 			select {
 			case peerConn.receiveChan <- msgData:
 			case <-time.After(10 * time.Millisecond):
-				// Connection might be closed
-				break
+				// Connection might be closed, exit the loop
+				goto done
 			}
 		}
+		done:
 
 		// Some messages should be dropped due to buffer overflow
 		// Just verify no panic
@@ -1361,7 +1362,7 @@ func TestEventSystem(t *testing.T) {
 
 		topo, err := NewTopology(config)
 		require.NoError(t, err)
-		defer topo.Stop()
+		defer func() { _ = topo.Stop() }()
 
 		// Create multiple subscribers
 		subs := make([]<-chan TopologyEvent, 3)
@@ -1399,7 +1400,7 @@ func TestEventSystem(t *testing.T) {
 
 		topo, err := NewTopology(config)
 		require.NoError(t, err)
-		defer topo.Stop()
+		defer func() { _ = topo.Stop() }()
 
 		err = topo.Start(context.Background())
 		require.NoError(t, err)
@@ -1420,7 +1421,7 @@ func TestEventSystem(t *testing.T) {
 
 		// Close all connections
 		for _, conn := range peers {
-			conn.Close()
+			_ = conn.Close()
 		}
 
 		// Wait a bit for disconnects to process
@@ -1464,14 +1465,15 @@ func TestReconnectionBehavior(t *testing.T) {
 			mu.Lock()
 			defer mu.Unlock()
 			
-			if count == 1 {
+			switch count {
+			case 1:
 				// First connection
 				currentConn = newMockTopologyConn("remote-node", "full")
 				return currentConn, nil
-			} else if count == 2 {
+			case 2:
 				// Fail second attempt
 				return nil, errors.New("connection refused")
-			} else {
+			default:
 				// Third attempt succeeds
 				currentConn = newMockTopologyConn("remote-node", "full")
 				return currentConn, nil
@@ -1488,7 +1490,7 @@ func TestReconnectionBehavior(t *testing.T) {
 
 		topo, err := NewTopology(config)
 		require.NoError(t, err)
-		defer topo.Stop()
+		defer func() { _ = topo.Stop() }()
 
 		// Subscribe to events
 		events := topo.Events()
@@ -1507,7 +1509,7 @@ func TestReconnectionBehavior(t *testing.T) {
 		// Simulate disconnect
 		mu.Lock()
 		if currentConn != nil {
-			currentConn.Close()
+			_ = currentConn.Close()
 		}
 		mu.Unlock()
 
@@ -1564,7 +1566,7 @@ func TestReconnectionBehavior(t *testing.T) {
 		time.Sleep(time.Second)
 		
 		// Stop to end the test
-		topo.Stop()
+		_ = topo.Stop()
 
 		// Verify backoff pattern
 		mu.Lock()
@@ -1595,7 +1597,7 @@ func BenchmarkTopologyBroadcast(b *testing.B) {
 
 	topo, err := NewTopology(config)
 	require.NoError(b, err)
-	defer topo.Stop()
+	defer func() { _ = topo.Stop() }()
 
 	err = topo.Start(context.Background())
 	require.NoError(b, err)
@@ -1611,7 +1613,7 @@ func BenchmarkTopologyBroadcast(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		topo.Broadcast(msg)
+		_ = topo.Broadcast(msg)
 	}
 }
 
@@ -1625,7 +1627,7 @@ func BenchmarkTopologyConcurrentSends(b *testing.B) {
 
 	topo, err := NewTopology(config)
 	require.NoError(b, err)
-	defer topo.Stop()
+	defer func() { _ = topo.Stop() }()
 
 	err = topo.Start(context.Background())
 	require.NoError(b, err)
@@ -1640,7 +1642,7 @@ func BenchmarkTopologyConcurrentSends(b *testing.B) {
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			topo.SendToPeer("peer1", msg)
+			_ = topo.SendToPeer("peer1", msg)
 		}
 	})
 }

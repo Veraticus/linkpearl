@@ -154,22 +154,22 @@ func TestConfigLoadFromEnv(t *testing.T) {
 	defer func() {
 		for k, v := range origEnv {
 			if v == "" {
-				os.Unsetenv(k)
+				_ = os.Unsetenv(k)
 			} else {
-				os.Setenv(k, v)
+				_ = os.Setenv(k, v)
 			}
 		}
 	}()
 
 	// Set test environment
-	os.Setenv("LINKPEARL_SECRET", "envsecret")
-	os.Setenv("LINKPEARL_NODE_ID", "env-node")
-	os.Setenv("LINKPEARL_MODE", "full")
-	os.Setenv("LINKPEARL_LISTEN", ":9090")
-	os.Setenv("LINKPEARL_JOIN", "host1:8080, host2:8080")
-	os.Setenv("LINKPEARL_POLL_INTERVAL", "2s")
-	os.Setenv("LINKPEARL_RECONNECT_BACKOFF", "5s")
-	os.Setenv("LINKPEARL_VERBOSE", "true")
+	_ = os.Setenv("LINKPEARL_SECRET", "envsecret")
+	_ = os.Setenv("LINKPEARL_NODE_ID", "env-node")
+	_ = os.Setenv("LINKPEARL_MODE", "full")
+	_ = os.Setenv("LINKPEARL_LISTEN", ":9090")
+	_ = os.Setenv("LINKPEARL_JOIN", "host1:8080, host2:8080")
+	_ = os.Setenv("LINKPEARL_POLL_INTERVAL", "2s")
+	_ = os.Setenv("LINKPEARL_RECONNECT_BACKOFF", "5s")
+	_ = os.Setenv("LINKPEARL_VERBOSE", "true")
 
 	cfg := NewConfig()
 	cfg.LoadFromEnv()

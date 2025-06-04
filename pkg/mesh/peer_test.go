@@ -126,21 +126,9 @@ func (c *mockConn) setSendError(err error) {
 	c.mu.Unlock()
 }
 
-func (c *mockConn) setReceiveError(err error) {
-	c.mu.Lock()
-	c.receiveErr = err
-	c.mu.Unlock()
-}
-
 func (c *mockConn) setBlockSend(block bool) {
 	c.mu.Lock()
 	c.blockSend = block
-	c.mu.Unlock()
-}
-
-func (c *mockConn) setBlockReceive(block bool) {
-	c.mu.Lock()
-	c.blockReceive = block
 	c.mu.Unlock()
 }
 
@@ -346,7 +334,7 @@ func TestPeerManager(t *testing.T) {
 		conn := newMockConn("node1", "full")
 		p := newPeer(node, conn, "inbound")
 		
-		m.AddPeer(p)
+		_ = m.AddPeer(p)
 		
 		err := m.RemovePeer("node1")
 		assert.NoError(t, err)
@@ -366,7 +354,7 @@ func TestPeerManager(t *testing.T) {
 		conn := newMockConn("node1", "full")
 		p := newPeer(node, conn, "inbound")
 		
-		m.AddPeer(p)
+		_ = m.AddPeer(p)
 		defer p.stop()
 		
 		// Get existing peer
@@ -388,7 +376,7 @@ func TestPeerManager(t *testing.T) {
 			node := Node{ID: string(rune('a' + i)), Mode: "full"}
 			conn := newMockConn(node.ID, "full")
 			peers[i] = newPeer(node, conn, "inbound")
-			m.AddPeer(peers[i])
+			_ = m.AddPeer(peers[i])
 		}
 		
 		allPeers := m.GetPeers()
@@ -407,12 +395,12 @@ func TestPeerManager(t *testing.T) {
 		node1 := Node{ID: "node1", Mode: "full"}
 		conn1 := newMockConn("node1", "full")
 		p1 := newPeer(node1, conn1, "inbound")
-		m.AddPeer(p1)
+		_ = m.AddPeer(p1)
 		
 		// Add disconnected peer
 		node2 := Node{ID: "node2", Mode: "full"}
 		p2 := newOutboundPeer(node2, "127.0.0.1:8080")
-		m.AddPeer(p2)
+		_ = m.AddPeer(p2)
 		
 		connected := m.GetConnectedPeers()
 		assert.Len(t, connected, 1)
@@ -431,11 +419,11 @@ func TestPeerManager(t *testing.T) {
 		node1 := Node{ID: "node1", Mode: "full"}
 		conn1 := newMockConn("node1", "full")
 		p1 := newPeer(node1, conn1, "inbound")
-		m.AddPeer(p1)
+		_ = m.AddPeer(p1)
 		
 		node2 := Node{ID: "node2", Mode: "full"}
 		p2 := newOutboundPeer(node2, "127.0.0.1:8080")
-		m.AddPeer(p2)
+		_ = m.AddPeer(p2)
 		
 		assert.Equal(t, 2, m.Count())
 		assert.Equal(t, 1, m.ConnectedCount())
@@ -456,13 +444,13 @@ func TestBroadcast(t *testing.T) {
 		node := Node{ID: string(rune('a' + i)), Mode: "full"}
 		conns[i] = newMockConn(node.ID, "full")
 		peers[i] = newPeer(node, conns[i], "inbound")
-		m.AddPeer(peers[i])
+		_ = m.AddPeer(peers[i])
 	}
 	
 	// Add one disconnected peer
 	node4 := Node{ID: "d", Mode: "full"}
 	p4 := newOutboundPeer(node4, "127.0.0.1:8080")
-	m.AddPeer(p4)
+	_ = m.AddPeer(p4)
 	
 	// Broadcast message
 	msg := "broadcast message"
@@ -547,11 +535,11 @@ func TestConcurrentOperations(t *testing.T) {
 					case 0: // Add
 						conn := newMockConn(nodeID, "full")
 						p := newPeer(node, conn, "inbound")
-						m.AddPeer(p)
+						_ = m.AddPeer(p)
 					case 1: // Get
-						m.GetPeer(nodeID)
+						_, _ = m.GetPeer(nodeID)
 					case 2: // Remove
-						m.RemovePeer(nodeID)
+						_ = m.RemovePeer(nodeID)
 					}
 				}
 			}(i)
@@ -577,7 +565,7 @@ func TestConcurrentOperations(t *testing.T) {
 			go func(id int) {
 				defer wg.Done()
 				for j := 0; j < 100; j++ {
-					p.Send(id*100 + j)
+					_ = p.Send(id*100 + j)
 					time.Sleep(time.Microsecond)
 				}
 			}(i)
@@ -636,7 +624,7 @@ func TestLifecycleManagement(t *testing.T) {
 			node := Node{ID: string(rune('a' + i)), Mode: "full"}
 			conns[i] = newMockConn(node.ID, "full")
 			peers[i] = newPeer(node, conns[i], "inbound")
-			m.AddPeer(peers[i])
+			_ = m.AddPeer(peers[i])
 		}
 		
 		// Stop manager
@@ -662,7 +650,7 @@ func TestLifecycleManagement(t *testing.T) {
 		node := Node{ID: "node1", Mode: "full"}
 		conn := newMockConn("node1", "full")
 		p := newPeer(node, conn, "inbound")
-		m.AddPeer(p)
+		_ = m.AddPeer(p)
 		
 		// Disconnect peer
 		p.disconnect()
@@ -686,7 +674,7 @@ func TestEdgeCases(t *testing.T) {
 		node := Node{ID: "node1", Mode: "full"}
 		conn := newMockConn("node1", "full")
 		p := newPeer(node, conn, "inbound")
-		m.AddPeer(p)
+		_ = m.AddPeer(p)
 		defer p.stop()
 		
 		// Send to existing peer
@@ -709,10 +697,10 @@ func TestEdgeCases(t *testing.T) {
 		node := Node{ID: "node1", Mode: "full"}
 		conn := newMockConn("node1", "full")
 		p := newPeer(node, conn, "inbound")
-		m.AddPeer(p)
+		_ = m.AddPeer(p)
 		
 		// Remove peer from manager
-		m.RemovePeer("node1")
+		_ = m.RemovePeer("node1")
 		
 		// Try to send through manager
 		err := m.SendToPeer("node1", "test")
@@ -727,12 +715,12 @@ func TestEdgeCases(t *testing.T) {
 		conn1 := newMockConn("node1", "full")
 		conn1.setSendError(errors.New("send failed"))
 		p1 := newPeer(node1, conn1, "inbound")
-		m.AddPeer(p1)
+		_ = m.AddPeer(p1)
 		
 		node2 := Node{ID: "node2", Mode: "full"}
 		conn2 := newMockConn("node2", "full")
 		p2 := newPeer(node2, conn2, "inbound")
-		m.AddPeer(p2)
+		_ = m.AddPeer(p2)
 		
 		// Broadcast should return first error but continue
 		err := m.Broadcast("test")
@@ -805,7 +793,7 @@ func TestBlockingOperations(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 		
 		// Close connection
-		conn.Close()
+		_ = conn.Close()
 		
 		select {
 		case err := <-sendDone:

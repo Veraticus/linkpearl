@@ -15,7 +15,6 @@
 package mesh
 
 import (
-	"context"
 	"math"
 	"math/rand"
 	"sync"
@@ -219,39 +218,6 @@ func (m *backoffManager) Clear() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.backoffs = make(map[string]*ExponentialBackoff)
-}
-
-// exponentialBackoff performs an action with exponential backoff retry logic.
-// This helper function encapsulates the common pattern of retrying an operation
-// with exponential backoff until it succeeds or the context is cancelled.
-//
-// The function will:
-//   - Execute the action
-//   - On success, reset the backoff and return
-//   - On failure, wait for the backoff duration before retrying
-//   - Continue until success or context cancellation
-//
-// This is particularly useful for connection establishment and other operations
-// that may fail temporarily but are expected to eventually succeed.
-func exponentialBackoff(ctx context.Context, backoff *ExponentialBackoff, action func() error) error {
-	for {
-		err := action()
-		if err == nil {
-			backoff.Reset()
-			return nil
-		}
-
-		// Get next backoff duration
-		duration := backoff.Next()
-
-		// Wait with context cancellation
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(duration):
-			// Continue to retry
-		}
-	}
 }
 
 // calculateBackoffDuration is a helper for testing specific backoff calculations

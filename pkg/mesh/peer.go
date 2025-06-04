@@ -141,7 +141,7 @@ func (p *peer) disconnect() {
 
 	// Close the connection if we have one
 	if oldConn != nil {
-		oldConn.Close()
+		_ = oldConn.Close()
 	}
 
 	// Notify disconnect callback if we were connected

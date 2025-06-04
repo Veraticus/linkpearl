@@ -11,11 +11,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/yourusername/linkpearl/pkg/clipboard"
-	"github.com/yourusername/linkpearl/pkg/config"
-	"github.com/yourusername/linkpearl/pkg/mesh"
-	"github.com/yourusername/linkpearl/pkg/sync"
-	"github.com/yourusername/linkpearl/pkg/transport"
+	"github.com/Veraticus/linkpearl/pkg/clipboard"
+	"github.com/Veraticus/linkpearl/pkg/config"
+	"github.com/Veraticus/linkpearl/pkg/mesh"
+	"github.com/Veraticus/linkpearl/pkg/sync"
+	"github.com/Veraticus/linkpearl/pkg/transport"
 )
 
 // TestSystemClipboardIntegration tests with real system clipboards
@@ -257,8 +257,8 @@ type systemTestNode struct {
 	config    *config.Config
 	clipboard clipboard.Clipboard
 	transport transport.Transport
-	topology  *mesh.Topology
-	engine    *sync.Engine
+	topology  mesh.Topology
+	engine    sync.Engine
 	cancel    context.CancelFunc
 }
 
@@ -266,14 +266,7 @@ func (n *systemTestNode) Start(ctx context.Context) error {
 	nodeCtx, cancel := context.WithCancel(ctx)
 	n.cancel = cancel
 
-	// Initialize components
-	if n.config.Listen != "" {
-		if err := n.transport.Listen(n.config.Listen); err != nil {
-			return fmt.Errorf("transport listen failed: %w", err)
-		}
-	}
-
-	// Start topology
+	// Start topology (which handles transport listening)
 	if err := n.topology.Start(nodeCtx); err != nil {
 		return fmt.Errorf("topology start failed: %w", err)
 	}
@@ -293,10 +286,7 @@ func (n *systemTestNode) Stop() {
 		n.cancel()
 	}
 	if n.topology != nil {
-		n.topology.Stop()
-	}
-	if n.transport != nil {
-		n.transport.Close()
+		_ = n.topology.Stop()
 	}
 }
 
@@ -304,14 +294,7 @@ func createSystemTestNode(t *testing.T, cfg *config.Config) (*systemTestNode, fu
 	// Create real clipboard
 	clip, err := clipboard.NewPlatformClipboard()
 	if err != nil {
-		t.Fatalf("Failed to create clipboard: %v", err)
-	}
-
-	// Create transport
-	auth := &transport.DefaultAuthenticator{}
-	trans := &transport.TCPTransport{
-		Secret: cfg.Secret,
-		Auth:   auth,
+		t.Skipf("Failed to create clipboard: %v", err)
 	}
 
 	// Determine node mode
@@ -320,19 +303,44 @@ func createSystemTestNode(t *testing.T, cfg *config.Config) (*systemTestNode, fu
 		mode = "client"
 	}
 
-	// Create topology
-	topo := &mesh.Topology{
-		NodeID:    cfg.NodeID,
-		Mode:      mode,
-		Transport: trans,
-		JoinAddrs: cfg.Join,
+	// Create transport config
+	transportConfig := &transport.TransportConfig{
+		NodeID: cfg.NodeID,
+		Mode:   mode,
+		Secret: cfg.Secret,
+		Logger: transport.DefaultLogger(),
 	}
 
-	// Create sync engine
-	engine := &sync.Engine{
+	// Create transport
+	trans := transport.NewTCPTransport(transportConfig)
+
+	// Create topology config
+	topoConfig := mesh.DefaultTopologyConfig()
+	topoConfig.Self = mesh.Node{
+		ID:   cfg.NodeID,
+		Mode: mode,
+		Addr: cfg.Listen,
+	}
+	topoConfig.Transport = trans
+	topoConfig.JoinAddrs = cfg.Join
+
+	// Create topology
+	topo, err := mesh.NewTopology(topoConfig)
+	if err != nil {
+		t.Fatalf("Failed to create topology for %s: %v", cfg.NodeID, err)
+	}
+
+	// Create sync engine config
+	syncConfig := &sync.Config{
 		NodeID:    cfg.NodeID,
 		Clipboard: clip,
 		Topology:  topo,
+	}
+
+	// Create sync engine
+	engine, err := sync.NewEngine(syncConfig)
+	if err != nil {
+		t.Fatalf("Failed to create sync engine for %s: %v", cfg.NodeID, err)
 	}
 
 	node := &systemTestNode{
@@ -354,8 +362,10 @@ func createSystemTestNode(t *testing.T, cfg *config.Config) (*systemTestNode, fu
 func waitForSystemNodeConnection(t *testing.T, node1, node2 *systemTestNode, timeout time.Duration) {
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
-		if node1.topology.HasPeer(node2.id) && node2.topology.HasPeer(node1.id) {
-			return
+		if _, err1 := node1.topology.GetPeer(node2.id); err1 == nil {
+			if _, err2 := node2.topology.GetPeer(node1.id); err2 == nil {
+				return
+			}
 		}
 		time.Sleep(100 * time.Millisecond)
 	}

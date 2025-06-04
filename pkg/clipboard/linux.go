@@ -184,12 +184,14 @@ func (c *LinuxClipboard) Write(content string) error {
 	}
 
 	if _, err := stdin.Write([]byte(content)); err != nil {
-		stdin.Close()
-		cmd.Process.Kill()
+		_ = stdin.Close()
+		_ = cmd.Process.Kill()
 		return fmt.Errorf("failed to write to clipboard: %w", err)
 	}
 
-	stdin.Close()
+	if err := stdin.Close(); err != nil {
+		return fmt.Errorf("failed to close stdin: %w", err)
+	}
 
 	if err := cmd.Wait(); err != nil {
 		return fmt.Errorf("%s failed: %w", c.tool.name, err)

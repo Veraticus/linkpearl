@@ -1,6 +1,6 @@
 # Linkpearl 🔮
 
-[![Go Version](https://img.shields.io/badge/go-1.24.1+-blue.svg)](https://golang.org/dl/)
+[![Go Version](https://img.shields.io/badge/go-1.24.3+-blue.svg)](https://golang.org/dl/)
 [![Build Status](https://github.com/Veraticus/linkpearl/actions/workflows/test.yml/badge.svg)](https://github.com/Veraticus/linkpearl/actions/workflows/test.yml)
 [![Release](https://img.shields.io/github/release/Veraticus/linkpearl.svg)](https://github.com/Veraticus/linkpearl/releases/latest)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -45,7 +45,7 @@ chmod +x linkpearl-linux-amd64
 
 ### From Source
 
-Requires Go 1.24.1 or later:
+Requires Go 1.24.3 or later:
 
 ```bash
 git clone https://github.com/Veraticus/linkpearl.git

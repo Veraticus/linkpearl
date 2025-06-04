@@ -117,8 +117,8 @@ func (t *tcpTransport) Accept() (Conn, error) {
 
 	// Configure TCP keepalive
 	if tc, ok := tcpConn.(*net.TCPConn); ok {
-		tc.SetKeepAlive(true)
-		tc.SetKeepAlivePeriod(KeepAliveInterval)
+		_ = tc.SetKeepAlive(true)
+		_ = tc.SetKeepAlivePeriod(KeepAliveInterval)
 	}
 
 	t.logger.Debug("accepted connection", "remote", tcpConn.RemoteAddr())
@@ -126,33 +126,33 @@ func (t *tcpTransport) Accept() (Conn, error) {
 	// Perform authentication handshake
 	authResult, err := t.auth.Handshake(tcpConn, t.config.Secret, true)
 	if err != nil {
-		tcpConn.Close()
+		_ = tcpConn.Close()
 		return nil, fmt.Errorf("handshake failed: %w", err)
 	}
 
 	if !authResult.Success {
-		tcpConn.Close()
+		_ = tcpConn.Close()
 		return nil, ErrAuthFailed
 	}
 
 	// Generate TLS config
 	tlsConfig, err := t.auth.GenerateTLSConfig(true)
 	if err != nil {
-		tcpConn.Close()
+		_ = tcpConn.Close()
 		return nil, fmt.Errorf("failed to generate TLS config: %w", err)
 	}
 
 	// Upgrade to TLS
 	tlsConn := tls.Server(tcpConn, tlsConfig)
 	if err := tlsConn.Handshake(); err != nil {
-		tlsConn.Close()
+		_ = tlsConn.Close()
 		return nil, fmt.Errorf("TLS handshake failed: %w", err)
 	}
 
 	// Exchange node information
 	nodeInfo, err := t.exchangeNodeInfo(tlsConn, true)
 	if err != nil {
-		tlsConn.Close()
+		_ = tlsConn.Close()
 		return nil, fmt.Errorf("failed to exchange node info: %w", err)
 	}
 
@@ -203,33 +203,33 @@ func (t *tcpTransport) Connect(ctx context.Context, addr string) (Conn, error) {
 	// Perform authentication handshake
 	authResult, err := t.auth.Handshake(tcpConn, t.config.Secret, false)
 	if err != nil {
-		tcpConn.Close()
+		_ = tcpConn.Close()
 		return nil, fmt.Errorf("handshake failed: %w", err)
 	}
 
 	if !authResult.Success {
-		tcpConn.Close()
+		_ = tcpConn.Close()
 		return nil, ErrAuthFailed
 	}
 
 	// Generate TLS config
 	tlsConfig, err := t.auth.GenerateTLSConfig(false)
 	if err != nil {
-		tcpConn.Close()
+		_ = tcpConn.Close()
 		return nil, fmt.Errorf("failed to generate TLS config: %w", err)
 	}
 
 	// Upgrade to TLS
 	tlsConn := tls.Client(tcpConn, tlsConfig)
 	if err := tlsConn.HandshakeContext(ctx); err != nil {
-		tlsConn.Close()
+		_ = tlsConn.Close()
 		return nil, fmt.Errorf("TLS handshake failed: %w", err)
 	}
 
 	// Exchange node information
 	nodeInfo, err := t.exchangeNodeInfo(tlsConn, false)
 	if err != nil {
-		tlsConn.Close()
+		_ = tlsConn.Close()
 		return nil, fmt.Errorf("failed to exchange node info: %w", err)
 	}
 
@@ -263,7 +263,7 @@ func (t *tcpTransport) exchangeNodeInfo(conn *tls.Conn, isServer bool) (*NodeInf
 	if err := conn.SetDeadline(time.Now().Add(10 * time.Second)); err != nil {
 		return nil, fmt.Errorf("failed to set deadline: %w", err)
 	}
-	defer conn.SetDeadline(time.Time{})
+	defer func() { _ = conn.SetDeadline(time.Time{}) }()
 
 	// Create encoder/decoder
 	encoder := json.NewEncoder(conn)
@@ -316,7 +316,7 @@ func (t *tcpTransport) Close() error {
 
 	// Close all connections
 	for _, conn := range t.conns {
-		conn.Close()
+		_ = conn.Close()
 	}
 	t.conns = make(map[string]*secureConn)
 
