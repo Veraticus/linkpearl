@@ -89,7 +89,7 @@ func main() {
 	
 	flag.StringVar(&cfg.Secret, "secret", "", "Shared secret for linkshell (required)")
 	flag.StringVar(&cfg.NodeID, "node-id", cfg.NodeID, "Node identifier (auto-generated if not set)")
-	flag.StringVar(&cfg.Listen, "listen", "", "Listen address (e.g., :8080 or 0.0.0.0:8080)")
+	flag.StringVar(&cfg.Listen, "listen", "", "Listen address (default: :9437 for full nodes)")
 	flag.Var(&joinAddrs, "join", "Address to join (can be repeated or comma-separated)")
 	flag.DurationVar(&cfg.PollInterval, "poll-interval", cfg.PollInterval, "Clipboard polling interval")
 	flag.DurationVar(&cfg.ReconnectBackoff, "reconnect-backoff", cfg.ReconnectBackoff, "Initial reconnection backoff")

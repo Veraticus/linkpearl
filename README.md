@@ -85,8 +85,8 @@ nix profile install github:Veraticus/linkpearl
           services.linkpearl = {
             enable = true;
             secret = "your-shared-secret";
-            listen = ":8080";
-            join = [ "other-machine:8080" ];
+            listen = ":9437";
+            join = [ "other-machine:9437" ];
           };
         }
       ];
@@ -110,8 +110,8 @@ let
   linkpearl = pkgs.callPackage (pkgs.fetchFromGitHub {
     owner = "Veraticus";
     repo = "linkpearl";
-    rev = "v0.1.0";  # Replace with desired version
-    sha256 = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="; # Replace with actual hash
+    rev = "ffff37f04a041161d8d4a6fffe2a2fac47f8d75e";
+    sha256 = "sha256-12livqi16y22y7l4429nw2885y7c1iin22myy0r36nab0cy74nad";
   } + "/default.nix") { };
 in
 {
@@ -150,10 +150,10 @@ Linkpearl includes a NixOS module for running as a systemd user service:
   services.linkpearl = {
     enable = true;
     secret = "your-shared-secret";  # Consider using secrets management
-    listen = ":8080";               # Optional: for full nodes
+    listen = ":9437";               # Optional: for full nodes
     join = [                        # Optional: peers to connect to
-      "desktop.local:8080"
-      "server.example.com:8080"
+      "desktop.local:9437"
+      "server.example.com:9437"
     ];
     nodeId = "laptop";              # Optional: custom node ID
     pollInterval = "500ms";         # Optional: clipboard check interval
@@ -180,12 +180,12 @@ For secret management, consider using [agenix](https://github.com/ryantm/agenix)
 
 On your desktop (server):
 ```bash
-linkpearl --secret "your-shared-secret" --listen :8080
+linkpearl --secret "your-shared-secret" --listen :9437
 ```
 
 On your laptop (client):
 ```bash
-linkpearl --secret "your-shared-secret" --join desktop.local:8080
+linkpearl --secret "your-shared-secret" --join desktop.local:9437
 ```
 
 That's it! Copy text on one device and paste on the other.
@@ -196,13 +196,13 @@ Create a mesh network with multiple devices:
 
 ```bash
 # Desktop (full node - accepts connections)
-linkpearl --secret "mysecret" --listen :8080
+linkpearl --secret "mysecret" --listen :9437
 
 # Laptop (full node - accepts and makes connections)
-linkpearl --secret "mysecret" --listen :8081 --join desktop.local:8080
+linkpearl --secret "mysecret" --listen :9437 --join desktop.local:9437
 
 # Work machine (client node - only makes connections)
-linkpearl --secret "mysecret" --join desktop.local:8080 --join laptop.local:8081
+linkpearl --secret "mysecret" --join desktop.local:9437 --join laptop.local:9437
 ```
 
 ## 📖 Usage
@@ -214,7 +214,7 @@ linkpearl [flags]
 
 Flags:
   --secret string     Shared secret for authentication (required)
-  --listen string     Address to listen on (e.g., :8080)
+  --listen string     Address to listen on (recommended: :9437)
   --join strings      Addresses to connect to (can be repeated)
   --node-id string    Unique node identifier (default: hostname-timestamp)
   --poll-interval     Clipboard check interval (default: 500ms)
@@ -228,8 +228,8 @@ All flags can be set via environment variables:
 
 ```bash
 export LINKPEARL_SECRET="your-shared-secret"
-export LINKPEARL_LISTEN=":8080"
-export LINKPEARL_JOIN="server1:8080,server2:8080"
+export LINKPEARL_LISTEN=":9437"
+export LINKPEARL_JOIN="server1:9437,server2:9437"
 export LINKPEARL_VERBOSE=true
 
 linkpearl  # Uses environment variables
@@ -253,20 +253,20 @@ Linkpearl supports two node types:
 
 ```bash
 # Desktop in home office
-linkpearl --secret "home-secret" --listen :8080
+linkpearl --secret "home-secret" --listen :9437
 
 # Laptop anywhere in house
-linkpearl --secret "home-secret" --join desktop.local:8080
+linkpearl --secret "home-secret" --join desktop.local:9437
 ```
 
 ### Remote Work Setup
 
 ```bash
 # Home desktop (behind router)
-linkpearl --secret "work-secret" --listen :8080
+linkpearl --secret "work-secret" --listen :9437
 
 # Work laptop (behind corporate firewall)  
-linkpearl --secret "work-secret" --join home.example.com:8080
+linkpearl --secret "work-secret" --join home.example.com:9437
 
 # Note: Requires port forwarding on home router
 ```
@@ -275,13 +275,13 @@ linkpearl --secret "work-secret" --join home.example.com:8080
 
 ```bash
 # Server A (full node)
-linkpearl --secret "team-secret" --listen :8080
+linkpearl --secret "team-secret" --listen :9437
 
 # Server B (full node) 
-linkpearl --secret "team-secret" --listen :8080 --join server-a:8080
+linkpearl --secret "team-secret" --listen :9437 --join server-a:9437
 
 # Client devices
-linkpearl --secret "team-secret" --join server-a:8080 --join server-b:8080
+linkpearl --secret "team-secret" --join server-a:9437 --join server-b:9437
 ```
 
 ## 🔒 Security
