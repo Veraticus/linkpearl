@@ -104,10 +104,26 @@ nix-build -E 'with import <nixpkgs> {}; callPackage ./default.nix {}'
 # Install using nix-env
 nix-env -f ./default.nix -i
 
-# Or add to configuration.nix
+# Or add to configuration.nix using fetchFromGitHub
 { pkgs, ... }:
 let
-  linkpearl = pkgs.callPackage /path/to/linkpearl/default.nix { };
+  linkpearl = pkgs.callPackage (pkgs.fetchFromGitHub {
+    owner = "Veraticus";
+    repo = "linkpearl";
+    rev = "v0.1.0";  # Replace with desired version
+    sha256 = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="; # Replace with actual hash
+  } + "/default.nix") { };
+in
+{
+  environment.systemPackages = [ linkpearl ];
+}
+
+# Or for development from local checkout
+{ pkgs, ... }:
+let
+  linkpearl = pkgs.callPackage /path/to/linkpearl/default.nix { 
+    src = /path/to/linkpearl;
+  };
 in
 {
   environment.systemPackages = [ linkpearl ];
