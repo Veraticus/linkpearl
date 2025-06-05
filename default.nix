@@ -16,11 +16,11 @@ buildGoModule rec {
   src = if src != null then src else fetchFromGitHub {
     owner = "Veraticus";
     repo = "linkpearl";
-    rev = "78e19b55dcf4e9d76798da077ac4e2e405755e21";
-    sha256 = "sha256-1zwly1h8nvif7r01lpvh2qm07a52fvvb79hnjwvir1hcim1vwymm";
+    rev = "270ddc913ec33c540c3cdfd38c16567a1568e0a0";
+    sha256 = "sha256-0njyn5sygxkwp95f316nb4p0n9776x9mrq91bhns65rlkml1d7xv";
   };
 
-  vendorHash = "sha256-0zlnqk2ymdpb24ihlvm96s30dif0s16n0s1rkz1x5rn3ahmdqi6i";
+  vendorHash = "sha256-1gj68wlfm34xlyr5r2v2m70pi5697mqvxr8f7a95myslc96jmmlc";
 
   ldflags = [
     "-s"
