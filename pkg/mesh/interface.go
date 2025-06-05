@@ -75,17 +75,17 @@
 //	    Addr: "localhost:8080",
 //	}
 //	config.Transport = tcpTransport
-//	
+//
 //	topology, err := mesh.NewTopology(config)
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
-//	
+//
 //	// Start the topology
 //	if err := topology.Start(context.Background()); err != nil {
 //	    log.Fatal(err)
 //	}
-//	
+//
 //	// Subscribe to events
 //	events := topology.Events()
 //	go func() {
@@ -93,7 +93,7 @@
 //	        log.Printf("Event: %v", event)
 //	    }
 //	}()
-//	
+//
 //	// Send a message to a peer
 //	err = topology.SendToPeer("node2", MyMessage{Data: "hello"})
 //
@@ -101,20 +101,20 @@
 //
 // The mesh package follows several key design principles:
 //
-//   1. Simplicity: The topology is intentionally simple, avoiding complex protocols
-//      in favor of reliability and ease of understanding.
+//  1. Simplicity: The topology is intentionally simple, avoiding complex protocols
+//     in favor of reliability and ease of understanding.
 //
-//   2. Static Configuration: Peers are explicitly configured rather than discovered,
-//      making the network topology predictable and debuggable.
+//  2. Static Configuration: Peers are explicitly configured rather than discovered,
+//     making the network topology predictable and debuggable.
 //
-//   3. Resilience: Automatic reconnection with backoff ensures the mesh heals itself
-//      after network failures or peer restarts.
+//  3. Resilience: Automatic reconnection with backoff ensures the mesh heals itself
+//     after network failures or peer restarts.
 //
-//   4. Extensibility: The message handler system allows applications to implement
-//      their own protocols on top of the mesh.
+//  4. Extensibility: The message handler system allows applications to implement
+//     their own protocols on top of the mesh.
 //
-//   5. Observable: The event system provides visibility into topology changes,
-//      making it easy to monitor and debug the network.
+//  5. Observable: The event system provides visibility into topology changes,
+//     making it easy to monitor and debug the network.
 package mesh
 
 import (

@@ -225,7 +225,7 @@ func testClientServerTopology(t *testing.T) {
 
 	// Verify server receives the content
 	assertClipboardContent(t, server.clipboard, testContent, 5*time.Second)
-	
+
 	// Note: In the current implementation, the server doesn't forward clipboard
 	// changes it receives from one client to other clients. Each node only
 	// broadcasts its own local clipboard changes. This is a design choice
@@ -280,7 +280,7 @@ func testNodeFailureRecovery(t *testing.T) {
 	// Create a new node2 instance (can't restart the same one)
 	node2New, cleanup2New := createTestNode(t, "node2", ":0", []string{node1.listenAddr})
 	defer cleanup2New()
-	
+
 	// Start the new node2
 	if err := node2New.Start(ctx); err != nil {
 		t.Fatalf("Failed to start new node2: %v", err)
@@ -324,7 +324,7 @@ func testConcurrentClipboardChanges(t *testing.T) {
 	for i := 1; i < 3; i++ {
 		nodes[i], cleanups[i] = createTestNode(t, fmt.Sprintf("node%d", i), ":0", []string{nodes[0].listenAddr})
 		defer cleanups[i]()
-		
+
 		// Start each node immediately
 		if err := nodes[i].Start(ctx); err != nil {
 			t.Fatalf("Failed to start node%d: %v", i, err)
@@ -381,13 +381,13 @@ func testConcurrentClipboardChanges(t *testing.T) {
 	for i := 0; i < len(nodes); i++ {
 		validContents[fmt.Sprintf("Concurrent update from node%d", i)] = true
 	}
-	
+
 	for i, content := range contents {
 		if !validContents[content] {
 			t.Errorf("Node%d has unexpected content: %q", i, content)
 		}
 	}
-	
+
 	// Log the final state
 	t.Logf("Final clipboard states after concurrent updates:")
 	for i, content := range contents {
@@ -425,7 +425,7 @@ func testLargeClipboardContent(t *testing.T) {
 	// Log engine stats before test
 	stats1 := node1.engine.Stats()
 	stats2 := node2.engine.Stats()
-	t.Logf("Node1 stats before: sent=%d, received=%d, local=%d", 
+	t.Logf("Node1 stats before: sent=%d, received=%d, local=%d",
 		stats1.MessagesSent, stats1.MessagesReceived, stats1.LocalChanges)
 	t.Logf("Node2 stats before: sent=%d, received=%d, local=%d",
 		stats2.MessagesSent, stats2.MessagesReceived, stats2.LocalChanges)
@@ -434,7 +434,7 @@ func testLargeClipboardContent(t *testing.T) {
 	contentSize := 100 * 1024
 	if runtime.GOOS == "darwin" || os.Getenv("CI") == "true" {
 		contentSize = 1024 // Use 1KB in CI or on macOS to avoid pbcopy issues
-		t.Logf("Using reduced content size of %d bytes (darwin=%v, CI=%v)", 
+		t.Logf("Using reduced content size of %d bytes (darwin=%v, CI=%v)",
 			contentSize, runtime.GOOS == "darwin", os.Getenv("CI") == "true")
 	}
 	largeContent := generateLargeContent(contentSize)
@@ -458,7 +458,7 @@ func testLargeClipboardContent(t *testing.T) {
 		if len(actualPreview) > 100 {
 			actualPreview = actualPreview[:100] + "..."
 		}
-		t.Fatalf("Node1 clipboard content mismatch: expected %d bytes (%q), got %d bytes (%q)", 
+		t.Fatalf("Node1 clipboard content mismatch: expected %d bytes (%q), got %d bytes (%q)",
 			len(largeContent), expectedPreview, len(content1), actualPreview)
 	}
 	t.Logf("Successfully wrote %d bytes to node1 clipboard", len(content1))
@@ -469,7 +469,7 @@ func testLargeClipboardContent(t *testing.T) {
 	// Log engine stats after write
 	stats1After := node1.engine.Stats()
 	stats2After := node2.engine.Stats()
-	t.Logf("Node1 stats after write: sent=%d, received=%d, local=%d", 
+	t.Logf("Node1 stats after write: sent=%d, received=%d, local=%d",
 		stats1After.MessagesSent, stats1After.MessagesReceived, stats1After.LocalChanges)
 	t.Logf("Node2 stats after write: sent=%d, received=%d, local=%d",
 		stats2After.MessagesSent, stats2After.MessagesReceived, stats2After.LocalChanges)
@@ -701,13 +701,13 @@ func assertClipboardContent(t testing.TB, clip clipboard.Clipboard, expected str
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
-	
+
 	// Final check with actual values for better error message
 	actual, err := clip.Read()
 	if err != nil {
 		t.Fatalf("Failed to read clipboard: %v", err)
 	}
-	
+
 	// Create previews for large content
 	expectedPreview := expected
 	if len(expectedPreview) > 100 {
@@ -717,8 +717,8 @@ func assertClipboardContent(t testing.TB, clip clipboard.Clipboard, expected str
 	if len(actualPreview) > 100 {
 		actualPreview = actualPreview[:100] + "..."
 	}
-	
-	t.Fatalf("Clipboard content mismatch after %d attempts: expected %d bytes %q, got %d bytes %q (last seen: %q)", 
+
+	t.Fatalf("Clipboard content mismatch after %d attempts: expected %d bytes %q, got %d bytes %q (last seen: %q)",
 		attemptCount, len(expected), expectedPreview, len(actual), actualPreview, lastContent)
 }
 
@@ -778,7 +778,7 @@ func BenchmarkTwoNodeSync(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		content := fmt.Sprintf("Benchmark content %d", i)
 		node1.clipboard.Write(content)
-		
+
 		// Wait for sync
 		deadline := time.Now().Add(1 * time.Second)
 		for time.Now().Before(deadline) {
@@ -821,7 +821,7 @@ func BenchmarkLargeContentSync(b *testing.B) {
 
 			for i := 0; i < b.N; i++ {
 				node1.clipboard.Write(content)
-				
+
 				// Wait for sync
 				deadline := time.Now().Add(2 * time.Second)
 				for time.Now().Before(deadline) {
@@ -839,9 +839,9 @@ func BenchmarkLargeContentSync(b *testing.B) {
 func TestMain(m *testing.M) {
 	// You can add any global setup here if needed
 	// For example, checking if required tools are available
-	
+
 	// Run tests
 	m.Run()
-	
+
 	// Global cleanup if needed
 }

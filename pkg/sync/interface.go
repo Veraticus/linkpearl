@@ -38,12 +38,12 @@
 //	    Topology:  mesh.NewTopology(...),
 //	    Logger:    logger,
 //	}
-//	
+//
 //	engine, err := sync.NewEngine(config)
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
-//	
+//
 //	// Run the sync engine
 //	if err := engine.Run(ctx); err != nil {
 //	    log.Fatal(err)
@@ -62,16 +62,16 @@ import (
 var (
 	// ErrInvalidMessage indicates a malformed message
 	ErrInvalidMessage = errors.New("invalid message")
-	
+
 	// ErrChecksumMismatch indicates content doesn't match checksum
 	ErrChecksumMismatch = errors.New("checksum mismatch")
-	
+
 	// ErrDuplicateMessage indicates we've already seen this message
 	ErrDuplicateMessage = errors.New("duplicate message")
-	
+
 	// ErrOldMessage indicates message is older than our current state
 	ErrOldMessage = errors.New("message older than current state")
-	
+
 	// ErrSyncLoop indicates potential sync loop detected
 	ErrSyncLoop = errors.New("sync loop detected")
 )
@@ -80,7 +80,7 @@ var (
 type Engine interface {
 	// Run starts the sync engine main loop
 	Run(ctx context.Context) error
-	
+
 	// Stats returns current engine statistics
 	Stats() *Stats
 }
@@ -88,20 +88,20 @@ type Engine interface {
 // Stats contains sync engine statistics
 type Stats struct {
 	// Messages
-	MessagesSent     uint64
-	MessagesReceived uint64
+	MessagesSent      uint64
+	MessagesReceived  uint64
 	MessagesDuplicate uint64
-	
+
 	// Clipboard
-	LocalChanges    uint64
-	RemoteChanges   uint64
-	ConflictsWon    uint64
-	ConflictsLost   uint64
-	
+	LocalChanges  uint64
+	RemoteChanges uint64
+	ConflictsWon  uint64
+	ConflictsLost uint64
+
 	// Errors
-	SendErrors      uint64
-	ReceiveErrors   uint64
-	
+	SendErrors    uint64
+	ReceiveErrors uint64
+
 	// Timing
 	LastLocalChange  time.Time
 	LastRemoteChange time.Time
@@ -114,14 +114,14 @@ type Config struct {
 	NodeID    string
 	Clipboard clipboard.Clipboard
 	Topology  mesh.Topology
-	
+
 	// Optional
-	DedupeSize       int           // LRU cache size for deduplication (default: 1000)
-	SyncLoopWindow   time.Duration // Time window for sync loop detection (default: 500ms)
+	DedupeSize        int           // LRU cache size for deduplication (default: 1000)
+	SyncLoopWindow    time.Duration // Time window for sync loop detection (default: 500ms)
 	MinChangeInterval time.Duration // Minimum time between processing changes (default: 100ms)
-	CommandTimeout   time.Duration // Timeout for clipboard operations (default: 5s)
-	MaxClipboardSize int           // Maximum clipboard content size in bytes (default: 10MB)
-	Logger           Logger        // Logger interface (default: no-op)
+	CommandTimeout    time.Duration // Timeout for clipboard operations (default: 5s)
+	MaxClipboardSize  int           // Maximum clipboard content size in bytes (default: 10MB)
+	Logger            Logger        // Logger interface (default: no-op)
 }
 
 // Logger interface for sync engine logging
@@ -142,7 +142,7 @@ func (c *Config) Validate() error {
 	if c.Topology == nil {
 		return errors.New("topology is required")
 	}
-	
+
 	// Apply defaults
 	if c.DedupeSize <= 0 {
 		c.DedupeSize = 1000
@@ -162,7 +162,7 @@ func (c *Config) Validate() error {
 	if c.Logger == nil {
 		c.Logger = &noopLogger{}
 	}
-	
+
 	return nil
 }
 

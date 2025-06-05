@@ -11,15 +11,15 @@ import (
 func TestNewClipboardMessage(t *testing.T) {
 	nodeID := "test-node"
 	content := "Hello, World!"
-	
+
 	msg := NewClipboardMessage(nodeID, content)
-	
+
 	assert.Equal(t, nodeID, msg.NodeID)
 	assert.Equal(t, content, msg.Content)
 	assert.Equal(t, computeChecksum(content), msg.Checksum)
 	assert.Greater(t, msg.Timestamp, int64(0))
 	assert.Equal(t, "1.0", msg.Version)
-	
+
 	// Timestamp should be recent
 	msgTime := time.Unix(0, msg.Timestamp)
 	assert.WithinDuration(t, time.Now(), msgTime, time.Second)
@@ -33,16 +33,16 @@ func TestClipboardMessageMarshalUnmarshal(t *testing.T) {
 		Content:   "Test content",
 		Version:   "1.0",
 	}
-	
+
 	// Marshal
 	data, err := original.Marshal()
 	require.NoError(t, err)
 	require.NotEmpty(t, data)
-	
+
 	// Unmarshal
 	decoded, err := UnmarshalClipboardMessage(data)
 	require.NoError(t, err)
-	
+
 	assert.Equal(t, original.NodeID, decoded.NodeID)
 	assert.Equal(t, original.Timestamp, decoded.Timestamp)
 	assert.Equal(t, original.Checksum, decoded.Checksum)
@@ -108,7 +108,7 @@ func TestClipboardMessageValidate(t *testing.T) {
 			wantErr: ErrChecksumMismatch,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.msg.Validate()
@@ -126,7 +126,7 @@ func TestClipboardMessageTime(t *testing.T) {
 	msg := &ClipboardMessage{
 		Timestamp: now.UnixNano(),
 	}
-	
+
 	msgTime := msg.Time()
 	assert.Equal(t, now.Unix(), msgTime.Unix())
 	// Nanosecond precision might be slightly off due to conversion
@@ -151,12 +151,12 @@ func TestComputeChecksum(t *testing.T) {
 			expected: "d7a8fbb307d7809469ca9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592",
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.content, func(t *testing.T) {
 			checksum := computeChecksum(tt.content)
 			assert.Equal(t, tt.expected, checksum)
-			
+
 			// Should be consistent
 			checksum2 := computeChecksum(tt.content)
 			assert.Equal(t, checksum, checksum2)
@@ -182,7 +182,7 @@ func TestUnmarshalClipboardMessageErrors(t *testing.T) {
 			data: []byte(`"string instead of object"`),
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			msg, err := UnmarshalClipboardMessage(tt.data)

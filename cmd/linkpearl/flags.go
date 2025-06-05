@@ -24,7 +24,7 @@
 //
 //	var joinAddrs stringSliceFlag
 //	flag.Var(&joinAddrs, "join", "Address to join (can be repeated or comma-separated)")
-//	
+//
 //	// After parsing:
 //	// --join host1:8080 --join host2:8080,host3:8080
 //	// Results in: []string{"host1:8080", "host2:8080", "host3:8080"}
@@ -72,12 +72,12 @@ func validateAddress(addr string) error {
 	if addr == "" {
 		return fmt.Errorf("empty address")
 	}
-	
+
 	// Basic validation - just check it's not empty and has a colon
 	// Full validation will happen when we try to connect
 	if !strings.Contains(addr, ":") && !strings.HasPrefix(addr, ":") {
 		return fmt.Errorf("address should be in format host:port or :port")
 	}
-	
+
 	return nil
 }

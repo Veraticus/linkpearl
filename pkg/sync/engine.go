@@ -41,9 +41,9 @@ import (
 // Internal Architecture:
 //
 // The engine uses three main channels for event processing:
-//   1. clipCh: Receives local clipboard changes from the OS
-//   2. msgCh: Receives sync messages from peer nodes
-//   3. eventCh: Receives topology change notifications
+//  1. clipCh: Receives local clipboard changes from the OS
+//  2. msgCh: Receives sync messages from peer nodes
+//  3. eventCh: Receives topology change notifications
 //
 // These channels are processed in a select loop that runs until the context
 // is cancelled, ensuring graceful shutdown and resource cleanup.
@@ -52,19 +52,19 @@ type engine struct {
 	clipboard clipboard.Clipboard
 	topology  mesh.Topology
 	logger    Logger
-	
+
 	// Deduplication
-	dedupe    *lruCache
-	
+	dedupe *lruCache
+
 	// Current state
 	mu        sync.RWMutex
 	current   string
 	checksum  string
 	timestamp int64
-	
+
 	// Statistics
-	stats     Stats
-	
+	stats Stats
+
 	// Sync loop detection
 	lastLocalChange  time.Time
 	lastRemoteChange time.Time
@@ -83,13 +83,13 @@ func NewEngine(config *Config) (Engine, error) {
 	if err := config.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid config: %w", err)
 	}
-	
+
 	// Create dedupe cache
 	dedupe, err := newLRUCache(config.DedupeSize)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create dedupe cache: %w", err)
 	}
-	
+
 	return &engine{
 		config:    config,
 		clipboard: config.Clipboard,
@@ -105,11 +105,11 @@ func NewEngine(config *Config) (Engine, error) {
 // Run starts the sync engine main loop and blocks until the context is cancelled.
 // This method orchestrates all synchronization activities:
 //
-//   1. Initializes the engine with current clipboard state
-//   2. Starts watching for local clipboard changes
-//   3. Listens for messages from peer nodes
-//   4. Monitors topology changes
-//   5. Processes all events in a coordinated manner
+//  1. Initializes the engine with current clipboard state
+//  2. Starts watching for local clipboard changes
+//  3. Listens for messages from peer nodes
+//  4. Monitors topology changes
+//  5. Processes all events in a coordinated manner
 //
 // The engine will run continuously until the context is cancelled or an
 // unrecoverable error occurs. It handles temporary failures gracefully and
@@ -119,21 +119,21 @@ func NewEngine(config *Config) (Engine, error) {
 // are properly cleaned up.
 func (e *engine) Run(ctx context.Context) error {
 	e.logger.Info("sync engine starting", "node", e.config.NodeID)
-	
+
 	// Initialize with current clipboard content
 	if err := e.initializeState(); err != nil {
 		return fmt.Errorf("failed to initialize state: %w", err)
 	}
-	
+
 	// Watch local clipboard
 	clipCh := e.clipboard.Watch(ctx)
-	
-	// Watch topology events  
+
+	// Watch topology events
 	eventCh := e.topology.Events()
-	
+
 	// Watch incoming messages
 	msgCh := e.topology.Messages()
-	
+
 	// Main event loop
 	for {
 		select {
@@ -149,20 +149,20 @@ func (e *engine) Run(ctx context.Context) error {
 			}
 			state := e.clipboard.GetState()
 			e.handleLocalChange(content, state)
-			
+
 		case msg, ok := <-msgCh:
 			if !ok {
 				return fmt.Errorf("message channel closed")
 			}
 			e.handleIncomingMessage(msg)
-			
+
 		case event, ok := <-eventCh:
 			if !ok {
 				e.logger.Debug("event channel closed")
 				continue
 			}
 			e.handleTopologyEvent(event)
-			
+
 		case <-ctx.Done():
 			e.logger.Info("sync engine stopping", "node", e.config.NodeID)
 			return ctx.Err()
@@ -176,7 +176,7 @@ func (e *engine) Stats() *Stats {
 	lastLocalChange := e.lastLocalChange
 	lastRemoteChange := e.lastRemoteChange
 	e.mu.RUnlock()
-	
+
 	// Create a copy with atomic reads
 	return &Stats{
 		MessagesSent:      atomic.LoadUint64(&e.stats.MessagesSent),
@@ -202,21 +202,21 @@ func (e *engine) initializeState() error {
 		// Non-fatal: start with empty clipboard
 		content = ""
 	}
-	
+
 	e.mu.Lock()
 	e.current = content
 	e.checksum = computeChecksum(content)
 	e.timestamp = time.Now().UnixNano()
 	e.mu.Unlock()
-	
+
 	// Add to dedupe cache
 	e.dedupe.Add(e.checksum, e.timestamp)
-	
-	e.logger.Info("initialized clipboard state", 
+
+	e.logger.Info("initialized clipboard state",
 		"content_length", len(content),
 		"checksum", e.checksum[:8], // First 8 chars for logging
 	)
-	
+
 	return nil
 }
 
@@ -224,11 +224,11 @@ func (e *engine) initializeState() error {
 // This is triggered when the user copies new content to their clipboard.
 //
 // Processing steps:
-//   1. Check if content actually changed using state hash
-//   2. Detect potential sync loops using timing heuristics
-//   3. Update internal state with new content
-//   4. Add to deduplication cache
-//   5. Broadcast change to all connected peers
+//  1. Check if content actually changed using state hash
+//  2. Detect potential sync loops using timing heuristics
+//  3. Update internal state with new content
+//  4. Add to deduplication cache
+//  5. Broadcast change to all connected peers
 //
 // The state parameter provides sequence number and hash information to help
 // detect duplicate notifications that may occur with rapid clipboard changes.
@@ -238,15 +238,15 @@ func (e *engine) initializeState() error {
 // round-trip updates.
 func (e *engine) handleLocalChange(content string, state clipboard.ClipboardState) {
 	checksum := computeChecksum(content)
-	
+
 	// Verify state hash matches content (defensive check)
 	if state.ContentHash != "" && state.ContentHash != checksum {
-		e.logger.Error("clipboard state hash mismatch", 
+		e.logger.Error("clipboard state hash mismatch",
 			"state_hash", state.ContentHash[:8],
 			"content_hash", checksum[:8],
 		)
 	}
-	
+
 	e.mu.Lock()
 	// Check if content actually changed
 	if checksum == e.checksum {
@@ -254,7 +254,7 @@ func (e *engine) handleLocalChange(content string, state clipboard.ClipboardStat
 		e.logger.Debug("clipboard unchanged, ignoring")
 		return
 	}
-	
+
 	// Check for sync loop
 	if e.isSyncLoop() {
 		e.mu.Unlock()
@@ -262,17 +262,17 @@ func (e *engine) handleLocalChange(content string, state clipboard.ClipboardStat
 		atomic.AddUint64(&e.stats.MessagesDuplicate, 1)
 		return
 	}
-	
+
 	// Update state
 	e.current = content
 	e.checksum = checksum
 	e.timestamp = time.Now().UnixNano()
 	e.lastLocalChange = time.Now()
 	e.mu.Unlock()
-	
+
 	// Add to dedupe cache
 	e.dedupe.Add(checksum, e.timestamp)
-	
+
 	// Check size limits before broadcasting
 	if len(content) > e.config.MaxClipboardSize {
 		e.logger.Error("clipboard content exceeds maximum size",
@@ -282,15 +282,15 @@ func (e *engine) handleLocalChange(content string, state clipboard.ClipboardStat
 		atomic.AddUint64(&e.stats.SendErrors, 1)
 		return
 	}
-	
+
 	// Create and broadcast message
 	msg := NewClipboardMessage(e.config.NodeID, content)
-	
+
 	e.logger.Info("broadcasting local clipboard change",
 		"content_length", len(content),
 		"checksum", checksum[:8],
 	)
-	
+
 	if err := e.broadcastMessage(msg); err != nil {
 		e.logger.Error("failed to broadcast clipboard change", "error", err)
 		atomic.AddUint64(&e.stats.SendErrors, 1)
@@ -304,25 +304,25 @@ func (e *engine) handleLocalChange(content string, state clipboard.ClipboardStat
 // This is the core of the distributed synchronization protocol.
 //
 // Message processing pipeline:
-//   1. Filter for clipboard messages (ignore other types)
-//   2. Parse and validate message structure
-//   3. Verify checksum matches content
-//   4. Check deduplication cache for seen messages
-//   5. Apply conflict resolution logic
-//   6. Update local clipboard if remote wins
+//  1. Filter for clipboard messages (ignore other types)
+//  2. Parse and validate message structure
+//  3. Verify checksum matches content
+//  4. Check deduplication cache for seen messages
+//  5. Apply conflict resolution logic
+//  6. Update local clipboard if remote wins
 //
 // The method handles various message formats for compatibility and includes
 // extensive error handling to ensure malformed messages don't disrupt the
 // synchronization process.
 func (e *engine) handleIncomingMessage(msg mesh.Message) {
 	atomic.AddUint64(&e.stats.MessagesReceived, 1)
-	
+
 	// Only handle clipboard messages
 	if msg.Type != string(MessageTypeClipboard) {
 		e.logger.Debug("ignoring non-clipboard message", "type", msg.Type)
 		return
 	}
-	
+
 	// Parse message - handle both []byte and json.RawMessage
 	var payloadBytes []byte
 	switch p := msg.Payload.(type) {
@@ -335,21 +335,21 @@ func (e *engine) handleIncomingMessage(msg mesh.Message) {
 		atomic.AddUint64(&e.stats.ReceiveErrors, 1)
 		return
 	}
-	
+
 	clipMsg, err := UnmarshalClipboardMessage(payloadBytes)
 	if err != nil {
 		e.logger.Error("failed to unmarshal clipboard message", "error", err)
 		atomic.AddUint64(&e.stats.ReceiveErrors, 1)
 		return
 	}
-	
+
 	// Validate message
 	if err := clipMsg.Validate(); err != nil {
 		e.logger.Error("invalid clipboard message", "error", err, "from", msg.From)
 		atomic.AddUint64(&e.stats.ReceiveErrors, 1)
 		return
 	}
-	
+
 	// Check size limits
 	if len(clipMsg.Content) > e.config.MaxClipboardSize {
 		e.logger.Error("received clipboard content exceeds maximum size",
@@ -360,17 +360,17 @@ func (e *engine) handleIncomingMessage(msg mesh.Message) {
 		atomic.AddUint64(&e.stats.ReceiveErrors, 1)
 		return
 	}
-	
+
 	// Check deduplication
 	if e.isDuplicate(clipMsg) {
-		e.logger.Debug("duplicate message, ignoring", 
+		e.logger.Debug("duplicate message, ignoring",
 			"from", clipMsg.NodeID,
 			"checksum", clipMsg.Checksum[:8],
 		)
 		atomic.AddUint64(&e.stats.MessagesDuplicate, 1)
 		return
 	}
-	
+
 	// Apply conflict resolution
 	if e.shouldApplyRemoteChange(clipMsg) {
 		e.applyRemoteChange(clipMsg)
@@ -395,9 +395,9 @@ func (e *engine) isDuplicate(msg *ClipboardMessage) bool {
 // This determines whether a remote clipboard change should overwrite local state.
 //
 // Conflict Resolution Strategy (Last-Write-Wins):
-//   1. Compare timestamps - newer timestamp wins
-//   2. If timestamps are equal (rare), use node ID as tiebreaker
-//   3. Higher node ID wins in case of ties
+//  1. Compare timestamps - newer timestamp wins
+//  2. If timestamps are equal (rare), use node ID as tiebreaker
+//  3. Higher node ID wins in case of ties
 //
 // This approach ensures:
 //   - Deterministic resolution (all nodes reach same decision)
@@ -408,22 +408,22 @@ func (e *engine) isDuplicate(msg *ClipboardMessage) bool {
 func (e *engine) shouldApplyRemoteChange(msg *ClipboardMessage) bool {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
-	
+
 	// If remote timestamp is newer, apply it
 	if msg.Timestamp > e.timestamp {
 		return true
 	}
-	
+
 	// If timestamps are equal (unlikely), use node ID as tiebreaker
 	if msg.Timestamp == e.timestamp && msg.NodeID > e.config.NodeID {
 		return true
 	}
-	
+
 	e.logger.Debug("remote change is older, ignoring",
 		"remote_time", time.Unix(0, msg.Timestamp),
 		"local_time", time.Unix(0, e.timestamp),
 	)
-	
+
 	return false
 }
 
@@ -436,23 +436,23 @@ func (e *engine) applyRemoteChange(msg *ClipboardMessage) {
 	e.timestamp = msg.Timestamp
 	e.lastRemoteChange = time.Now()
 	e.mu.Unlock()
-	
+
 	// Add to dedupe cache
 	e.dedupe.Add(msg.Checksum, msg.Timestamp)
-	
+
 	// Update clipboard
 	if err := e.clipboard.Write(msg.Content); err != nil {
 		e.logger.Error("failed to write clipboard", "error", err)
 		atomic.AddUint64(&e.stats.ReceiveErrors, 1)
 		return
 	}
-	
+
 	e.logger.Info("applied remote clipboard change",
 		"from", msg.NodeID,
 		"content_length", len(msg.Content),
 		"checksum", msg.Checksum[:8],
 	)
-	
+
 	atomic.AddUint64(&e.stats.RemoteChanges, 1)
 	if wasNewer {
 		atomic.AddUint64(&e.stats.ConflictsLost, 1)
@@ -470,22 +470,22 @@ func (e *engine) applyRemoteChange(msg *ClipboardMessage) {
 //   - Uses configurable time window (MinChangeInterval)
 //
 // This heuristic prevents common scenarios like:
-//   1. Node A changes clipboard
-//   2. Node B receives and applies change
-//   3. Node B's clipboard watcher fires (detecting "new" content)
-//   4. Node B broadcasts "change" back to Node A
+//  1. Node A changes clipboard
+//  2. Node B receives and applies change
+//  3. Node B's clipboard watcher fires (detecting "new" content)
+//  4. Node B broadcasts "change" back to Node A
 //
 // Without this protection, the network could enter an infinite sync loop.
 func (e *engine) isSyncLoop() bool {
 	now := time.Now()
-	
+
 	// If we recently applied a remote change, and now see a local change,
 	// it might be our own remote change echoing back
-	if !e.lastRemoteChange.IsZero() && 
+	if !e.lastRemoteChange.IsZero() &&
 		now.Sub(e.lastRemoteChange) < e.config.MinChangeInterval {
 		return true
 	}
-	
+
 	return false
 }
 
@@ -495,13 +495,13 @@ func (e *engine) broadcastMessage(msg *ClipboardMessage) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal message: %w", err)
 	}
-	
+
 	// Create mesh message wrapper
 	meshMsg := map[string]interface{}{
 		"type":    string(MessageTypeClipboard), // Use the defined constant
 		"payload": json.RawMessage(data),
 	}
-	
+
 	return e.topology.Broadcast(meshMsg)
 }
 
@@ -512,7 +512,7 @@ func (e *engine) handleTopologyEvent(event mesh.TopologyEvent) {
 		e.logger.Info("peer connected", "peer", event.Peer.ID)
 		// Could send current state to new peer, but for simplicity
 		// we'll let them request it if needed
-		
+
 	case mesh.PeerDisconnected:
 		e.logger.Info("peer disconnected", "peer", event.Peer.ID)
 		// No action needed for disconnections

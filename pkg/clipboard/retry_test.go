@@ -10,7 +10,7 @@ import (
 
 func TestRetryConfig_isRetryableError(t *testing.T) {
 	config := DefaultRetryConfig()
-	
+
 	tests := []struct {
 		name      string
 		err       error
@@ -52,7 +52,7 @@ func TestRetryConfig_isRetryableError(t *testing.T) {
 			retryable: false,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := config.isRetryableError(tt.err)
@@ -70,9 +70,9 @@ func TestRetryConfig_calculateDelay(t *testing.T) {
 		BackoffFactor: 2.0,
 		JitterFactor:  0, // No jitter for predictable tests
 	}
-	
+
 	tests := []struct {
-		attempt      int
+		attempt       int
 		expectedDelay time.Duration
 	}{
 		{0, 100 * time.Millisecond},
@@ -84,7 +84,7 @@ func TestRetryConfig_calculateDelay(t *testing.T) {
 		{6, 2000 * time.Millisecond}, // Capped at MaxDelay
 		{7, 2000 * time.Millisecond}, // Still capped
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(string(rune(tt.attempt)), func(t *testing.T) {
 			got := config.calculateDelay(tt.attempt)
@@ -102,22 +102,22 @@ func TestRetryConfig_calculateDelayWithJitter(t *testing.T) {
 		BackoffFactor: 2.0,
 		JitterFactor:  0.3,
 	}
-	
+
 	// Test that jitter produces values within expected range
 	for attempt := 1; attempt <= 5; attempt++ {
 		baseDelay := float64(config.InitialDelay) * math.Pow(config.BackoffFactor, float64(attempt-1))
 		if baseDelay > float64(config.MaxDelay) {
 			baseDelay = float64(config.MaxDelay)
 		}
-		
+
 		minDelay := time.Duration(baseDelay * (1 - config.JitterFactor))
 		maxDelay := time.Duration(baseDelay * (1 + config.JitterFactor))
-		
+
 		// Run multiple times to test randomness
 		for i := 0; i < 10; i++ {
 			got := config.calculateDelay(attempt)
 			if got < minDelay || got > maxDelay {
-				t.Errorf("calculateDelay(%d) = %v, want between %v and %v", 
+				t.Errorf("calculateDelay(%d) = %v, want between %v and %v",
 					attempt, got, minDelay, maxDelay)
 			}
 		}
@@ -131,7 +131,7 @@ func TestRetryWithBackoff(t *testing.T) {
 			attempts++
 			return nil
 		})
-		
+
 		if err != nil {
 			t.Errorf("Expected nil error, got: %v", err)
 		}
@@ -139,7 +139,7 @@ func TestRetryWithBackoff(t *testing.T) {
 			t.Errorf("Expected 1 attempt, got %d", attempts)
 		}
 	})
-	
+
 	t.Run("eventual success", func(t *testing.T) {
 		attempts := 0
 		err := RetryWithBackoff(context.Background(), func() error {
@@ -149,7 +149,7 @@ func TestRetryWithBackoff(t *testing.T) {
 			}
 			return nil
 		})
-		
+
 		if err != nil {
 			t.Errorf("Expected nil error, got: %v", err)
 		}
@@ -167,10 +167,10 @@ func TestRetryOperation_Timing(t *testing.T) {
 		BackoffFactor: 2.0,
 		JitterFactor:  0,
 	}
-	
+
 	attempts := 0
 	start := time.Now()
-	
+
 	err := RetryOperation(context.Background(), config, func() error {
 		attempts++
 		if attempts < 3 {
@@ -178,20 +178,20 @@ func TestRetryOperation_Timing(t *testing.T) {
 		}
 		return nil
 	})
-	
+
 	elapsed := time.Since(start)
-	
+
 	if err != nil {
 		t.Errorf("Expected nil error, got: %v", err)
 	}
-	
+
 	// Expected delays: 50ms after attempt 1, 100ms after attempt 2
 	// Total expected: ~150ms (plus some execution time)
 	minExpected := 150 * time.Millisecond
 	maxExpected := 200 * time.Millisecond
-	
+
 	if elapsed < minExpected || elapsed > maxExpected {
-		t.Errorf("Expected elapsed time between %v and %v, got %v", 
+		t.Errorf("Expected elapsed time between %v and %v, got %v",
 			minExpected, maxExpected, elapsed)
 	}
 }
@@ -199,12 +199,12 @@ func TestRetryOperation_Timing(t *testing.T) {
 func TestRetryOperation_NonRetryableError(t *testing.T) {
 	config := DefaultRetryConfig()
 	attempts := 0
-	
+
 	err := RetryOperation(context.Background(), config, func() error {
 		attempts++
 		return ErrNotSupported // Non-retryable error
 	})
-	
+
 	if err == nil {
 		t.Error("Expected error, got nil")
 	}

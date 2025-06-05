@@ -48,7 +48,6 @@
 //	// Send/receive messages
 //	err = conn.Send(myMessage)
 //	err = conn.Receive(&receivedMessage)
-//
 package transport
 
 import (

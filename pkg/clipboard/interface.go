@@ -146,19 +146,19 @@ func NewPlatformClipboard() (Clipboard, error) {
 type ClipboardOptions struct {
 	// Enable retry logic with exponential backoff
 	EnableRetry bool
-	
+
 	// Custom retry configuration (nil uses defaults)
 	RetryConfig *RetryConfig
-	
+
 	// Enable rate limiting
 	EnableRateLimit bool
-	
+
 	// Rate limit configuration (operations per minute)
 	RateLimitOpsPerMinute int
-	
+
 	// Enable metrics collection
 	EnableMetrics bool
-	
+
 	// Custom metrics collector (nil uses default in-memory collector)
 	MetricsCollector MetricsCollector
 }
@@ -178,32 +178,32 @@ func NewHardenedClipboard(options *ClipboardOptions) (Clipboard, error) {
 	if options == nil {
 		options = DefaultClipboardOptions()
 	}
-	
+
 	// Create base platform clipboard
 	base, err := NewPlatformClipboard()
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Layer on hardening features
-	var clipboard Clipboard = base
-	
+	clipboard := base
+
 	// Add resilience layer (retry + rate limiting + fallback)
 	if options.EnableRetry || options.EnableRateLimit {
 		resilient := NewResilientClipboard(clipboard)
-		
+
 		if options.RetryConfig != nil {
 			resilient.SetRetryConfig(options.RetryConfig)
 		}
-		
+
 		if options.EnableRateLimit && options.RateLimitOpsPerMinute > 0 {
 			limiter := NewRateLimiter(options.RateLimitOpsPerMinute, time.Minute)
 			resilient.SetRateLimiter(limiter)
 		}
-		
+
 		clipboard = resilient
 	}
-	
+
 	// Add metrics layer
 	if options.EnableMetrics {
 		collector := options.MetricsCollector
@@ -212,6 +212,6 @@ func NewHardenedClipboard(options *ClipboardOptions) (Clipboard, error) {
 		}
 		clipboard = NewInstrumentedClipboard(clipboard, collector)
 	}
-	
+
 	return clipboard, nil
 }

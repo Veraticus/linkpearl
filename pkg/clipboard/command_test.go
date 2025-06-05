@@ -9,11 +9,11 @@ import (
 
 func TestRunCommand(t *testing.T) {
 	tests := []struct {
-		name      string
-		cmd       string
-		args      []string
-		config    *CommandConfig
-		wantErr   bool
+		name        string
+		cmd         string
+		args        []string
+		config      *CommandConfig
+		wantErr     bool
 		errContains string
 	}{
 		{
@@ -57,7 +57,7 @@ func TestRunCommand(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			output, err := RunCommand(tt.cmd, tt.args, tt.config)
-			
+
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("expected error but got none")
@@ -123,7 +123,7 @@ func TestRunCommandWithInput(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := RunCommandWithInput(tt.cmd, tt.args, tt.input, tt.config)
-			
+
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("expected error but got none")
@@ -145,7 +145,7 @@ func TestRunCommandContextCancellation(t *testing.T) {
 		Timeout:       1 * time.Nanosecond, // Extremely short timeout
 		MaxOutputSize: MaxClipboardSize,
 	}
-	
+
 	// Try to run a command with extremely short timeout
 	_, err := RunCommand("echo", []string{"test"}, config)
 	if err == nil {
@@ -155,15 +155,15 @@ func TestRunCommandContextCancellation(t *testing.T) {
 
 func TestDefaultCommandConfig(t *testing.T) {
 	config := DefaultCommandConfig()
-	
+
 	if config.Timeout != CommandTimeout {
 		t.Errorf("expected timeout %v, got %v", CommandTimeout, config.Timeout)
 	}
-	
+
 	if config.MaxOutputSize != MaxClipboardSize {
 		t.Errorf("expected max output size %d, got %d", MaxClipboardSize, config.MaxOutputSize)
 	}
-	
+
 	if config.Logger == nil {
 		t.Error("expected non-nil logger")
 	}
@@ -172,14 +172,14 @@ func TestDefaultCommandConfig(t *testing.T) {
 func TestCommandResourceCleanup(t *testing.T) {
 	// This test verifies that resources are cleaned up even when errors occur
 	// We'll use a command that we know will fail
-	
+
 	config := DefaultCommandConfig()
 	err := RunCommandWithInput("false", nil, []byte("test"), config)
-	
+
 	if err == nil {
 		t.Error("expected error from 'false' command")
 	}
-	
+
 	// If we get here without hanging, resource cleanup worked
 	// In a real test, we might check process counts or file descriptors
 }

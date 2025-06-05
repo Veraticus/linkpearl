@@ -67,7 +67,7 @@ func TestSecureConn(t *testing.T) {
 				done <- fmt.Errorf("server receive error: %w", err)
 				return
 			}
-			
+
 			// Verify received message
 			if received.ID != "msg1" || received.Content != "Hello from client" {
 				done <- fmt.Errorf("server received wrong message: %+v", received)
@@ -182,10 +182,10 @@ func TestSecureConn(t *testing.T) {
 				done <- fmt.Errorf("server receive error: %w", err)
 				return
 			}
-			
+
 			// Verify we received the full message
 			if len(received.Data) != maxDataSize {
-				done <- fmt.Errorf("received data size mismatch: got %d, want %d", 
+				done <- fmt.Errorf("received data size mismatch: got %d, want %d",
 					len(received.Data), maxDataSize)
 				return
 			}

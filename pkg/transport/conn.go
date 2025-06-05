@@ -13,7 +13,6 @@
 //   - Messages are encoded as JSON with configurable size limits
 //   - Proper error handling with timeout detection
 //   - Graceful shutdown with connection tracking
-//
 package transport
 
 import (

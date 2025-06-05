@@ -68,10 +68,10 @@ func NewExponentialBackoff(initial, max time.Duration, factor, jitter float64) *
 // DefaultBackoff returns a backoff with default settings
 func DefaultBackoff() *ExponentialBackoff {
 	return NewExponentialBackoff(
-		time.Second,      // 1s initial
-		5*time.Minute,    // 5m max
-		2.0,              // 2x factor
-		0.1,              // 10% jitter
+		time.Second,   // 1s initial
+		5*time.Minute, // 5m max
+		2.0,           // 2x factor
+		0.1,           // 10% jitter
 	)
 }
 

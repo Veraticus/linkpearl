@@ -29,9 +29,9 @@ type topology struct {
 	config    *TopologyConfig
 
 	// State
-	mu       sync.RWMutex
-	started  bool
-	closed   bool
+	mu        sync.RWMutex
+	started   bool
+	closed    bool
 	joinAddrs []string
 
 	// Peer management
@@ -93,18 +93,18 @@ func NewTopology(config *TopologyConfig) (Topology, error) {
 		config:    config,
 		joinAddrs: make([]string, 0, len(config.JoinAddrs)),
 		peers:     newPeerManager(),
-		backoffs:  newBackoffManager(func() *ExponentialBackoff {
+		backoffs: newBackoffManager(func() *ExponentialBackoff {
 			return NewExponentialBackoff(
 				config.ReconnectInterval,
 				config.MaxReconnectInterval,
-				2.0,  // 2x factor
-				0.1,  // 10% jitter
+				2.0, // 2x factor
+				0.1, // 10% jitter
 			)
 		}),
-		events:    newEventPump(config.EventBufferSize),
-		messages:  make(chan Message, config.MessageBufferSize),
-		ctx:       ctx,
-		cancel:    cancel,
+		events:   newEventPump(config.EventBufferSize),
+		messages: make(chan Message, config.MessageBufferSize),
+		ctx:      ctx,
+		cancel:   cancel,
 	}
 
 	// Copy join addresses
@@ -371,18 +371,18 @@ func (t *topology) maintainConnection(addr string) {
 
 		// Attempt connection
 		t.config.Logger.Debug("connecting to", "addr", addr)
-		
+
 		ctx, cancel := context.WithTimeout(t.ctx, 30*time.Second)
 		conn, err := t.transport.Connect(ctx, addr)
 		cancel()
 
 		if err != nil {
 			t.config.Logger.Error("failed to connect", "addr", addr, "error", err)
-			
+
 			// Wait with backoff
 			duration := backoff.Next()
 			t.config.Logger.Debug("reconnecting in", "addr", addr, "duration", duration)
-			
+
 			select {
 			case <-t.ctx.Done():
 				return

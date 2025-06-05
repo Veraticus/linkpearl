@@ -3,7 +3,7 @@
 // This file contains the main transport implementation that handles:
 //   - TCP socket management and connection lifecycle
 //   - Server mode with listening and accepting connections
-//   - Client mode with outbound connection establishment  
+//   - Client mode with outbound connection establishment
 //   - Integration with the authentication and TLS layers
 //   - Node information exchange after secure channel setup
 //   - Connection tracking and graceful shutdown
@@ -14,7 +14,6 @@
 //  3. TLS upgrade with ephemeral certificates
 //  4. Node information exchange (ID, mode, version)
 //  5. Ready for application-level messaging
-//
 package transport
 
 import (
@@ -90,7 +89,7 @@ func (t *tcpTransport) Listen(addr string) error {
 // Accept returns the next incoming connection from the listener.
 // This method blocks until a connection is available or an error occurs.
 // The returned connection is fully authenticated and encrypted.
-// 
+//
 // The acceptance process includes:
 //   - TCP connection acceptance with keepalive settings
 //   - Authentication handshake as server
@@ -176,7 +175,7 @@ func (t *tcpTransport) Accept() (Conn, error) {
 // The connection process includes:
 //   - TCP dial with timeout and keepalive
 //   - Authentication handshake as client
-//   - TLS upgrade with client-side certificate  
+//   - TLS upgrade with client-side certificate
 //   - Node information exchange
 func (t *tcpTransport) Connect(ctx context.Context, addr string) (Conn, error) {
 	t.mu.RLock()
@@ -250,6 +249,7 @@ func (t *tcpTransport) Connect(ctx context.Context, addr string) (Conn, error) {
 // This method implements a coordinated exchange where:
 //   - Server receives first, then sends
 //   - Client sends first, then receives
+//
 // This ensures both sides have each other's information without deadlock.
 func (t *tcpTransport) exchangeNodeInfo(conn *tls.Conn, isServer bool) (*NodeInfo, error) {
 	// Create our node info

@@ -45,24 +45,24 @@ func TestEventTypeString(t *testing.T) {
 // TestEventBufferCreation tests creating event buffers with various capacities
 func TestEventBufferCreation(t *testing.T) {
 	tests := []struct {
-		name         string
-		capacity     int
-		expectedCap  int
+		name        string
+		capacity    int
+		expectedCap int
 	}{
 		{
-			name:         "positive capacity",
-			capacity:     100,
-			expectedCap:  100,
+			name:        "positive capacity",
+			capacity:    100,
+			expectedCap: 100,
 		},
 		{
-			name:         "zero capacity defaults to 1000",
-			capacity:     0,
-			expectedCap:  1000,
+			name:        "zero capacity defaults to 1000",
+			capacity:    0,
+			expectedCap: 1000,
 		},
 		{
-			name:         "negative capacity defaults to 1000",
-			capacity:     -10,
-			expectedCap:  1000,
+			name:        "negative capacity defaults to 1000",
+			capacity:    -10,
+			expectedCap: 1000,
 		},
 	}
 
@@ -311,7 +311,7 @@ func TestEventPumpPublish(t *testing.T) {
 // TestEventPumpNonBlockingPublish tests that publish doesn't block on full channels
 func TestEventPumpNonBlockingPublish(t *testing.T) {
 	pump := newEventPump(100)
-	
+
 	// Create a channel with no buffer
 	ch := make(chan TopologyEvent)
 	pump.Subscribe(ch)
@@ -477,7 +477,7 @@ func TestEventPumpWithMultipleCloseAndSubscribe(t *testing.T) {
 	ch1 := make(chan TopologyEvent)
 	pump.Subscribe(ch1)
 	pump.Close()
-	
+
 	ch2 := make(chan TopologyEvent)
 	pump.Subscribe(ch2)
 
@@ -493,15 +493,15 @@ func TestEventPumpWithMultipleCloseAndSubscribe(t *testing.T) {
 func TestRingBufferEdgeCases(t *testing.T) {
 	// Test with capacity of 1
 	buf := newEventBuffer(1)
-	
+
 	event1 := TopologyEvent{Type: PeerConnected, Peer: Node{ID: "A", Mode: "full", Addr: ":8080"}, Time: time.Now()}
 	event2 := TopologyEvent{Type: PeerDisconnected, Peer: Node{ID: "B", Mode: "client", Addr: ""}, Time: time.Now()}
-	
+
 	buf.Push(event1)
 	buf.Push(event2) // Should overwrite event1
-	
+
 	assert.Equal(t, 1, buf.Size(), "Buffer size")
-	
+
 	popped, ok := buf.Pop()
 	assert.True(t, ok, "Pop should succeed")
 	assert.Equal(t, "B", popped.Peer.ID, "Should have popped event2")
@@ -515,11 +515,11 @@ func TestRingBufferEdgeCases(t *testing.T) {
 			Time: time.Now(),
 		})
 	}
-	
+
 	// Should contain the last 3 events: H, I, J
 	slice := buf2.ToSlice()
 	require.Len(t, slice, 3, "Expected 3 events")
-	
+
 	expectedIDs := []string{"H", "I", "J"}
 	for i, event := range slice {
 		assert.Equal(t, expectedIDs[i], event.Peer.ID, "Event %d ID", i)
@@ -544,7 +544,7 @@ func BenchmarkEventBufferPush(b *testing.B) {
 // BenchmarkEventPumpPublish benchmarks publish operations
 func BenchmarkEventPumpPublish(b *testing.B) {
 	pump := newEventPump(1000)
-	
+
 	// Add some subscribers
 	for i := 0; i < 10; i++ {
 		ch := make(chan TopologyEvent, 100)

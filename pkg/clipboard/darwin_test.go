@@ -23,7 +23,7 @@ func TestPbcopyPbpaste(t *testing.T) {
 
 	// Test 3: Try a simple write/read cycle
 	testContent := "Hello, World!"
-	
+
 	// Write using pbcopy
 	cmd := exec.Command("pbcopy")
 	stdin, err := cmd.StdinPipe()
@@ -106,7 +106,7 @@ func TestDarwinClipboardChangeCount(t *testing.T) {
 	// Check if AppleScript is working
 	if count1 == -1 && count2 == -1 {
 		t.Log("WARNING: AppleScript change count detection not working (both counts are -1)")
-		
+
 		// Try to run AppleScript directly
 		cmd := exec.Command("osascript", "-e", "return 1")
 		output, err := cmd.CombinedOutput()

@@ -211,7 +211,7 @@ func TestMessageHandlerPayloadParsing(t *testing.T) {
 	// Send ping message
 	pingMsg := PingMessage{Timestamp: 12345}
 	payload, _ := json.Marshal(pingMsg)
-	
+
 	err := h.Handle(MessageTypePing, "node1", payload)
 	assert.NoError(t, err)
 	assert.Equal(t, pingMsg.Timestamp, receivedPing.Timestamp)
@@ -573,7 +573,7 @@ func TestMarshalMessagePayloadTypes(t *testing.T) {
 			payload: []string{"a", "b", "c"},
 		},
 		{
-			name:    "nested struct",
+			name: "nested struct",
 			payload: struct {
 				A string
 				B struct {

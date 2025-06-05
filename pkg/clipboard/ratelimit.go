@@ -40,14 +40,14 @@ func (rl *RateLimiter) Allow() bool {
 func (rl *RateLimiter) AllowN(n int) bool {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
-	
+
 	rl.refill()
-	
+
 	if rl.tokens >= float64(n) {
 		rl.tokens -= float64(n)
 		return true
 	}
-	
+
 	return false
 }
 
@@ -55,12 +55,12 @@ func (rl *RateLimiter) AllowN(n int) bool {
 func (rl *RateLimiter) refill() {
 	now := time.Now()
 	elapsed := now.Sub(rl.lastRefill).Seconds()
-	
+
 	rl.tokens += elapsed * rl.refillRate
 	if rl.tokens > rl.maxTokens {
 		rl.tokens = rl.maxTokens
 	}
-	
+
 	rl.lastRefill = now
 }
 
@@ -68,7 +68,7 @@ func (rl *RateLimiter) refill() {
 func (rl *RateLimiter) TokensAvailable() float64 {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
-	
+
 	rl.refill()
 	return rl.tokens
 }
@@ -77,7 +77,7 @@ func (rl *RateLimiter) TokensAvailable() float64 {
 func (rl *RateLimiter) Reset() {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
-	
+
 	rl.tokens = rl.maxTokens
 	rl.lastRefill = time.Now()
 }

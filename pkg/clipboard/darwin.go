@@ -58,8 +58,8 @@ import (
 // content hashing and NSPasteboard's changeCount.
 type DarwinClipboard struct {
 	mu              sync.RWMutex
-	lastHash        string      // SHA-256 hash of last known clipboard content
-	lastChangeCount int         // NSPasteboard changeCount value
+	lastHash        string // SHA-256 hash of last known clipboard content
+	lastChangeCount int    // NSPasteboard changeCount value
 	sequenceNumber  atomic.Uint64
 	lastModified    time.Time
 	cmdConfig       *CommandConfig // Configuration for command execution
@@ -83,15 +83,15 @@ func (c *DarwinClipboard) Read() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("clipboard read failed: %w", err)
 	}
-	
+
 	if err := ValidateContent(output); err != nil {
 		return "", err
 	}
-	
+
 	if os.Getenv("CI") == "true" {
 		fmt.Printf("[DarwinClipboard.Read] Read %d bytes from clipboard\n", len(output))
 	}
-	
+
 	return string(output), nil
 }
 
@@ -105,7 +105,7 @@ func (c *DarwinClipboard) Write(content string) error {
 	if err := ValidateContent(contentBytes); err != nil {
 		return err
 	}
-	
+
 	if err := RunCommandWithInput("pbcopy", nil, contentBytes, c.cmdConfig); err != nil {
 		return fmt.Errorf("clipboard write failed: %w", err)
 	}
@@ -232,14 +232,14 @@ func (c *DarwinClipboard) getChangeCount() int {
 		MaxOutputSize: 1024, // changeCount output is tiny
 		Logger:        c.cmdConfig.Logger,
 	}
-	
+
 	// Use AppleScript to get the pasteboard change count
 	script := `
 		use framework "AppKit"
 		set pb to current application's NSPasteboard's generalPasteboard()
 		return pb's changeCount() as integer
 	`
-	
+
 	output, err := RunCommand("osascript", []string{"-e", script}, config)
 	if err != nil {
 		// Fallback to -1 to indicate error
@@ -267,7 +267,7 @@ func (c *DarwinClipboard) hashContent(content string) string {
 func (c *DarwinClipboard) GetState() ClipboardState {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	
+
 	return ClipboardState{
 		SequenceNumber: c.sequenceNumber.Load(),
 		LastModified:   c.lastModified,

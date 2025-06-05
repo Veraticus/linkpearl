@@ -30,12 +30,12 @@ func NewInstrumentedClipboard(clipboard Clipboard, metrics MetricsCollector) *In
 // Read returns the current clipboard contents with metrics
 func (ic *InstrumentedClipboard) Read() (string, error) {
 	start := time.Now()
-	
+
 	content, err := ic.clipboard.Read()
-	
+
 	duration := time.Since(start)
 	ic.metrics.RecordOperation("read", duration, err)
-	
+
 	if err == nil {
 		ic.metrics.RecordSize("read", len(content))
 	} else {
@@ -44,28 +44,28 @@ func (ic *InstrumentedClipboard) Read() (string, error) {
 			ic.metrics.RecordTimeout("read")
 		}
 	}
-	
+
 	return content, err
 }
 
 // Write sets the clipboard contents with metrics
 func (ic *InstrumentedClipboard) Write(content string) error {
 	start := time.Now()
-	
+
 	ic.metrics.RecordSize("write", len(content))
-	
+
 	err := ic.clipboard.Write(content)
-	
+
 	duration := time.Since(start)
 	ic.metrics.RecordOperation("write", duration, err)
-	
+
 	if err != nil {
 		ic.metrics.RecordError("write", err)
 		if err == context.DeadlineExceeded {
 			ic.metrics.RecordTimeout("write")
 		}
 	}
-	
+
 	return err
 }
 
@@ -73,18 +73,18 @@ func (ic *InstrumentedClipboard) Write(content string) error {
 func (ic *InstrumentedClipboard) Watch(ctx context.Context) <-chan struct{} {
 	// Create wrapped channel
 	wrappedCh := make(chan struct{}, 10)
-	
+
 	// Get the underlying channel
 	underlyingCh := ic.clipboard.Watch(ctx)
-	
+
 	// Track watcher count
 	ic.incrementWatcherCount()
-	
+
 	// Forward notifications with metrics
 	go func() {
 		defer close(wrappedCh)
 		defer ic.decrementWatcherCount()
-		
+
 		for {
 			select {
 			case <-ctx.Done():
@@ -93,11 +93,11 @@ func (ic *InstrumentedClipboard) Watch(ctx context.Context) <-chan struct{} {
 				if !ok {
 					return
 				}
-				
+
 				// Record sequence number from state
 				state := ic.clipboard.GetState()
 				ic.metrics.RecordSequenceNumber(state.SequenceNumber)
-				
+
 				// Forward notification
 				select {
 				case wrappedCh <- notification:
@@ -109,7 +109,7 @@ func (ic *InstrumentedClipboard) Watch(ctx context.Context) <-chan struct{} {
 			}
 		}
 	}()
-	
+
 	return wrappedCh
 }
 

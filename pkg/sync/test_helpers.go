@@ -37,7 +37,7 @@ func newMockClipboard() *mockClipboard {
 func (m *mockClipboard) Read() (string, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	if m.readErr != nil {
 		return "", m.readErr
 	}
@@ -47,16 +47,16 @@ func (m *mockClipboard) Read() (string, error) {
 func (m *mockClipboard) Write(content string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	if m.writeErr != nil {
 		return m.writeErr
 	}
-	
+
 	m.content = content
 	m.contentHash = computeChecksum(content)
 	m.sequenceNumber.Add(1)
 	m.lastModified = time.Now()
-	
+
 	select {
 	case m.writeCh <- content:
 	default:
@@ -80,7 +80,7 @@ func (m *mockClipboard) EmitChange(content string) {
 	m.sequenceNumber.Add(1)
 	m.lastModified = time.Now()
 	m.mu.Unlock()
-	
+
 	select {
 	case m.changeCh <- struct{}{}:
 	default:
@@ -90,7 +90,7 @@ func (m *mockClipboard) EmitChange(content string) {
 func (m *mockClipboard) GetState() clipboard.ClipboardState {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	return clipboard.ClipboardState{
 		SequenceNumber: m.sequenceNumber.Load(),
 		LastModified:   m.lastModified,
@@ -135,7 +135,7 @@ func (m *mockTopology) RemoveJoinAddr(addr string) error {
 func (m *mockTopology) GetPeer(nodeID string) (*mesh.PeerInfo, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	if peer, exists := m.peers[nodeID]; exists {
 		return peer, nil
 	}
@@ -145,7 +145,7 @@ func (m *mockTopology) GetPeer(nodeID string) (*mesh.PeerInfo, error) {
 func (m *mockTopology) GetPeers() map[string]*mesh.PeerInfo {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	peers := make(map[string]*mesh.PeerInfo)
 	for k, v := range m.peers {
 		peers[k] = v
@@ -162,7 +162,7 @@ func (m *mockTopology) PeerCount() int {
 func (m *mockTopology) SendToPeer(nodeID string, msg interface{}) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	if m.sendErr != nil {
 		return m.sendErr
 	}
@@ -172,11 +172,11 @@ func (m *mockTopology) SendToPeer(nodeID string, msg interface{}) error {
 func (m *mockTopology) Broadcast(msg interface{}) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	if m.sendErr != nil {
 		return m.sendErr
 	}
-	
+
 	m.broadcasts = append(m.broadcasts, msg)
 	return nil
 }
@@ -195,7 +195,7 @@ func (m *mockTopology) EmitMessage(from string, msgType string, payload interfac
 		Type:    msgType,
 		Payload: mustMarshal(payload),
 	}
-	
+
 	select {
 	case m.messageCh <- msg:
 	default:
@@ -205,7 +205,7 @@ func (m *mockTopology) EmitMessage(from string, msgType string, payload interfac
 func (m *mockTopology) GetBroadcasts() []interface{} {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	broadcasts := make([]interface{}, len(m.broadcasts))
 	copy(broadcasts, m.broadcasts)
 	return broadcasts
@@ -242,7 +242,7 @@ func (l *testLogger) Error(msg string, keysAndValues ...interface{}) {
 func (l *testLogger) log(level, msg string, keysAndValues ...interface{}) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	
+
 	l.logs = append(l.logs, logEntry{
 		level: level,
 		msg:   msg,
@@ -253,7 +253,7 @@ func (l *testLogger) log(level, msg string, keysAndValues ...interface{}) {
 func (l *testLogger) GetLogs() []logEntry {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	
+
 	logs := make([]logEntry, len(l.logs))
 	copy(logs, l.logs)
 	return logs

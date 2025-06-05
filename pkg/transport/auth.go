@@ -25,7 +25,6 @@
 //   - Time synchronization is required (5-minute tolerance)
 //   - Ephemeral certificates prevent long-term key compromise
 //   - HMAC prevents secret disclosure during authentication
-//
 package transport
 
 import (
@@ -185,6 +184,7 @@ func (a *defaultAuthenticator) createAuthMessage(secret string) (*AuthMessage, e
 // It checks:
 //   - Timestamp is within acceptable window (±5 minutes)
 //   - HMAC matches the expected value for the given parameters
+//
 // This prevents replay attacks and verifies peer knowledge of the secret.
 func (a *defaultAuthenticator) verifyAuthMessage(msg *AuthMessage, secret string) error {
 	// Check timestamp (5 minute window)

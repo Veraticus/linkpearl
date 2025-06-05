@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Veraticus/linkpearl/pkg/transport"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/Veraticus/linkpearl/pkg/transport"
 )
 
 // Type alias to avoid shadowing in test functions
@@ -73,7 +73,7 @@ func (c *mockTopologyConn) Receive(msg interface{}) error {
 	if err != nil {
 		return err
 	}
-	
+
 	// Create a done channel to detect when connection is closed
 	done := make(chan struct{})
 	go func() {
@@ -83,7 +83,7 @@ func (c *mockTopologyConn) Receive(msg interface{}) error {
 		}
 		close(done)
 	}()
-	
+
 	select {
 	case data := <-c.receiveChan:
 		// Handle different data types
@@ -151,15 +151,15 @@ func (c *mockTopologyConn) SetWriteDeadline(t time.Time) error {
 
 // mockTopologyTransport implements transport.Transport for testing
 type mockTopologyTransport struct {
-	addr         string
-	listening    atomic.Bool
-	acceptChan   chan transport.Conn
-	connectFunc  func(ctx context.Context, addr string) (transportConn, error)
-	connections  map[string]*mockTopologyConn
-	mu           sync.RWMutex
-	acceptErr    error
-	listenErr    error
-	closed       atomic.Bool
+	addr        string
+	listening   atomic.Bool
+	acceptChan  chan transport.Conn
+	connectFunc func(ctx context.Context, addr string) (transportConn, error)
+	connections map[string]*mockTopologyConn
+	mu          sync.RWMutex
+	acceptErr   error
+	listenErr   error
+	closed      atomic.Bool
 }
 
 func newMockTopologyTransport() *mockTopologyTransport {
@@ -379,7 +379,7 @@ func TestNewTopology(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				require.NotNil(t, topo)
-				
+
 				// Verify internal state
 				impl := topo.(*topology)
 				assert.Equal(t, tt.config.Self, impl.self)
@@ -389,7 +389,7 @@ func TestNewTopology(t *testing.T) {
 				assert.NotNil(t, impl.events)
 				assert.NotNil(t, impl.messages)
 				assert.NotNil(t, impl.router)
-				
+
 				// Clean up
 				_ = topo.Stop()
 			}
@@ -461,7 +461,7 @@ func TestTopologyLifecycle(t *testing.T) {
 	t.Run("start with listen error", func(t *testing.T) {
 		transport := newMockTopologyTransport()
 		transport.listenErr = errors.New("address in use")
-		
+
 		config := &TopologyConfig{
 			Self:      Node{ID: "node1", Mode: "full", Addr: "localhost:8080"},
 			Transport: transport,
@@ -475,7 +475,7 @@ func TestTopologyLifecycle(t *testing.T) {
 		err = topo.Start(context.Background())
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to listen")
-		
+
 		// Clean up
 		_ = topo.Stop()
 	})
@@ -860,7 +860,7 @@ func TestMessageRouting(t *testing.T) {
 			// Message should be wrapped in mesh message format
 			data, ok := msg.([]byte)
 			require.True(t, ok)
-			
+
 			var meshMsg meshMessage
 			err = json.Unmarshal(data, &meshMsg)
 			require.NoError(t, err)
@@ -940,7 +940,7 @@ func TestMessageRouting(t *testing.T) {
 		clipboardMsg := map[string]string{"content": "test clipboard data"}
 		msgData, err := marshalMessage(MessageTypeClipboard, "peer1", clipboardMsg)
 		require.NoError(t, err)
-		
+
 		select {
 		case peerConn.receiveChan <- msgData:
 		case <-time.After(100 * time.Millisecond):
@@ -989,7 +989,7 @@ func TestMessageRouting(t *testing.T) {
 		pingMsg := PingMessage{Timestamp: time.Now().Unix()}
 		msgData, err := marshalMessage(MessageTypePing, "peer1", pingMsg)
 		require.NoError(t, err)
-		
+
 		select {
 		case peerConn.receiveChan <- msgData:
 		case <-time.After(100 * time.Millisecond):
@@ -1001,12 +1001,12 @@ func TestMessageRouting(t *testing.T) {
 		case msg := <-peerConn.sendChan:
 			data, ok := msg.([]byte)
 			require.True(t, ok)
-			
+
 			msgType, from, payload, err := unmarshalMessage(data)
 			require.NoError(t, err)
 			assert.Equal(t, MessageTypePong, msgType)
 			assert.Equal(t, "node1", from)
-			
+
 			var pong PongMessage
 			err = json.Unmarshal(payload, &pong)
 			require.NoError(t, err)
@@ -1036,18 +1036,18 @@ func TestPeerListExchange(t *testing.T) {
 	// Add first peer
 	peer1Conn := newMockTopologyConn("peer1", "full")
 	transport.AddIncomingConnection(peer1Conn)
-	
+
 	// Should receive peer list
 	select {
 	case msg := <-peer1Conn.sendChan:
 		data, ok := msg.([]byte)
 		require.True(t, ok)
-		
+
 		msgType, from, payload, err := unmarshalMessage(data)
 		require.NoError(t, err)
 		assert.Equal(t, MessageTypePeerList, msgType)
 		assert.Equal(t, "node1", from)
-		
+
 		var peerList PeerListMessage
 		err = json.Unmarshal(payload, &peerList)
 		require.NoError(t, err)
@@ -1060,21 +1060,21 @@ func TestPeerListExchange(t *testing.T) {
 	// Add second peer
 	peer2Conn := newMockTopologyConn("peer2", "client")
 	transport.AddIncomingConnection(peer2Conn)
-	
+
 	// Second peer should receive list with node1 and peer1
 	select {
 	case msg := <-peer2Conn.sendChan:
 		data, ok := msg.([]byte)
 		require.True(t, ok)
-		
+
 		_, _, payload, err := unmarshalMessage(data)
 		require.NoError(t, err)
-		
+
 		var peerList PeerListMessage
 		err = json.Unmarshal(payload, &peerList)
 		require.NoError(t, err)
 		assert.Len(t, peerList.Peers, 2) // self and peer1
-		
+
 		nodeIDs := make([]string, len(peerList.Peers))
 		for i, node := range peerList.Peers {
 			nodeIDs[i] = node.ID
@@ -1112,7 +1112,7 @@ func TestTopologyConcurrentOperations(t *testing.T) {
 		// Send messages concurrently
 		var wg sync.WaitGroup
 		errors := make(chan error, 10)
-		
+
 		for i := 0; i < 10; i++ {
 			wg.Add(1)
 			go func(n int) {
@@ -1123,7 +1123,7 @@ func TestTopologyConcurrentOperations(t *testing.T) {
 				}
 			}(i)
 		}
-		
+
 		wg.Wait()
 		close(errors)
 
@@ -1170,7 +1170,7 @@ func TestTopologyConcurrentOperations(t *testing.T) {
 				transport.AddIncomingConnection(conn)
 			}(i)
 		}
-		
+
 		wg.Wait()
 		time.Sleep(200 * time.Millisecond)
 
@@ -1183,7 +1183,7 @@ func TestTopologyConcurrentOperations(t *testing.T) {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				
+
 				// Random operations
 				switch i % 3 {
 				case 0:
@@ -1195,7 +1195,7 @@ func TestTopologyConcurrentOperations(t *testing.T) {
 				}
 			}()
 		}
-		
+
 		wg.Wait()
 	})
 
@@ -1217,12 +1217,12 @@ func TestTopologyConcurrentOperations(t *testing.T) {
 			go func(n int) {
 				defer wg.Done()
 				addr := fmt.Sprintf("localhost:%d", 9000+n)
-				
+
 				// Add
 				if err := topo.AddJoinAddr(addr); err != nil {
 					t.Errorf("add error: %v", err)
 				}
-				
+
 				// Remove half of them
 				if n%2 == 0 {
 					if err := topo.RemoveJoinAddr(addr); err != nil {
@@ -1231,7 +1231,7 @@ func TestTopologyConcurrentOperations(t *testing.T) {
 				}
 			}(i)
 		}
-		
+
 		wg.Wait()
 
 		// Verify state is consistent
@@ -1239,7 +1239,7 @@ func TestTopologyConcurrentOperations(t *testing.T) {
 		impl.mu.RLock()
 		joinCount := len(impl.joinAddrs)
 		impl.mu.RUnlock()
-		
+
 		// Should have 5 addresses (odd numbers)
 		assert.Equal(t, 5, joinCount)
 	})
@@ -1345,7 +1345,7 @@ func TestErrorHandling(t *testing.T) {
 				goto done
 			}
 		}
-		done:
+	done:
 
 		// Some messages should be dropped due to buffer overflow
 		// Just verify no panic
@@ -1433,7 +1433,7 @@ func TestEventSystem(t *testing.T) {
 		// Should still receive buffered events
 		connectCount := 0
 		disconnectCount := 0
-		
+
 		timeout := time.After(time.Second)
 		for connectCount < 5 || disconnectCount < 5 {
 			select {
@@ -1445,7 +1445,7 @@ func TestEventSystem(t *testing.T) {
 					disconnectCount++
 				}
 			case <-timeout:
-				t.Fatalf("got %d connects and %d disconnects, expected 5 each", 
+				t.Fatalf("got %d connects and %d disconnects, expected 5 each",
 					connectCount, disconnectCount)
 			}
 		}
@@ -1457,17 +1457,17 @@ func TestReconnectionBehavior(t *testing.T) {
 	t.Run("reconnect after disconnect", func(t *testing.T) {
 		connectCount := atomic.Int32{}
 		transport := newMockTopologyTransport()
-		
+
 		// Track connections
 		var currentConn *mockTopologyConn
 		var mu sync.Mutex
-		
+
 		transport.connectFunc = func(ctx context.Context, addr string) (transportConn, error) {
 			count := connectCount.Add(1)
-			
+
 			mu.Lock()
 			defer mu.Unlock()
-			
+
 			switch count {
 			case 1:
 				// First connection
@@ -1539,13 +1539,13 @@ func TestReconnectionBehavior(t *testing.T) {
 	t.Run("exponential backoff", func(t *testing.T) {
 		attempts := make([]time.Time, 0)
 		var mu sync.Mutex
-		
+
 		transport := newMockTopologyTransport()
 		transport.connectFunc = func(ctx context.Context, addr string) (transportConn, error) {
 			mu.Lock()
 			attempts = append(attempts, time.Now())
 			mu.Unlock()
-			
+
 			// Always fail to see backoff pattern
 			return nil, errors.New("connection refused")
 		}
@@ -1567,23 +1567,23 @@ func TestReconnectionBehavior(t *testing.T) {
 
 		// Let it try a few times
 		time.Sleep(time.Second)
-		
+
 		// Stop to end the test
 		_ = topo.Stop()
 
 		// Verify backoff pattern
 		mu.Lock()
 		defer mu.Unlock()
-		
+
 		require.GreaterOrEqual(t, len(attempts), 3)
-		
+
 		// Check intervals are increasing
 		for i := 2; i < len(attempts); i++ {
 			interval1 := attempts[i-1].Sub(attempts[i-2])
 			interval2 := attempts[i].Sub(attempts[i-1])
-			
+
 			// Later interval should be >= earlier (with some tolerance)
-			assert.GreaterOrEqual(t, interval2.Milliseconds(), 
+			assert.GreaterOrEqual(t, interval2.Milliseconds(),
 				interval1.Milliseconds()-10) // 10ms tolerance
 		}
 	})

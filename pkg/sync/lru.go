@@ -70,7 +70,7 @@ func newLRUCache(size int) (*lruCache, error) {
 	if size <= 0 {
 		size = 1000 // Default size
 	}
-	
+
 	return &lruCache{
 		size:      size,
 		evictList: list.New(),
@@ -89,7 +89,7 @@ func newLRUCache(size int) (*lruCache, error) {
 func (c *lruCache) Add(key string, value interface{}) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	// Check if key already exists
 	if elem, exists := c.items[key]; exists {
 		// Move to front and update value
@@ -97,12 +97,12 @@ func (c *lruCache) Add(key string, value interface{}) {
 		elem.Value.(*entry).value = value
 		return
 	}
-	
+
 	// Add new entry
 	ent := &entry{key: key, value: value}
 	elem := c.evictList.PushFront(ent)
 	c.items[key] = elem
-	
+
 	// Evict oldest if over capacity
 	if c.evictList.Len() > c.size {
 		c.removeOldest()
@@ -120,13 +120,13 @@ func (c *lruCache) Add(key string, value interface{}) {
 func (c *lruCache) Get(key string) (interface{}, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	if elem, exists := c.items[key]; exists {
 		// Move to front (mark as recently used)
 		c.evictList.MoveToFront(elem)
 		return elem.Value.(*entry).value, true
 	}
-	
+
 	return nil, false
 }
 
@@ -138,7 +138,7 @@ func (c *lruCache) Get(key string) (interface{}, bool) {
 func (c *lruCache) Contains(key string) bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	_, exists := c.items[key]
 	return exists
 }
@@ -147,12 +147,12 @@ func (c *lruCache) Contains(key string) bool {
 func (c *lruCache) Remove(key string) bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	if elem, exists := c.items[key]; exists {
 		c.removeElement(elem)
 		return true
 	}
-	
+
 	return false
 }
 
@@ -160,7 +160,7 @@ func (c *lruCache) Remove(key string) bool {
 func (c *lruCache) Clear() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	c.items = make(map[string]*list.Element)
 	c.evictList.Init()
 }
@@ -169,7 +169,7 @@ func (c *lruCache) Clear() {
 func (c *lruCache) Len() int {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	return c.evictList.Len()
 }
 

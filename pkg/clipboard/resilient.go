@@ -38,23 +38,23 @@ func (rc *ResilientClipboard) Read() (string, error) {
 	if !rc.rateLimiter.Allow() {
 		return "", fmt.Errorf("clipboard read rate limit exceeded")
 	}
-	
+
 	// Check if we're in fallback mode
 	rc.mu.RLock()
 	inFallback := rc.fallbackMode
 	rc.mu.RUnlock()
-	
+
 	if inFallback {
 		return "", fmt.Errorf("clipboard temporarily unavailable due to repeated failures")
 	}
-	
+
 	var result string
 	err := RetryOperation(context.Background(), rc.retryConfig, func() error {
 		var readErr error
 		result, readErr = rc.clipboard.Read()
 		return readErr
 	})
-	
+
 	rc.updateErrorState(err)
 	return result, err
 }
@@ -65,20 +65,20 @@ func (rc *ResilientClipboard) Write(content string) error {
 	if !rc.rateLimiter.Allow() {
 		return fmt.Errorf("clipboard write rate limit exceeded")
 	}
-	
+
 	// Check if we're in fallback mode
 	rc.mu.RLock()
 	inFallback := rc.fallbackMode
 	rc.mu.RUnlock()
-	
+
 	if inFallback {
 		return fmt.Errorf("clipboard temporarily unavailable due to repeated failures")
 	}
-	
+
 	err := RetryOperation(context.Background(), rc.retryConfig, func() error {
 		return rc.clipboard.Write(content)
 	})
-	
+
 	rc.updateErrorState(err)
 	return err
 }
@@ -86,23 +86,23 @@ func (rc *ResilientClipboard) Write(content string) error {
 // Watch monitors clipboard changes with automatic reconnection on failures
 func (rc *ResilientClipboard) Watch(ctx context.Context) <-chan struct{} {
 	ch := make(chan struct{}, 10)
-	
+
 	go func() {
 		defer close(ch)
-		
+
 		for {
 			select {
 			case <-ctx.Done():
 				return
 			default:
 			}
-			
+
 			// Create a sub-context for this watch attempt
 			watchCtx, watchCancel := context.WithCancel(ctx)
-			
+
 			// Start watching
 			watchCh := rc.clipboard.Watch(watchCtx)
-			
+
 			// Forward notifications
 			functioning := true
 			for functioning {
@@ -127,9 +127,9 @@ func (rc *ResilientClipboard) Watch(ctx context.Context) <-chan struct{} {
 					}
 				}
 			}
-			
+
 			watchCancel()
-			
+
 			// Wait before reconnecting
 			select {
 			case <-time.After(time.Second):
@@ -139,7 +139,7 @@ func (rc *ResilientClipboard) Watch(ctx context.Context) <-chan struct{} {
 			}
 		}
 	}()
-	
+
 	return ch
 }
 
@@ -152,7 +152,7 @@ func (rc *ResilientClipboard) GetState() ClipboardState {
 func (rc *ResilientClipboard) updateErrorState(err error) {
 	rc.mu.Lock()
 	defer rc.mu.Unlock()
-	
+
 	if err == nil {
 		// Reset error state on success
 		rc.errorCount = 0
@@ -160,10 +160,10 @@ func (rc *ResilientClipboard) updateErrorState(err error) {
 		rc.fallbackMode = false
 		return
 	}
-	
+
 	rc.lastError = err
 	rc.errorCount++
-	
+
 	// Enter fallback mode after 5 consecutive failures
 	if rc.errorCount >= 5 {
 		rc.fallbackMode = true
@@ -175,13 +175,13 @@ func (rc *ResilientClipboard) updateErrorState(err error) {
 // scheduleRecovery attempts to recover from fallback mode
 func (rc *ResilientClipboard) scheduleRecovery() {
 	time.Sleep(30 * time.Second)
-	
+
 	// Try a test operation
 	_, err := rc.clipboard.Read()
-	
+
 	rc.mu.Lock()
 	defer rc.mu.Unlock()
-	
+
 	if err == nil {
 		// Recovery successful
 		rc.errorCount = 0
@@ -191,10 +191,10 @@ func (rc *ResilientClipboard) scheduleRecovery() {
 }
 
 // GetErrorState returns the current error state for monitoring
-func (rc *ResilientClipboard) GetErrorState() (error, int, bool) {
+func (rc *ResilientClipboard) GetErrorState() (int, bool, error) {
 	rc.mu.RLock()
 	defer rc.mu.RUnlock()
-	return rc.lastError, rc.errorCount, rc.fallbackMode
+	return rc.errorCount, rc.fallbackMode, rc.lastError
 }
 
 // SetRetryConfig updates the retry configuration

@@ -13,20 +13,19 @@ const (
 // ValidateContent checks if clipboard content is within acceptable limits
 func ValidateContent(content []byte) error {
 	if len(content) > MaxClipboardSize {
-		return fmt.Errorf("%w: %d bytes (max: %d)", 
+		return fmt.Errorf("%w: %d bytes (max: %d)",
 			ErrContentTooLarge, len(content), MaxClipboardSize)
 	}
-	
-	// Warn for large but valid content
-	if len(content) > MaxReasonableSize {
-		// This would use the logger from CommandConfig
-		// Log warning about large clipboard content
-	}
-	
+
+	// TODO: Warn for large but valid content
+	// if len(content) > MaxReasonableSize {
+	//     logger.Warn("Large clipboard content", "size", len(content))
+	// }
+
 	// Ensure valid UTF-8 for text operations
 	if !utf8.Valid(content) {
 		return fmt.Errorf("clipboard content contains invalid UTF-8")
 	}
-	
+
 	return nil
 }

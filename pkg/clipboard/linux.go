@@ -185,7 +185,7 @@ func (c *LinuxClipboard) Write(content string) error {
 	if err := ValidateContent(contentBytes); err != nil {
 		return err
 	}
-	
+
 	if err := RunCommandWithInput(c.tool.name, c.tool.writeArgs, contentBytes, c.cmdConfig); err != nil {
 		return fmt.Errorf("clipboard write failed: %w", err)
 	}
@@ -375,7 +375,7 @@ func (c *LinuxClipboard) hashContent(content string) string {
 func (c *LinuxClipboard) GetState() ClipboardState {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	
+
 	return ClipboardState{
 		SequenceNumber: c.sequenceNumber.Load(),
 		LastModified:   c.lastModified,

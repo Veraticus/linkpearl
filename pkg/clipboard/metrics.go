@@ -17,16 +17,16 @@ type MetricsCollector interface {
 	// Operation metrics
 	RecordOperation(op string, duration time.Duration, err error)
 	RecordSize(op string, size int)
-	
+
 	// Error metrics
 	RecordError(op string, err error)
 	RecordTimeout(op string)
 	RecordRateLimitHit(op string)
-	
+
 	// State metrics
 	RecordWatcherCount(count int)
 	RecordSequenceNumber(seq uint64)
-	
+
 	// Get current metrics snapshot
 	GetMetrics() MetricsSnapshot
 }
@@ -45,15 +45,15 @@ type MetricsSnapshot struct {
 
 // OperationMetrics tracks metrics for a specific operation type
 type OperationMetrics struct {
-	Count       uint64
-	TotalTime   time.Duration
-	MinTime     time.Duration
-	MaxTime     time.Duration
-	AvgTime     time.Duration
-	TotalBytes  uint64
-	MinBytes    uint64
-	MaxBytes    uint64
-	ErrorCount  uint64
+	Count      uint64
+	TotalTime  time.Duration
+	MinTime    time.Duration
+	MaxTime    time.Duration
+	AvgTime    time.Duration
+	TotalBytes uint64
+	MinBytes   uint64
+	MaxBytes   uint64
+	ErrorCount uint64
 }
 
 // DefaultMetricsCollector provides a basic in-memory metrics implementation
@@ -100,10 +100,10 @@ func (m *DefaultMetricsCollector) RecordOperation(op string, duration time.Durat
 		m.operations[op] = stats
 	}
 	m.mu.Unlock()
-	
+
 	stats.count.Add(1)
 	stats.totalTime.Add(int64(duration))
-	
+
 	// Update min/max times
 	for {
 		min := stats.minTime.Load()
@@ -114,7 +114,7 @@ func (m *DefaultMetricsCollector) RecordOperation(op string, duration time.Durat
 			break
 		}
 	}
-	
+
 	for {
 		max := stats.maxTime.Load()
 		if int64(duration) <= max {
@@ -124,7 +124,7 @@ func (m *DefaultMetricsCollector) RecordOperation(op string, duration time.Durat
 			break
 		}
 	}
-	
+
 	if err != nil {
 		stats.errorCount.Add(1)
 	}
@@ -140,9 +140,9 @@ func (m *DefaultMetricsCollector) RecordSize(op string, size int) {
 		m.operations[op] = stats
 	}
 	m.mu.Unlock()
-	
+
 	stats.totalBytes.Add(uint64(size))
-	
+
 	// Update min/max sizes
 	for {
 		min := stats.minBytes.Load()
@@ -153,7 +153,7 @@ func (m *DefaultMetricsCollector) RecordSize(op string, size int) {
 			break
 		}
 	}
-	
+
 	for {
 		max := stats.maxBytes.Load()
 		if uint64(size) <= max {
@@ -170,9 +170,9 @@ func (m *DefaultMetricsCollector) RecordError(op string, err error) {
 	if err == nil {
 		return
 	}
-	
+
 	key := op + "_" + categorizeError(err)
-	
+
 	m.mu.Lock()
 	counter, ok := m.errors[key]
 	if !ok {
@@ -180,7 +180,7 @@ func (m *DefaultMetricsCollector) RecordError(op string, err error) {
 		m.errors[key] = counter
 	}
 	m.mu.Unlock()
-	
+
 	counter.Add(1)
 }
 
@@ -193,7 +193,7 @@ func (m *DefaultMetricsCollector) RecordTimeout(op string) {
 		m.timeouts[op] = counter
 	}
 	m.mu.Unlock()
-	
+
 	counter.Add(1)
 }
 
@@ -206,7 +206,7 @@ func (m *DefaultMetricsCollector) RecordRateLimitHit(op string) {
 		m.rateLimitHits[op] = counter
 	}
 	m.mu.Unlock()
-	
+
 	counter.Add(1)
 }
 
@@ -224,7 +224,7 @@ func (m *DefaultMetricsCollector) RecordSequenceNumber(seq uint64) {
 func (m *DefaultMetricsCollector) GetMetrics() MetricsSnapshot {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	snapshot := MetricsSnapshot{
 		Operations:      make(map[string]*OperationMetrics),
 		Errors:          make(map[string]uint64),
@@ -235,17 +235,17 @@ func (m *DefaultMetricsCollector) GetMetrics() MetricsSnapshot {
 		CollectionStart: m.collectionStart,
 		CollectionEnd:   time.Now(),
 	}
-	
+
 	// Copy operation metrics
 	for op, stats := range m.operations {
 		count := stats.count.Load()
 		if count == 0 {
 			continue
 		}
-		
+
 		totalTime := time.Duration(stats.totalTime.Load())
 		avgTime := totalTime / time.Duration(count)
-		
+
 		snapshot.Operations[op] = &OperationMetrics{
 			Count:      count,
 			TotalTime:  totalTime,
@@ -258,37 +258,37 @@ func (m *DefaultMetricsCollector) GetMetrics() MetricsSnapshot {
 			ErrorCount: stats.errorCount.Load(),
 		}
 	}
-	
+
 	// Copy error counts
 	for key, counter := range m.errors {
 		snapshot.Errors[key] = counter.Load()
 	}
-	
+
 	// Copy timeout counts
 	for op, counter := range m.timeouts {
 		snapshot.Timeouts[op] = counter.Load()
 	}
-	
+
 	// Copy rate limit hit counts
 	for op, counter := range m.rateLimitHits {
 		snapshot.RateLimitHits[op] = counter.Load()
 	}
-	
+
 	return snapshot
 }
 
 // categorizeError categorizes errors for metrics grouping
 func categorizeError(err error) string {
-	switch {
-	case err == nil:
+	switch err {
+	case nil:
 		return "none"
-	case err == ErrNotSupported:
+	case ErrNotSupported:
 		return "not_supported"
-	case err == ErrContentTooLarge:
+	case ErrContentTooLarge:
 		return "content_too_large"
-	case err == context.DeadlineExceeded:
+	case context.DeadlineExceeded:
 		return "timeout"
-	case err == context.Canceled:
+	case context.Canceled:
 		return "cancelled"
 	default:
 		// Generic categorization based on error message

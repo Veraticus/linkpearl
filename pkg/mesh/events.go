@@ -229,7 +229,7 @@ func (p *eventPump) Close() {
 	}
 
 	p.closed = true
-	
+
 	// Don't close channels - let them be garbage collected
 	// Closing would race with Publish
 	p.listeners = nil

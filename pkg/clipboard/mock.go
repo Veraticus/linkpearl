@@ -32,10 +32,10 @@
 //	defer cancel()
 //
 //	changes := mock.Watch(ctx)
-//	
+//
 //	// Simulate clipboard change
 //	mock.EmitChange("new content")
-//	
+//
 //	select {
 //	case content := <-changes:
 //	    assert.Equal(t, "new content", content)
@@ -70,10 +70,10 @@ import (
 // It stores clipboard content in memory and provides mechanisms
 // to simulate clipboard changes for testing Watch functionality.
 type MockClipboard struct {
-	mu             sync.RWMutex         // Protects content and state
-	content        string               // Current clipboard content
-	watchers       []chan<- struct{}    // Active watcher channels
-	watcherMu      sync.Mutex           // Protects watchers slice
+	mu             sync.RWMutex      // Protects content and state
+	content        string            // Current clipboard content
+	watchers       []chan<- struct{} // Active watcher channels
+	watcherMu      sync.Mutex        // Protects watchers slice
 	sequenceNumber atomic.Uint64
 	lastModified   time.Time
 	contentHash    string
@@ -106,7 +106,7 @@ func (m *MockClipboard) Write(content string) error {
 	if err := ValidateContent([]byte(content)); err != nil {
 		return err
 	}
-	
+
 	m.mu.Lock()
 	m.content = content
 	m.contentHash = hashContent(content)
@@ -209,7 +209,7 @@ func (m *MockClipboard) GetWatcherCount() int {
 func (m *MockClipboard) GetState() ClipboardState {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	return ClipboardState{
 		SequenceNumber: m.sequenceNumber.Load(),
 		LastModified:   m.lastModified,

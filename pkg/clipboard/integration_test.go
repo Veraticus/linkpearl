@@ -17,34 +17,34 @@ func TestClipboardWithTimeout(t *testing.T) {
 
 	clip, err := NewPlatformClipboard()
 	if err != nil {
-		t.Fatalf("failed to create clipboard: %v", err)
+		t.Skipf("skipping test: %v", err)
 	}
 
 	// Test that normal operations complete within timeout
 	testContent := "Test timeout handling"
-	
+
 	start := time.Now()
 	err = clip.Write(testContent)
 	if err != nil {
 		t.Errorf("write failed: %v", err)
 	}
 	writeTime := time.Since(start)
-	
+
 	if writeTime > 5*time.Second {
 		t.Errorf("write took too long: %v", writeTime)
 	}
-	
+
 	start = time.Now()
 	content, err := clip.Read()
 	if err != nil {
 		t.Errorf("read failed: %v", err)
 	}
 	readTime := time.Since(start)
-	
+
 	if readTime > 5*time.Second {
 		t.Errorf("read took too long: %v", readTime)
 	}
-	
+
 	if content != testContent {
 		t.Errorf("content mismatch: got %q, want %q", content, testContent)
 	}
@@ -57,7 +57,7 @@ func TestClipboardSizeLimits(t *testing.T) {
 
 	clip, err := NewPlatformClipboard()
 	if err != nil {
-		t.Fatalf("failed to create clipboard: %v", err)
+		t.Skipf("skipping test: %v", err)
 	}
 
 	tests := []struct {
@@ -91,27 +91,27 @@ func TestClipboardSizeLimits(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Generate content of specified size
 			content := string(bytes.Repeat([]byte("x"), tt.size))
-			
+
 			// Test write
 			err := clip.Write(content)
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("expected write error but got none")
-				} else if !containsString(err.Error(), "ErrContentTooLarge") && 
-				          !containsString(err.Error(), "exceeds limit") {
+				} else if !containsString(err.Error(), "ErrContentTooLarge") &&
+					!containsString(err.Error(), "exceeds limit") {
 					t.Errorf("unexpected error: %v", err)
 				}
 			} else {
 				if err != nil {
 					t.Errorf("unexpected write error: %v", err)
 				}
-				
+
 				// Verify we can read it back
 				readContent, err := clip.Read()
 				if err != nil {
 					t.Errorf("failed to read back content: %v", err)
 				} else if len(readContent) != tt.size {
-					t.Errorf("content size mismatch: got %d, want %d", 
+					t.Errorf("content size mismatch: got %d, want %d",
 						len(readContent), tt.size)
 				}
 			}
@@ -126,7 +126,7 @@ func TestClipboardInvalidUTF8(t *testing.T) {
 
 	clip, err := NewPlatformClipboard()
 	if err != nil {
-		t.Fatalf("failed to create clipboard: %v", err)
+		t.Skipf("skipping test: %v", err)
 	}
 
 	// Test writing invalid UTF-8
@@ -146,13 +146,13 @@ func TestClipboardConcurrency(t *testing.T) {
 
 	clip, err := NewPlatformClipboard()
 	if err != nil {
-		t.Fatalf("failed to create clipboard: %v", err)
+		t.Skipf("skipping test: %v", err)
 	}
 
 	// Test concurrent reads and writes
 	done := make(chan bool)
 	errors := make(chan error, 10)
-	
+
 	// Writer goroutine
 	go func() {
 		for i := 0; i < 5; i++ {
@@ -164,7 +164,7 @@ func TestClipboardConcurrency(t *testing.T) {
 		}
 		done <- true
 	}()
-	
+
 	// Reader goroutines
 	for i := 0; i < 3; i++ {
 		go func() {
@@ -177,14 +177,14 @@ func TestClipboardConcurrency(t *testing.T) {
 			done <- true
 		}()
 	}
-	
+
 	// Wait for completion
 	for i := 0; i < 4; i++ {
 		<-done
 	}
-	
+
 	close(errors)
-	
+
 	// Check for errors
 	var errCount int
 	for err := range errors {

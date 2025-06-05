@@ -91,9 +91,9 @@ func NewClipboardMessage(nodeID, content string) *ClipboardMessage {
 
 // computeChecksum calculates SHA256 checksum of content.
 // This serves multiple purposes:
-//   1. Integrity verification - detects corruption during transmission
-//   2. Deduplication - identical content produces identical checksums
-//   3. Change detection - different content always has different checksums
+//  1. Integrity verification - detects corruption during transmission
+//  2. Deduplication - identical content produces identical checksums
+//  3. Change detection - different content always has different checksums
 //
 // SHA256 is chosen for its strong collision resistance and widespread
 // availability across platforms.
@@ -118,9 +118,9 @@ func UnmarshalClipboardMessage(data []byte) (*ClipboardMessage, error) {
 
 // Validate checks if the message is valid and internally consistent.
 // This method performs several critical checks:
-//   1. All required fields are present and non-empty
-//   2. Timestamp is positive (valid Unix time)
-//   3. Checksum matches the actual content
+//  1. All required fields are present and non-empty
+//  2. Timestamp is positive (valid Unix time)
+//  3. Checksum matches the actual content
 //
 // The checksum verification is particularly important as it ensures the
 // message hasn't been corrupted or tampered with during transmission.

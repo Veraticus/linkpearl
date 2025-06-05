@@ -63,7 +63,12 @@ func testLocalClipboardWatch(t *testing.T) {
 
 	// Wait for change notification
 	select {
-	case content := <-watchCh:
+	case <-watchCh:
+		// Notification received, now read the content
+		content, err := clip.Read()
+		if err != nil {
+			t.Fatalf("Failed to read clipboard after notification: %v", err)
+		}
 		if content != testContent {
 			t.Errorf("Expected %q, got %q", testContent, content)
 		}
@@ -202,7 +207,7 @@ func TestPerformanceWithSystemClipboard(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		content := fmt.Sprintf("Latency test %d", i)
 		start := time.Now()
-		
+
 		if err := node1.clipboard.Write(content); err != nil {
 			t.Fatalf("Failed to write: %v", err)
 		}
@@ -376,18 +381,18 @@ func assertSystemClipboardContent(t *testing.T, clip clipboard.Clipboard, expect
 	deadline := time.Now().Add(timeout)
 	var lastContent string
 	var lastErr error
-	
+
 	for time.Now().Before(deadline) {
 		content, err := clip.Read()
 		lastContent = content
 		lastErr = err
-		
+
 		if err == nil && content == expected {
 			return
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
-	
+
 	if lastErr != nil {
 		t.Fatalf("Failed to read clipboard: %v", lastErr)
 	}

@@ -79,25 +79,25 @@ func (l *logger) withPrefix(prefix string) *logger {
 // formatMessage formats a log message with key-value pairs
 func (l *logger) formatMessage(level, msg string, keysAndValues ...interface{}) string {
 	var sb strings.Builder
-	
+
 	// Timestamp
 	sb.WriteString(time.Now().Format("2006-01-02T15:04:05.000Z07:00"))
 	sb.WriteString(" ")
-	
+
 	// Level
 	sb.WriteString(fmt.Sprintf("%-5s", level))
 	sb.WriteString(" ")
-	
+
 	// Prefix if set
 	if l.prefix != "" {
 		sb.WriteString("[")
 		sb.WriteString(l.prefix)
 		sb.WriteString("] ")
 	}
-	
+
 	// Message
 	sb.WriteString(msg)
-	
+
 	// Key-value pairs
 	if len(keysAndValues) > 0 {
 		sb.WriteString(" ")
@@ -105,19 +105,19 @@ func (l *logger) formatMessage(level, msg string, keysAndValues ...interface{}) 
 			if i > 0 {
 				sb.WriteString(" ")
 			}
-			
+
 			key := fmt.Sprintf("%v", keysAndValues[i])
 			var value interface{}
 			if i+1 < len(keysAndValues) {
 				value = keysAndValues[i+1]
 			}
-			
+
 			sb.WriteString(key)
 			sb.WriteString("=")
 			sb.WriteString(fmt.Sprintf("%v", value))
 		}
 	}
-	
+
 	return sb.String()
 }
 

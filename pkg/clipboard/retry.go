@@ -44,31 +44,31 @@ func (rc *RetryConfig) isRetryableError(err error) bool {
 	if err == nil {
 		return false
 	}
-	
+
 	// Don't retry on permanent errors
 	if errors.Is(err, ErrNotSupported) || errors.Is(err, ErrContentTooLarge) {
 		return false
 	}
-	
+
 	// Check if it's a timeout error
 	if errors.Is(err, context.DeadlineExceeded) {
 		return true
 	}
-	
+
 	// Check configured retryable errors
 	for _, retryableErr := range rc.RetryableErrors {
 		if errors.Is(err, retryableErr) {
 			return true
 		}
 	}
-	
+
 	// Check for specific error patterns
 	errStr := err.Error()
 	// Retry on temporary failures
 	if contains(errStr, "temporary failure") || contains(errStr, "resource temporarily unavailable") {
 		return true
 	}
-	
+
 	// Default: don't retry unknown errors
 	return false
 }
@@ -78,15 +78,15 @@ func (rc *RetryConfig) calculateDelay(attempt int) time.Duration {
 	if attempt <= 0 {
 		return rc.InitialDelay
 	}
-	
+
 	// Calculate exponential backoff
 	delay := float64(rc.InitialDelay) * math.Pow(rc.BackoffFactor, float64(attempt-1))
-	
+
 	// Apply max delay cap
 	if delay > float64(rc.MaxDelay) {
 		delay = float64(rc.MaxDelay)
 	}
-	
+
 	// Add jitter
 	if rc.JitterFactor > 0 {
 		jitter := delay * rc.JitterFactor * (2*rand.Float64() - 1) // -jitter to +jitter
@@ -95,7 +95,7 @@ func (rc *RetryConfig) calculateDelay(attempt int) time.Duration {
 			delay = float64(rc.InitialDelay)
 		}
 	}
-	
+
 	return time.Duration(delay)
 }
 
@@ -104,28 +104,28 @@ func RetryOperation(ctx context.Context, config *RetryConfig, operation func() e
 	if config == nil {
 		config = DefaultRetryConfig()
 	}
-	
+
 	var lastErr error
-	
+
 	for attempt := 1; attempt <= config.MaxAttempts; attempt++ {
 		// Execute the operation
 		err := operation()
-		
+
 		// Success
 		if err == nil {
 			return nil
 		}
-		
+
 		lastErr = err
-		
+
 		// Check if we should retry
 		if attempt >= config.MaxAttempts || !config.isRetryableError(err) {
 			break
 		}
-		
+
 		// Calculate delay for next attempt
 		delay := config.calculateDelay(attempt)
-		
+
 		// Wait with context cancellation support
 		select {
 		case <-time.After(delay):
@@ -134,11 +134,11 @@ func RetryOperation(ctx context.Context, config *RetryConfig, operation func() e
 			return fmt.Errorf("retry cancelled: %w", ctx.Err())
 		}
 	}
-	
+
 	if lastErr != nil {
 		return fmt.Errorf("operation failed after %d attempts: %w", config.MaxAttempts, lastErr)
 	}
-	
+
 	return lastErr
 }
 

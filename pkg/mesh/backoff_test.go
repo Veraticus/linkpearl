@@ -110,11 +110,11 @@ func TestExponentialBackoff(t *testing.T) {
 	t.Run("InvalidParameters", func(t *testing.T) {
 		// Test parameter validation
 		tests := []struct {
-			name    string
-			initial time.Duration
-			max     time.Duration
-			factor  float64
-			jitter  float64
+			name        string
+			initial     time.Duration
+			max         time.Duration
+			factor      float64
+			jitter      float64
 			wantInitial time.Duration
 			wantMax     time.Duration
 			wantFactor  float64
@@ -165,7 +165,7 @@ func TestExponentialBackoff(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				b := NewExponentialBackoff(tt.initial, tt.max, tt.factor, tt.jitter)
-				
+
 				if tt.wantInitial != 0 {
 					assert.Equal(t, tt.wantInitial, b.initial, "initial")
 				}
