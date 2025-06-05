@@ -130,7 +130,32 @@ done
 print_status 0 "All cross-platform builds and test compilations succeeded"
 echo
 
-# 9. Check for common issues
+# 9. Nix builds (if available)
+if command -v nix &> /dev/null; then
+    echo "=== Testing Nix Builds ==="
+    
+    # Get current system
+    CURRENT_SYSTEM=$(nix eval --raw --impure --expr builtins.currentSystem 2>/dev/null)
+    if [ -z "$CURRENT_SYSTEM" ]; then
+        echo -e "${YELLOW}Could not determine current nix system, skipping nix builds${NC}"
+    else
+        echo -n "Building for current system ($CURRENT_SYSTEM)... "
+        if nix build .#packages.${CURRENT_SYSTEM}.default -L --no-link 2>/dev/null; then
+            echo -e "${GREEN}✓${NC}"
+            print_status 0 "Nix build succeeded for $CURRENT_SYSTEM"
+        else
+            echo -e "${RED}✗${NC}"
+            echo -e "${RED}Nix build failed for $CURRENT_SYSTEM${NC}"
+            exit 1
+        fi
+    fi
+    echo
+else
+    echo -e "${YELLOW}=== Skipping Nix Builds (nix not installed) ===${NC}"
+    echo
+fi
+
+# 10. Check for common issues
 echo "=== Checking for Common Issues ==="
 
 # Check for TODO/FIXME comments
