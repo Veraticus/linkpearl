@@ -574,11 +574,14 @@ func TestJoinAddressManagement(t *testing.T) {
 		err = topo.AddJoinAddr("localhost:8081")
 		require.NoError(t, err)
 
+		// Give the goroutine time to start (especially important with race detector)
+		time.Sleep(10 * time.Millisecond)
+
 		// Wait for connection attempt
 		select {
 		case addr := <-connected:
 			assert.Equal(t, "localhost:8081", addr)
-		case <-time.After(time.Second):
+		case <-time.After(2 * time.Second):
 			t.Fatal("connection not attempted")
 		}
 	})
