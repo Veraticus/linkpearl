@@ -110,7 +110,7 @@ func testSystemClipboardSync(t *testing.T) {
 		t.Fatalf("Failed to start node1: %v", err)
 	}
 
-	cfg2.Join = []string{node1.transport.Addr().String()}
+	cfg2.Join = []string{node1.ListenAddr()}
 	node2, cleanup2 := createSystemTestNode(t, cfg2)
 	defer cleanup2()
 
@@ -188,7 +188,7 @@ func TestPerformanceWithSystemClipboard(t *testing.T) {
 		Secret:       "perf-test-secret",
 		NodeID:       "perf-node-2",
 		Listen:       ":0",
-		Join:         []string{node1.transport.Addr().String()},
+		Join:         []string{node1.ListenAddr()},
 		PollInterval: 200 * time.Millisecond,
 	}
 
@@ -284,6 +284,15 @@ func (n *systemTestNode) Start(ctx context.Context) error {
 	}()
 
 	return nil
+}
+
+func (n *systemTestNode) ListenAddr() string {
+	if n.config.Listen == ":0" && n.transport != nil {
+		if addr := n.transport.Addr(); addr != nil {
+			return addr.String()
+		}
+	}
+	return n.config.Listen
 }
 
 func (n *systemTestNode) Stop() {

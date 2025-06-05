@@ -313,14 +313,7 @@ func createTransport(cfg *config.Config, log *logger) (transport.Transport, erro
 	// Create TCP transport
 	trans := transport.NewTCPTransport(transportCfg)
 
-	// Listen if we're a full node
-	if cfg.Mode == config.FullNode && cfg.Listen != "" {
-		if err := trans.Listen(cfg.Listen); err != nil {
-			return nil, fmt.Errorf("failed to listen on %s: %w", cfg.Listen, err)
-		}
-		log.Info("listening for connections", "addr", trans.Addr())
-	}
-
+	// Note: The topology will handle listening when it starts
 	return trans, nil
 }
 
