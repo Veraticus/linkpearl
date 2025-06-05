@@ -108,10 +108,7 @@
                 RestartSec = 5;
                 
                 # Hardening
-                DynamicUser = true;
                 PrivateTmp = true;
-                ProtectSystem = "strict";
-                ProtectHome = "read-only";
                 ProtectKernelTunables = true;
                 ProtectKernelModules = true;
                 ProtectControlGroups = true;
@@ -128,13 +125,6 @@
                 ProtectClock = true;
                 ProtectKernelLogs = true;
                 SystemCallArchitectures = "native";
-                SystemCallFilter = [ "@system-service" "~@privileged" "~@resources" ];
-                
-                # Needed for secret file access
-                ReadOnlyPaths = lib.optional (cfg.secretFile != null) (toString cfg.secretFile);
-                
-                # Allow access to X11/Wayland for clipboard
-                SupplementaryGroups = [ "video" ];
                 
                 # Ensure clipboard access works
                 PassEnvironment = [ "DISPLAY" "WAYLAND_DISPLAY" "XDG_RUNTIME_DIR" ];
