@@ -47,7 +47,7 @@ type MessageType string
 
 const (
 	// MessageTypeClipboard is for clipboard synchronization
-	MessageTypeClipboard MessageType = "clipboard_sync"
+	MessageTypeClipboard MessageType = "clipboard"
 )
 
 // ClipboardMessage represents a clipboard synchronization message exchanged

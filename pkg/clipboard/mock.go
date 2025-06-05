@@ -59,7 +59,10 @@ package clipboard
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -67,17 +70,22 @@ import (
 // It stores clipboard content in memory and provides mechanisms
 // to simulate clipboard changes for testing Watch functionality.
 type MockClipboard struct {
-	mu        sync.RWMutex     // Protects content
-	content   string          // Current clipboard content
-	watchers  []chan<- string // Active watcher channels
-	watcherMu sync.Mutex      // Protects watchers slice
+	mu             sync.RWMutex         // Protects content and state
+	content        string               // Current clipboard content
+	watchers       []chan<- struct{}    // Active watcher channels
+	watcherMu      sync.Mutex           // Protects watchers slice
+	sequenceNumber atomic.Uint64
+	lastModified   time.Time
+	contentHash    string
 }
 
 // NewMockClipboard creates a new mock clipboard instance.
 // The clipboard starts with empty content and no active watchers.
 func NewMockClipboard() *MockClipboard {
 	return &MockClipboard{
-		watchers: make([]chan<- string, 0),
+		watchers:     make([]chan<- struct{}, 0),
+		lastModified: time.Now(),
+		contentHash:  hashContent(""),
 	}
 }
 
@@ -92,24 +100,37 @@ func (m *MockClipboard) Read() (string, error) {
 // Write sets the mock clipboard contents and notifies watchers.
 // This simulates a clipboard write operation and triggers all
 // active watchers to receive the new content.
+// Content size is limited to MaxClipboardSize to match production behavior.
 func (m *MockClipboard) Write(content string) error {
+	// Validate content (same as production)
+	if err := ValidateContent([]byte(content)); err != nil {
+		return err
+	}
+	
 	m.mu.Lock()
 	m.content = content
+	m.contentHash = hashContent(content)
+	m.sequenceNumber.Add(1)
+	m.lastModified = time.Now()
 	m.mu.Unlock()
 
 	// Notify all watchers
-	m.notifyWatchers(content)
+	m.notifyWatchers()
 	return nil
 }
 
-// Watch returns a channel that emits when the clipboard changes.
+// Watch returns a channel that signals when clipboard state changes.
+// The channel receives empty structs as notifications.
+// Actual content must be retrieved using Read().
+// Channel has buffer size of 10 to handle bursts without blocking.
+//
 // The channel is automatically closed and the watcher is removed
 // when the provided context is cancelled.
 //
 // Multiple watchers can be active simultaneously, and each will
 // receive notifications of clipboard changes.
-func (m *MockClipboard) Watch(ctx context.Context) <-chan string {
-	ch := make(chan string)
+func (m *MockClipboard) Watch(ctx context.Context) <-chan struct{} {
+	ch := make(chan struct{}, 10)
 
 	// Register the watcher
 	m.watcherMu.Lock()
@@ -142,32 +163,35 @@ func (m *MockClipboard) Watch(ctx context.Context) <-chan string {
 //
 // This is useful for testing scenarios where clipboard content
 // changes from outside the application being tested.
+// Note: This method bypasses size limit checks for testing purposes.
 func (m *MockClipboard) EmitChange(content string) {
 	m.mu.Lock()
 	m.content = content
+	m.contentHash = hashContent(content)
+	m.sequenceNumber.Add(1)
+	m.lastModified = time.Now()
 	m.mu.Unlock()
 
-	m.notifyWatchers(content)
+	m.notifyWatchers()
 }
 
-// notifyWatchers sends the new content to all registered watchers.
-// Notifications are sent asynchronously with a timeout to prevent
-// blocking if a watcher's channel is full or not being consumed.
-func (m *MockClipboard) notifyWatchers(content string) {
+// notifyWatchers sends notifications to all registered watchers.
+// Notifications are sent as empty structs to signal state change.
+// Actual content must be retrieved using Read().
+func (m *MockClipboard) notifyWatchers() {
 	m.watcherMu.Lock()
-	watchers := make([]chan<- string, len(m.watchers))
+	watchers := make([]chan<- struct{}, len(m.watchers))
 	copy(watchers, m.watchers)
 	m.watcherMu.Unlock()
 
-	// Send to all watchers in a separate goroutine to avoid blocking
+	// Send to all watchers (non-blocking)
 	for _, ch := range watchers {
-		go func(c chan<- string) {
-			select {
-			case c <- content:
-			case <-time.After(100 * time.Millisecond):
-				// Timeout to prevent hanging
-			}
-		}(ch)
+		select {
+		case ch <- struct{}{}:
+			// Successfully sent
+		default:
+			// Channel full - skip notification
+		}
 	}
 }
 
@@ -179,4 +203,22 @@ func (m *MockClipboard) GetWatcherCount() int {
 	m.watcherMu.Lock()
 	defer m.watcherMu.Unlock()
 	return len(m.watchers)
+}
+
+// GetState returns current state information
+func (m *MockClipboard) GetState() ClipboardState {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	
+	return ClipboardState{
+		SequenceNumber: m.sequenceNumber.Load(),
+		LastModified:   m.lastModified,
+		ContentHash:    m.contentHash,
+	}
+}
+
+// hashContent creates a SHA-256 hash of the content
+func hashContent(content string) string {
+	h := sha256.Sum256([]byte(content))
+	return hex.EncodeToString(h[:])
 }

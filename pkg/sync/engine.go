@@ -137,11 +137,18 @@ func (e *engine) Run(ctx context.Context) error {
 	// Main event loop
 	for {
 		select {
-		case content, ok := <-clipCh:
+		case _, ok := <-clipCh:
 			if !ok {
 				return fmt.Errorf("clipboard watch channel closed")
 			}
-			e.handleLocalChange(content)
+			// Notification received - pull current state
+			content, err := e.clipboard.Read()
+			if err != nil {
+				e.logger.Error("failed to read clipboard", "error", err)
+				continue
+			}
+			state := e.clipboard.GetState()
+			e.handleLocalChange(content, state)
 			
 		case msg, ok := <-msgCh:
 			if !ok {
@@ -217,18 +224,28 @@ func (e *engine) initializeState() error {
 // This is triggered when the user copies new content to their clipboard.
 //
 // Processing steps:
-//   1. Compute checksum of new content
-//   2. Check if content actually changed (ignore duplicates)
-//   3. Detect potential sync loops using timing heuristics
-//   4. Update internal state with new content
-//   5. Add to deduplication cache
-//   6. Broadcast change to all connected peers
+//   1. Check if content actually changed using state hash
+//   2. Detect potential sync loops using timing heuristics
+//   3. Update internal state with new content
+//   4. Add to deduplication cache
+//   5. Broadcast change to all connected peers
+//
+// The state parameter provides sequence number and hash information to help
+// detect duplicate notifications that may occur with rapid clipboard changes.
 //
 // Sync loop detection prevents infinite loops when our own changes echo back
 // through the network. This uses timing windows to identify suspiciously fast
 // round-trip updates.
-func (e *engine) handleLocalChange(content string) {
+func (e *engine) handleLocalChange(content string, state clipboard.ClipboardState) {
 	checksum := computeChecksum(content)
+	
+	// Verify state hash matches content (defensive check)
+	if state.ContentHash != "" && state.ContentHash != checksum {
+		e.logger.Error("clipboard state hash mismatch", 
+			"state_hash", state.ContentHash[:8],
+			"content_hash", checksum[:8],
+		)
+	}
 	
 	e.mu.Lock()
 	// Check if content actually changed
@@ -255,6 +272,16 @@ func (e *engine) handleLocalChange(content string) {
 	
 	// Add to dedupe cache
 	e.dedupe.Add(checksum, e.timestamp)
+	
+	// Check size limits before broadcasting
+	if len(content) > e.config.MaxClipboardSize {
+		e.logger.Error("clipboard content exceeds maximum size",
+			"size", len(content),
+			"limit", e.config.MaxClipboardSize,
+		)
+		atomic.AddUint64(&e.stats.SendErrors, 1)
+		return
+	}
 	
 	// Create and broadcast message
 	msg := NewClipboardMessage(e.config.NodeID, content)
@@ -319,6 +346,17 @@ func (e *engine) handleIncomingMessage(msg mesh.Message) {
 	// Validate message
 	if err := clipMsg.Validate(); err != nil {
 		e.logger.Error("invalid clipboard message", "error", err, "from", msg.From)
+		atomic.AddUint64(&e.stats.ReceiveErrors, 1)
+		return
+	}
+	
+	// Check size limits
+	if len(clipMsg.Content) > e.config.MaxClipboardSize {
+		e.logger.Error("received clipboard content exceeds maximum size",
+			"size", len(clipMsg.Content),
+			"limit", e.config.MaxClipboardSize,
+			"from", msg.From,
+		)
 		atomic.AddUint64(&e.stats.ReceiveErrors, 1)
 		return
 	}

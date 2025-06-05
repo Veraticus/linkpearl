@@ -57,12 +57,17 @@ func TestMockClipboard(t *testing.T) {
 		}()
 
 		select {
-		case content := <-ch:
+		case <-ch:
+			// Notification received, now read content
+			content, err := mock.Read()
+			if err != nil {
+				t.Fatalf("Read() error = %v", err)
+			}
 			if content != testContent {
-				t.Errorf("Watch received %q, want %q", content, testContent)
+				t.Errorf("Read() = %q, want %q", content, testContent)
 			}
 		case <-time.After(time.Second):
-			t.Fatal("Timeout waiting for clipboard change")
+			t.Fatal("Timeout waiting for clipboard change notification")
 		}
 
 		// Cancel should clean up watcher
@@ -94,11 +99,16 @@ func TestMockClipboard(t *testing.T) {
 			t.Fatalf("Failed to write to mock clipboard: %v", err)
 		}
 
-		for i, ch := range []<-chan string{ch1, ch2} {
+		for i, ch := range []<-chan struct{}{ch1, ch2} {
 			select {
-			case content := <-ch:
+			case <-ch:
+				// Notification received, now read content
+				content, err := mock.Read()
+				if err != nil {
+					t.Fatalf("Read() error = %v", err)
+				}
 				if content != testContent {
-					t.Errorf("Watcher %d received %q, want %q", i+1, content, testContent)
+					t.Errorf("Watcher %d: Read() = %q, want %q", i+1, content, testContent)
 				}
 			case <-time.After(time.Second):
 				t.Fatalf("Timeout waiting for watcher %d", i+1)
@@ -121,12 +131,10 @@ func TestMockClipboard(t *testing.T) {
 		}()
 
 		select {
-		case content := <-ch:
-			if content != testContent {
-				t.Errorf("Watch received %q, want %q", content, testContent)
-			}
+		case <-ch:
+			// Notification received
 		case <-time.After(time.Second):
-			t.Fatal("Timeout waiting for emitted change")
+			t.Fatal("Timeout waiting for emitted change notification")
 		}
 
 		// Verify content was updated

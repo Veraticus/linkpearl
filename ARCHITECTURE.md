@@ -1,8 +1,84 @@
 # Linkpearl Architecture Document
 
-## Quick Start for Development
+## Overview
 
-### Directory Structure
+Linkpearl is a secure, peer-to-peer clipboard synchronization tool that creates a mesh network of computers, allowing seamless clipboard sharing between machines. Named after Final Fantasy XIV's communication crystals, Linkpearl connects your devices in a "linkshell" for instant clipboard synchronization.
+
+### Core Principles
+- **Simplicity**: Small binary, minimal dependencies, easy setup
+- **Security**: All clipboard data encrypted in transit via TLS
+- **Resilience**: Handles network disruptions, sleeping computers, and transient connections
+- **Privacy**: Your data never touches third-party servers
+- **Cross-platform**: Native support for macOS and Linux (Windows later)
+
+## Critical Architecture Decisions
+
+### Clipboard Event Handling: State-Based Synchronization
+
+**Decision**: Clipboards are treated as **state** rather than **event streams**. The Watch interface returns notifications that state has changed, not the actual content.
+
+**Rationale**: 
+- Prevents blocking when sync engine is busy processing
+- Avoids unbounded memory growth from queued clipboard data
+- Natural deduplication of rapid clipboard changes
+- Clear separation between notification and data transfer
+
+**Implementation**:
+```go
+type Clipboard interface {
+    Read() (string, error)
+    Write(content string) error
+    
+    // Watch returns a channel that signals when clipboard state changes.
+    // The channel receives empty structs as notifications.
+    // Actual content must be retrieved using Read().
+    // Channel has buffer size of 10 to handle bursts without blocking.
+    Watch(ctx context.Context) <-chan struct{}
+}
+```
+
+**Key Properties**:
+1. **Non-blocking**: Watchers never block on clipboard data
+2. **Memory-bounded**: No queuing of clipboard contents
+3. **Pull-based**: Sync engine reads when ready, not when pushed
+4. **Coalescing**: Multiple rapid changes may produce single notification
+
+**Sequence Tracking**: Each clipboard implementation maintains:
+- `sequenceNumber`: Monotonically increasing counter for each change
+- `lastModified`: Timestamp of last change
+- These help detect missed changes during processing delays
+
+### Event Flow Architecture
+
+```
+Clipboard Change
+    ↓
+Watcher detects change
+    ↓
+Send notification (struct{}) → [buffered chan, size 10] → Sync Engine
+    ↓                                                          ↓
+Returns immediately                                    Processes when ready
+                                                              ↓
+                                                      Pulls current state
+                                                              ↓
+                                                      Broadcasts to peers
+```
+
+This architecture ensures:
+- Clipboard watchers never block on slow consumers
+- Memory usage is bounded regardless of clipboard activity
+- System remains responsive under load
+- Natural rate limiting through state pulling
+
+### Benefits of State-Based Design
+
+1. **Resilience**: If sync engine is temporarily busy (network issues, CPU spike), clipboard monitoring continues unaffected
+2. **Natural Deduplication**: Rapid clipboard changes (e.g., user selecting text repeatedly) collapse into single sync operation
+3. **Predictable Memory**: No risk of unbounded growth from queued clipboard contents
+4. **Simpler Testing**: Can test notification and data retrieval separately
+5. **Better Debugging**: Sequence numbers and timestamps make it easy to track missed updates
+
+## Directory Structure
 ```
 linkpearl/
 ├── cmd/
@@ -99,51 +175,6 @@ go build -o linkpearl ./cmd/linkpearl
 ./linkpearl --secret mysecret --listen :8080
 ```
 
-## Current Status
-- [x] Project initialized (go.mod created)
-- [x] Directory structure created
-- [x] Makefile added
-- [x] Config package implemented and tested
-- [x] Group 1: Clipboard Interface
-  - [x] Interface defined (clipboard/interface.go)
-  - [x] macOS implementation (clipboard/darwin.go)
-  - [x] Linux implementation (clipboard/linux.go)
-  - [x] Mock implementation (clipboard/mock.go)
-  - [x] Unit tests passing
-- [x] Group 2: Network Transport
-  - [x] Transport interface defined
-  - [x] TCP implementation
-  - [x] Authentication protocol
-  - [x] TLS upgrade
-  - [x] Unit tests passing
-- [x] Group 3: Mesh Topology
-  - [x] Topology manager
-  - [x] Static overlay (no peer discovery)
-  - [x] Peer management with reconnection
-  - [x] Exponential backoff
-  - [x] Unit tests passing (93.4% coverage)
-- [x] Group 4: Sync Engine
-  - [x] Sync engine core loop
-  - [x] LRU-based message deduplication
-  - [x] Last-write-wins conflict resolution
-  - [x] Sync loop detection
-  - [x] Unit tests passing
-- [ ] Group 5: CLI & Config
-  - [ ] Config parsing
-  - [ ] CLI flags
-  - [ ] Main entry point
-  - [ ] Graceful shutdown
-
-## Overview
-
-Linkpearl is a secure, peer-to-peer clipboard synchronization tool that creates a mesh network of computers, allowing seamless clipboard sharing between machines. Named after Final Fantasy XIV's communication crystals, Linkpearl connects your devices in a "linkshell" for instant clipboard synchronization.
-
-### Core Principles
-- **Simplicity**: Small binary, minimal dependencies, easy setup
-- **Security**: All clipboard data encrypted in transit via TLS
-- **Resilience**: Handles network disruptions, sleeping computers, and transient connections
-- **Privacy**: Your data never touches third-party servers
-- **Cross-platform**: Native support for macOS and Linux (Windows later)
 
 ### High-Level Architecture
 
@@ -169,14 +200,16 @@ Legend:
 ## Feature Groups
 
 ### Group 1: Clipboard Interface
-**Goal**: Platform-agnostic clipboard access
+**Goal**: Platform-agnostic clipboard access with state-based synchronization
 
 #### Requirements
 - Read current clipboard contents
 - Write new clipboard contents  
-- Watch for clipboard changes
+- Watch for clipboard changes (notification-based)
 - Support text content (MVP)
 - Work on macOS and Linux (with varying clipboard providers, xsel, xclip, etc.)
+- Non-blocking event notification
+- Bounded memory usage
 
 #### Implementation
 
@@ -189,26 +222,36 @@ type Clipboard interface {
     // Write sets clipboard contents
     Write(content string) error
     
-    // Watch returns channel that emits on clipboard changes
-    // Implementation varies by platform:
-    // - Linux: Event-based via XFixes
-    // - Windows: Event-based via WM_CLIPBOARDUPDATE
-    // - macOS: Smart polling with changeCount
-    Watch(ctx context.Context) <-chan string
-}}
+    // Watch returns channel that signals when clipboard state changes.
+    // The channel receives empty structs as notifications.
+    // Actual content must be retrieved using Read().
+    // Channel has buffer size of 10 to handle bursts without blocking.
+    // Multiple rapid changes may result in a single notification.
+    Watch(ctx context.Context) <-chan struct{}
+    
+    // GetState returns current state information
+    GetState() ClipboardState
+}
+
+// ClipboardState provides metadata about clipboard state
+type ClipboardState struct {
+    SequenceNumber uint64    // Monotonically increasing counter
+    LastModified   time.Time // When clipboard was last changed
+    ContentHash    string    // SHA256 hash of current content
+}
 
 // Platform-specific implementations
 // pkg/clipboard/darwin.go  - Uses pbcopy/pbpaste
 // pkg/clipboard/linux/xsel.go - Linux clipboard providers, this one is xsel
 // pkg/clipboard/mock.go    - For testing
 
-func (c *DarwinClipboard) Watch(ctx context.Context) <-chan string {
-    ch := make(chan string)
+func (c *DarwinClipboard) Watch(ctx context.Context) <-chan struct{} {
+    ch := make(chan struct{}, 10) // Buffered to handle bursts
     go func() {
         defer close(ch)
         
         lastChangeCount := c.getChangeCount()
-        ticker := time.NewTicker(500 * time.Millisecond) // Longer interval
+        ticker := time.NewTicker(500 * time.Millisecond)
         defer ticker.Stop()
         
         idleCount := 0
@@ -221,8 +264,14 @@ func (c *DarwinClipboard) Watch(ctx context.Context) <-chan string {
                 if currentCount != lastChangeCount {
                     lastChangeCount = currentCount
                     idleCount = 0
-                    if content, err := c.Read(); err == nil {
-                        ch <- content
+                    c.sequenceNumber.Add(1)
+                    c.lastModified = time.Now()
+                    
+                    // Send notification (non-blocking)
+                    select {
+                    case ch <- struct{}{}:
+                    default:
+                        // Channel full, skip notification
                     }
                 } else {
                     idleCount++
@@ -238,8 +287,8 @@ func (c *DarwinClipboard) Watch(ctx context.Context) <-chan string {
 }
 
 // pkg/clipboard/linux.go
-func (c *LinuxClipboard) Watch(ctx context.Context) <-chan string {
-    ch := make(chan string)
+func (c *LinuxClipboard) Watch(ctx context.Context) <-chan struct{} {
+    ch := make(chan struct{}, 10) // Buffered to handle bursts
     go func() {
         defer close(ch)
         
@@ -255,7 +304,7 @@ func (c *LinuxClipboard) Watch(ctx context.Context) <-chan string {
     return ch
 }
 
-func (c *LinuxClipboard) watchWithClipnotify(ctx context.Context, ch chan<- string) {
+func (c *LinuxClipboard) watchWithClipnotify(ctx context.Context, ch chan<- struct{}) {
     for {
         select {
         case <-ctx.Done():
@@ -268,9 +317,14 @@ func (c *LinuxClipboard) watchWithClipnotify(ctx context.Context, ch chan<- stri
                 continue
             }
             
-            // Now read the actual content
-            if content, err := c.Read(); err == nil {
-                ch <- content
+            c.sequenceNumber.Add(1)
+            c.lastModified = time.Now()
+            
+            // Send notification (non-blocking)
+            select {
+            case ch <- struct{}{}:
+            default:
+                // Channel full, skip notification
             }
         }
     }
@@ -318,13 +372,22 @@ func TestClipboardWatch(t *testing.T) {
     
     ch := mock.Watch(ctx)
     
+    // Write triggers notification
     mock.Write("test")
     
+    // Wait for notification
     select {
-    case content := <-ch:
+    case <-ch:
+        // Notification received, now read content
+        content, err := mock.Read()
+        assert.NoError(t, err)
         assert.Equal(t, "test", content)
+        
+        // Check state
+        state := mock.GetState()
+        assert.Equal(t, uint64(1), state.SequenceNumber)
     case <-time.After(time.Second):
-        t.Fatal("timeout waiting for clipboard change")
+        t.Fatal("timeout waiting for clipboard change notification")
     }
 }
 
@@ -664,7 +727,7 @@ type ClipboardMessage struct {
 }
 
 func (e *SyncEngine) Run(ctx context.Context) error {
-    // Watch local clipboard
+    // Watch local clipboard for notifications
     clipCh := e.clipboard.Watch(ctx)
     
     // Watch topology events
@@ -675,8 +738,15 @@ func (e *SyncEngine) Run(ctx context.Context) error {
     
     for {
         select {
-        case content := <-clipCh:
-            e.handleLocalChange(content)
+        case <-clipCh:
+            // Notification received - pull current state
+            content, err := e.clipboard.Read()
+            if err != nil {
+                e.logger.Error("failed to read clipboard", "error", err)
+                continue
+            }
+            state := e.clipboard.GetState()
+            e.handleLocalChange(content, state)
             
         case msg := <-msgCh:
             e.handleRemoteChange(msg)
@@ -778,43 +848,6 @@ func main() {
 
 ---
 
-## Development Roadmap
-
-### Phase 1: Foundation (Week 1)
-- [x] Clipboard interface + macOS implementation
-- [x] Linux clipboard implementation  
-- [x] Mock clipboard for testing
-- [x] Basic clipboard watch functionality
-- [x] Unit tests for all clipboard operations
-
-### Phase 2: Networking (Week 1-2)
-- [x] TCP transport implementation
-- [x] Shared secret authentication
-- [x] TLS upgrade after auth
-- [x] Connection wrapper with JSON messaging
-- [x] Transport unit tests
-
-### Phase 3: Mesh (Week 2)
-- [ ] Node types (Client/Full)
-- [ ] Connection pool with reconnection
-- [ ] Peer discovery via exchange
-- [ ] Topology event system
-- [ ] Integration tests for mesh formation
-
-### Phase 4: Sync (Week 3)
-- [ ] Sync engine core loop
-- [ ] Message deduplication
-- [ ] Conflict resolution
-- [ ] Loop prevention
-- [ ] End-to-end sync tests
-
-### Phase 5: Polish (Week 3-4)
-- [ ] CLI interface
-- [ ] Logging and debugging
-- [ ] Graceful shutdown
-- [ ] Binary releases
-- [ ] Documentation
-
 ## Testing Strategy
 
 ### Unit Tests
@@ -861,4 +894,279 @@ func main() {
 6. **Persistent peer** discovery cache
 7. **NAT traversal** via STUN/TURN
 
-This architecture provides a solid foundation for building Linkpearl incrementally, with clear boundaries between components and comprehensive testing at each layer.
+## Production Hardening Guidelines
+
+### Command Execution Hardening
+
+**Decision**: All external command executions must have timeouts, proper resource cleanup, and comprehensive error handling.
+
+**Rationale**: External commands can hang indefinitely, leak resources, or fail in unexpected ways. Production systems need predictable behavior and resource management.
+
+**Implementation**:
+
+#### 1. Command Timeout Pattern
+
+All clipboard command executions should follow this pattern:
+
+```go
+// clipboard/command.go - Shared command execution utilities
+package clipboard
+
+import (
+    "context"
+    "fmt"
+    "os/exec"
+    "time"
+)
+
+// CommandTimeout is the maximum time allowed for clipboard operations
+const CommandTimeout = 5 * time.Second
+
+// CommandConfig holds configuration for command execution
+type CommandConfig struct {
+    // Timeout for command execution (default: CommandTimeout)
+    Timeout time.Duration
+    
+    // MaxOutputSize limits the amount of data read (default: MaxClipboardSize)
+    MaxOutputSize int
+    
+    // Logger for debugging command execution
+    Logger func(format string, args ...interface{})
+}
+
+// DefaultCommandConfig returns config with production-ready defaults
+func DefaultCommandConfig() *CommandConfig {
+    return &CommandConfig{
+        Timeout:       CommandTimeout,
+        MaxOutputSize: MaxClipboardSize,
+        Logger:        func(string, ...interface{}) {}, // no-op by default
+    }
+}
+
+// RunCommand executes a command with proper timeout and resource management
+func RunCommand(name string, args []string, config *CommandConfig) ([]byte, error) {
+    if config == nil {
+        config = DefaultCommandConfig()
+    }
+    
+    ctx, cancel := context.WithTimeout(context.Background(), config.Timeout)
+    defer cancel()
+    
+    cmd := exec.CommandContext(ctx, name, args...)
+    
+    // Set up pipes before starting
+    output, err := cmd.Output()
+    
+    if ctx.Err() == context.DeadlineExceeded {
+        return nil, fmt.Errorf("command %s timed out after %v", name, config.Timeout)
+    }
+    
+    if err != nil {
+        if exitErr, ok := err.(*exec.ExitError); ok {
+            // Special handling for known exit codes
+            if exitErr.ExitCode() == 1 && len(output) == 0 {
+                // Empty clipboard on some systems
+                return []byte{}, nil
+            }
+            return nil, fmt.Errorf("command %s failed with exit code %d: %w", 
+                name, exitErr.ExitCode(), err)
+        }
+        return nil, fmt.Errorf("command %s failed: %w", name, err)
+    }
+    
+    if len(output) > config.MaxOutputSize {
+        return nil, fmt.Errorf("command output exceeds maximum size of %d bytes", 
+            config.MaxOutputSize)
+    }
+    
+    return output, nil
+}
+
+// RunCommandWithInput executes a command with stdin input
+func RunCommandWithInput(name string, args []string, input []byte, config *CommandConfig) error {
+    if config == nil {
+        config = DefaultCommandConfig()
+    }
+    
+    ctx, cancel := context.WithTimeout(context.Background(), config.Timeout)
+    defer cancel()
+    
+    cmd := exec.CommandContext(ctx, name, args...)
+    
+    // Set up stdin pipe
+    stdin, err := cmd.StdinPipe()
+    if err != nil {
+        return fmt.Errorf("failed to create stdin pipe: %w", err)
+    }
+    
+    // Ensure cleanup happens regardless of error
+    defer func() {
+        if stdin != nil {
+            _ = stdin.Close()
+        }
+        if cmd.Process != nil {
+            _ = cmd.Process.Kill()
+        }
+    }()
+    
+    // Start command
+    if err := cmd.Start(); err != nil {
+        return fmt.Errorf("failed to start %s: %w", name, err)
+    }
+    
+    // Write input
+    if _, err := stdin.Write(input); err != nil {
+        return fmt.Errorf("failed to write to %s: %w", name, err)
+    }
+    
+    // Close stdin to signal EOF
+    if err := stdin.Close(); err != nil {
+        return fmt.Errorf("failed to close stdin: %w", err)
+    }
+    stdin = nil // Prevent double close in defer
+    
+    // Wait for completion
+    if err := cmd.Wait(); err != nil {
+        if ctx.Err() == context.DeadlineExceeded {
+            return fmt.Errorf("command %s timed out after %v", name, config.Timeout)
+        }
+        return fmt.Errorf("%s failed: %w", name, err)
+    }
+    
+    return nil
+}
+```
+
+#### 2. Size Limits and Validation
+
+```go
+// clipboard/limits.go
+package clipboard
+
+import (
+    "fmt"
+    "unicode/utf8"
+)
+
+const (
+    // MaxClipboardSize is the maximum allowed clipboard content size (10MB)
+    MaxClipboardSize = 10 * 1024 * 1024
+    
+    // MaxReasonableSize for normal text content (1MB)
+    MaxReasonableSize = 1024 * 1024
+)
+
+// ValidateContent checks if clipboard content is within acceptable limits
+func ValidateContent(content []byte) error {
+    if len(content) > MaxClipboardSize {
+        return fmt.Errorf("clipboard content too large: %d bytes (max: %d)", 
+            len(content), MaxClipboardSize)
+    }
+    
+    // Warn for large but valid content
+    if len(content) > MaxReasonableSize {
+        // This would use the logger from CommandConfig
+        // Log warning about large clipboard content
+    }
+    
+    // Ensure valid UTF-8 for text operations
+    if !utf8.Valid(content) {
+        return fmt.Errorf("clipboard content contains invalid UTF-8")
+    }
+    
+    return nil
+}
+```
+
+#### 3. Platform Implementation Updates
+
+```go
+// Updated darwin.go Read method
+func (c *DarwinClipboard) Read() (string, error) {
+    output, err := RunCommand("pbpaste", nil, c.cmdConfig)
+    if err != nil {
+        return "", fmt.Errorf("clipboard read failed: %w", err)
+    }
+    
+    if err := ValidateContent(output); err != nil {
+        return "", err
+    }
+    
+    return string(output), nil
+}
+
+// Updated darwin.go Write method  
+func (c *DarwinClipboard) Write(content string) error {
+    contentBytes := []byte(content)
+    if err := ValidateContent(contentBytes); err != nil {
+        return err
+    }
+    
+    if err := RunCommandWithInput("pbcopy", nil, contentBytes, c.cmdConfig); err != nil {
+        return fmt.Errorf("clipboard write failed: %w", err)
+    }
+    
+    // Update tracking state only after successful write
+    c.mu.Lock()
+    c.lastHash = c.hashContent(content)
+    c.lastChangeCount = c.getChangeCount()
+    c.sequenceNumber.Add(1)
+    c.lastModified = time.Now()
+    c.mu.Unlock()
+    
+    return nil
+}
+```
+
+### Testing Strategy
+
+```go
+// clipboard/command_test.go
+func TestCommandTimeout(t *testing.T) {
+    config := &CommandConfig{
+        Timeout: 100 * time.Millisecond,
+    }
+    
+    // This should timeout
+    _, err := RunCommand("sleep", []string{"1"}, config)
+    assert.Error(t, err)
+    assert.Contains(t, err.Error(), "timed out")
+}
+
+func TestContentValidation(t *testing.T) {
+    tests := []struct {
+        name    string
+        content []byte
+        wantErr bool
+    }{
+        {"valid small", []byte("hello"), false},
+        {"valid large", make([]byte, MaxReasonableSize), false},
+        {"too large", make([]byte, MaxClipboardSize+1), true},
+        {"invalid utf8", []byte{0xff, 0xfe, 0xfd}, true},
+    }
+    
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            err := ValidateContent(tt.content)
+            if tt.wantErr {
+                assert.Error(t, err)
+            } else {
+                assert.NoError(t, err)
+            }
+        })
+    }
+}
+
+func TestResourceCleanup(t *testing.T) {
+    // Test that resources are cleaned up even on panic
+    config := &CommandConfig{Timeout: 5 * time.Second}
+    
+    // Force an error condition
+    _, err := RunCommandWithInput("false", nil, []byte("test"), config)
+    assert.Error(t, err)
+    
+    // Verify no resource leaks (this would be more comprehensive in real tests)
+}
+```
+
+This production hardening approach focuses on the critical issues that could affect reliability in real-world usage, while maintaining the simplicity and elegance of the existing architecture.

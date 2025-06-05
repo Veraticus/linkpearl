@@ -4,25 +4,33 @@ import (
 	"context"
 	"encoding/json"
 	"sync"
+	"sync/atomic"
+	"time"
 
+	"github.com/Veraticus/linkpearl/pkg/clipboard"
 	"github.com/Veraticus/linkpearl/pkg/mesh"
 )
 
 // mockClipboard implements clipboard.Clipboard for testing
 type mockClipboard struct {
-	mu        sync.Mutex
-	content   string
-	changeCh  chan string
-	writeCh   chan string // To observe writes
-	readErr   error
-	writeErr  error
-	watchErr  error
+	mu             sync.Mutex
+	content        string
+	changeCh       chan struct{}
+	writeCh        chan string // To observe writes
+	readErr        error
+	writeErr       error
+	watchErr       error
+	sequenceNumber atomic.Uint64
+	lastModified   time.Time
+	contentHash    string
 }
 
 func newMockClipboard() *mockClipboard {
 	return &mockClipboard{
-		changeCh: make(chan string, 10),
-		writeCh:  make(chan string, 10),
+		changeCh:     make(chan struct{}, 10),
+		writeCh:      make(chan string, 10),
+		lastModified: time.Now(),
+		contentHash:  computeChecksum(""),
 	}
 }
 
@@ -45,6 +53,10 @@ func (m *mockClipboard) Write(content string) error {
 	}
 	
 	m.content = content
+	m.contentHash = computeChecksum(content)
+	m.sequenceNumber.Add(1)
+	m.lastModified = time.Now()
+	
 	select {
 	case m.writeCh <- content:
 	default:
@@ -52,9 +64,9 @@ func (m *mockClipboard) Write(content string) error {
 	return nil
 }
 
-func (m *mockClipboard) Watch(ctx context.Context) <-chan string {
+func (m *mockClipboard) Watch(ctx context.Context) <-chan struct{} {
 	if m.watchErr != nil {
-		ch := make(chan string)
+		ch := make(chan struct{})
 		close(ch)
 		return ch
 	}
@@ -64,11 +76,25 @@ func (m *mockClipboard) Watch(ctx context.Context) <-chan string {
 func (m *mockClipboard) EmitChange(content string) {
 	m.mu.Lock()
 	m.content = content
+	m.contentHash = computeChecksum(content)
+	m.sequenceNumber.Add(1)
+	m.lastModified = time.Now()
 	m.mu.Unlock()
 	
 	select {
-	case m.changeCh <- content:
+	case m.changeCh <- struct{}{}:
 	default:
+	}
+}
+
+func (m *mockClipboard) GetState() clipboard.ClipboardState {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	
+	return clipboard.ClipboardState{
+		SequenceNumber: m.sequenceNumber.Load(),
+		LastModified:   m.lastModified,
+		ContentHash:    m.contentHash,
 	}
 }
 

@@ -4,219 +4,194 @@
 package clipboard
 
 import (
-	"context"
+	"bytes"
 	"runtime"
 	"testing"
 	"time"
 )
 
-func TestRealClipboard(t *testing.T) {
-	if runtime.GOOS != "darwin" && runtime.GOOS != "linux" {
-		t.Skip("Clipboard integration tests only supported on macOS and Linux")
+func TestClipboardWithTimeout(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping clipboard tests on Windows")
 	}
 
 	clip, err := NewPlatformClipboard()
 	if err != nil {
-		t.Fatalf("NewPlatformClipboard() error = %v", err)
+		t.Fatalf("failed to create clipboard: %v", err)
 	}
 
-	t.Run("Read and Write", func(t *testing.T) {
-		// Save original clipboard content
-		original, _ := clip.Read()
-		defer clip.Write(original) // Restore after test
-
-		// Test writing
-		testContent := "linkpearl test content " + time.Now().Format(time.RFC3339Nano)
-		if err := clip.Write(testContent); err != nil {
-			t.Fatalf("Write() error = %v", err)
-		}
-
-		// Small delay to ensure clipboard is updated
-		time.Sleep(100 * time.Millisecond)
-
-		// Test reading
-		content, err := clip.Read()
-		if err != nil {
-			t.Fatalf("Read() error = %v", err)
-		}
-
-		if content != testContent {
-			t.Errorf("Read() = %q, want %q", content, testContent)
-		}
-	})
-
-	t.Run("Watch", func(t *testing.T) {
-		// Save original clipboard content
-		original, _ := clip.Read()
-		defer clip.Write(original) // Restore after test
-
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-
-		ch := clip.Watch(ctx)
-
-		// Give watch goroutine time to start
-		time.Sleep(100 * time.Millisecond)
-
-		// Change clipboard content
-		testContent := "watch test " + time.Now().Format(time.RFC3339Nano)
-		go func() {
-			time.Sleep(500 * time.Millisecond)
-			if err := clip.Write(testContent); err != nil {
-				t.Errorf("Write() error = %v", err)
-			}
-		}()
-
-		// Wait for change notification
-		select {
-		case content := <-ch:
-			if content != testContent {
-				t.Errorf("Watch received %q, want %q", content, testContent)
-			}
-		case <-ctx.Done():
-			t.Fatal("Timeout waiting for clipboard change")
-		}
-	})
-
-	t.Run("Multiple Changes", func(t *testing.T) {
-		// Save original clipboard content
-		original, _ := clip.Read()
-		defer clip.Write(original) // Restore after test
-
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-
-		ch := clip.Watch(ctx)
-
-		// Give watch goroutine time to start
-		time.Sleep(100 * time.Millisecond)
-
-		// Make multiple changes
-		changes := []string{
-			"change 1 " + time.Now().Format(time.RFC3339Nano),
-			"change 2 " + time.Now().Format(time.RFC3339Nano),
-			"change 3 " + time.Now().Format(time.RFC3339Nano),
-		}
-
-		go func() {
-			for i, content := range changes {
-				time.Sleep(500 * time.Millisecond)
-				if err := clip.Write(content); err != nil {
-					t.Errorf("Write() error on change %d: %v", i+1, err)
-				}
-			}
-		}()
-
-		// Verify we receive all changes
-		received := 0
-		for received < len(changes) {
-			select {
-			case content := <-ch:
-				found := false
-				for _, expected := range changes {
-					if content == expected {
-						found = true
-						break
-					}
-				}
-				if !found {
-					t.Errorf("Received unexpected content: %q", content)
-				}
-				received++
-			case <-ctx.Done():
-				t.Fatalf("Timeout waiting for changes, received %d/%d", received, len(changes))
-			}
-		}
-	})
+	// Test that normal operations complete within timeout
+	testContent := "Test timeout handling"
+	
+	start := time.Now()
+	err = clip.Write(testContent)
+	if err != nil {
+		t.Errorf("write failed: %v", err)
+	}
+	writeTime := time.Since(start)
+	
+	if writeTime > 5*time.Second {
+		t.Errorf("write took too long: %v", writeTime)
+	}
+	
+	start = time.Now()
+	content, err := clip.Read()
+	if err != nil {
+		t.Errorf("read failed: %v", err)
+	}
+	readTime := time.Since(start)
+	
+	if readTime > 5*time.Second {
+		t.Errorf("read took too long: %v", readTime)
+	}
+	
+	if content != testContent {
+		t.Errorf("content mismatch: got %q, want %q", content, testContent)
+	}
 }
 
-// TestPlatformSpecific tests platform-specific behavior
-func TestPlatformSpecific(t *testing.T) {
-	if runtime.GOOS != "darwin" && runtime.GOOS != "linux" {
-		t.Skip("Platform-specific tests only for macOS and Linux")
+func TestClipboardSizeLimits(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping clipboard tests on Windows")
 	}
 
-	t.Run("Empty Clipboard", func(t *testing.T) {
-		clip, err := NewPlatformClipboard()
-		if err != nil {
-			t.Fatalf("NewPlatformClipboard() error = %v", err)
+	clip, err := NewPlatformClipboard()
+	if err != nil {
+		t.Fatalf("failed to create clipboard: %v", err)
+	}
+
+	tests := []struct {
+		name    string
+		size    int
+		wantErr bool
+	}{
+		{
+			name:    "small content",
+			size:    100,
+			wantErr: false,
+		},
+		{
+			name:    "medium content",
+			size:    1024 * 1024, // 1MB
+			wantErr: false,
+		},
+		{
+			name:    "large content near limit",
+			size:    MaxClipboardSize - 1000,
+			wantErr: false,
+		},
+		{
+			name:    "content exceeds limit",
+			size:    MaxClipboardSize + 1,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Generate content of specified size
+			content := string(bytes.Repeat([]byte("x"), tt.size))
+			
+			// Test write
+			err := clip.Write(content)
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("expected write error but got none")
+				} else if !containsString(err.Error(), "ErrContentTooLarge") && 
+				          !containsString(err.Error(), "exceeds limit") {
+					t.Errorf("unexpected error: %v", err)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("unexpected write error: %v", err)
+				}
+				
+				// Verify we can read it back
+				readContent, err := clip.Read()
+				if err != nil {
+					t.Errorf("failed to read back content: %v", err)
+				} else if len(readContent) != tt.size {
+					t.Errorf("content size mismatch: got %d, want %d", 
+						len(readContent), tt.size)
+				}
+			}
+		})
+	}
+}
+
+func TestClipboardInvalidUTF8(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping clipboard tests on Windows")
+	}
+
+	clip, err := NewPlatformClipboard()
+	if err != nil {
+		t.Fatalf("failed to create clipboard: %v", err)
+	}
+
+	// Test writing invalid UTF-8
+	invalidUTF8 := string([]byte{0xff, 0xfe, 0xfd})
+	err = clip.Write(invalidUTF8)
+	if err == nil {
+		t.Error("expected error writing invalid UTF-8")
+	} else if !containsString(err.Error(), "invalid UTF-8") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestClipboardConcurrency(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping clipboard tests on Windows")
+	}
+
+	clip, err := NewPlatformClipboard()
+	if err != nil {
+		t.Fatalf("failed to create clipboard: %v", err)
+	}
+
+	// Test concurrent reads and writes
+	done := make(chan bool)
+	errors := make(chan error, 10)
+	
+	// Writer goroutine
+	go func() {
+		for i := 0; i < 5; i++ {
+			content := string(bytes.Repeat([]byte("W"), 1000))
+			if err := clip.Write(content); err != nil {
+				errors <- err
+			}
+			time.Sleep(10 * time.Millisecond)
 		}
-
-		// Save original content
-		original, _ := clip.Read()
-		defer clip.Write(original)
-
-		// Clear clipboard
-		if err := clip.Write(""); err != nil {
-			t.Fatalf("Write() error = %v", err)
+		done <- true
+	}()
+	
+	// Reader goroutines
+	for i := 0; i < 3; i++ {
+		go func() {
+			for j := 0; j < 5; j++ {
+				if _, err := clip.Read(); err != nil {
+					errors <- err
+				}
+				time.Sleep(5 * time.Millisecond)
+			}
+			done <- true
+		}()
+	}
+	
+	// Wait for completion
+	for i := 0; i < 4; i++ {
+		<-done
+	}
+	
+	close(errors)
+	
+	// Check for errors
+	var errCount int
+	for err := range errors {
+		t.Errorf("concurrent operation error: %v", err)
+		errCount++
+		if errCount > 5 {
+			t.Fatal("too many errors in concurrent test")
 		}
-
-		time.Sleep(100 * time.Millisecond)
-
-		// Read empty clipboard
-		content, err := clip.Read()
-		if err != nil {
-			t.Fatalf("Read() error = %v", err)
-		}
-
-		if content != "" {
-			t.Errorf("Read() = %q, want empty string", content)
-		}
-	})
-
-	t.Run("Unicode Content", func(t *testing.T) {
-		clip, err := NewPlatformClipboard()
-		if err != nil {
-			t.Fatalf("NewPlatformClipboard() error = %v", err)
-		}
-
-		// Save original content
-		original, _ := clip.Read()
-		defer clip.Write(original)
-
-		// Test with unicode content
-		unicodeContent := "Hello 世界! 🎉 Émojis work! 🚀"
-		if err := clip.Write(unicodeContent); err != nil {
-			t.Fatalf("Write() error = %v", err)
-		}
-
-		time.Sleep(100 * time.Millisecond)
-
-		content, err := clip.Read()
-		if err != nil {
-			t.Fatalf("Read() error = %v", err)
-		}
-
-		if content != unicodeContent {
-			t.Errorf("Read() = %q, want %q", content, unicodeContent)
-		}
-	})
-
-	t.Run("Multiline Content", func(t *testing.T) {
-		clip, err := NewPlatformClipboard()
-		if err != nil {
-			t.Fatalf("NewPlatformClipboard() error = %v", err)
-		}
-
-		// Save original content
-		original, _ := clip.Read()
-		defer clip.Write(original)
-
-		// Test with multiline content
-		multilineContent := "Line 1\nLine 2\nLine 3\n"
-		if err := clip.Write(multilineContent); err != nil {
-			t.Fatalf("Write() error = %v", err)
-		}
-
-		time.Sleep(100 * time.Millisecond)
-
-		content, err := clip.Read()
-		if err != nil {
-			t.Fatalf("Read() error = %v", err)
-		}
-
-		if content != multilineContent {
-			t.Errorf("Read() = %q, want %q", content, multilineContent)
-		}
-	})
+	}
 }

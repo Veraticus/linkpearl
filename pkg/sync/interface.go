@@ -119,6 +119,8 @@ type Config struct {
 	DedupeSize       int           // LRU cache size for deduplication (default: 1000)
 	SyncLoopWindow   time.Duration // Time window for sync loop detection (default: 500ms)
 	MinChangeInterval time.Duration // Minimum time between processing changes (default: 100ms)
+	CommandTimeout   time.Duration // Timeout for clipboard operations (default: 5s)
+	MaxClipboardSize int           // Maximum clipboard content size in bytes (default: 10MB)
 	Logger           Logger        // Logger interface (default: no-op)
 }
 
@@ -150,6 +152,12 @@ func (c *Config) Validate() error {
 	}
 	if c.MinChangeInterval <= 0 {
 		c.MinChangeInterval = 100 * time.Millisecond
+	}
+	if c.CommandTimeout <= 0 {
+		c.CommandTimeout = 5 * time.Second
+	}
+	if c.MaxClipboardSize <= 0 {
+		c.MaxClipboardSize = clipboard.MaxClipboardSize
 	}
 	if c.Logger == nil {
 		c.Logger = &noopLogger{}

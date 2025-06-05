@@ -422,6 +422,14 @@ func testLargeClipboardContent(t *testing.T) {
 	// Give sync engines time to initialize
 	time.Sleep(500 * time.Millisecond)
 
+	// Log engine stats before test
+	stats1 := node1.engine.Stats()
+	stats2 := node2.engine.Stats()
+	t.Logf("Node1 stats before: sent=%d, received=%d, local=%d", 
+		stats1.MessagesSent, stats1.MessagesReceived, stats1.LocalChanges)
+	t.Logf("Node2 stats before: sent=%d, received=%d, local=%d",
+		stats2.MessagesSent, stats2.MessagesReceived, stats2.LocalChanges)
+
 	// Create large content - use smaller sizes in CI or on macOS
 	contentSize := 100 * 1024
 	if runtime.GOOS == "darwin" || os.Getenv("CI") == "true" {
@@ -457,6 +465,14 @@ func testLargeClipboardContent(t *testing.T) {
 
 	// Give a bit more time for the initial sync
 	time.Sleep(1 * time.Second)
+
+	// Log engine stats after write
+	stats1After := node1.engine.Stats()
+	stats2After := node2.engine.Stats()
+	t.Logf("Node1 stats after write: sent=%d, received=%d, local=%d", 
+		stats1After.MessagesSent, stats1After.MessagesReceived, stats1After.LocalChanges)
+	t.Logf("Node2 stats after write: sent=%d, received=%d, local=%d",
+		stats2After.MessagesSent, stats2After.MessagesReceived, stats2After.LocalChanges)
 
 	// Verify sync of large content
 	assertClipboardContent(t, node2.clipboard, largeContent, 10*time.Second)
@@ -594,6 +610,7 @@ func createTestNode(t testing.TB, nodeID, listenAddr string, joinAddrs []string)
 		NodeID:    nodeID,
 		Clipboard: mockClip,
 		Topology:  topo,
+		Logger:    &testNodeLogger{t: t, nodeID: nodeID},
 	}
 
 	// Create sync engine
@@ -712,6 +729,24 @@ func generateLargeContent(size int) string {
 		b[i] = chars[i%len(chars)]
 	}
 	return string(b)
+}
+
+// testNodeLogger logs sync engine events for debugging
+type testNodeLogger struct {
+	t      testing.TB
+	nodeID string
+}
+
+func (l *testNodeLogger) Debug(msg string, keysAndValues ...interface{}) {
+	l.t.Logf("[%s] DEBUG: %s %v", l.nodeID, msg, keysAndValues)
+}
+
+func (l *testNodeLogger) Info(msg string, keysAndValues ...interface{}) {
+	l.t.Logf("[%s] INFO: %s %v", l.nodeID, msg, keysAndValues)
+}
+
+func (l *testNodeLogger) Error(msg string, keysAndValues ...interface{}) {
+	l.t.Logf("[%s] ERROR: %s %v", l.nodeID, msg, keysAndValues)
 }
 
 // Benchmark tests

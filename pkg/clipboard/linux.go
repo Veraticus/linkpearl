@@ -67,6 +67,7 @@ import (
 	"os/exec"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -74,9 +75,12 @@ import (
 // It automatically detects and uses the appropriate clipboard utility based
 // on what's available on the system (Wayland or X11).
 type LinuxClipboard struct {
-	mu       sync.RWMutex
-	lastHash string        // SHA-256 hash of last known clipboard content
-	tool     clipboardTool // The selected clipboard tool for this instance
+	mu             sync.RWMutex
+	lastHash       string        // SHA-256 hash of last known clipboard content
+	tool           clipboardTool // The selected clipboard tool for this instance
+	sequenceNumber atomic.Uint64
+	lastModified   time.Time
+	cmdConfig      *CommandConfig // Configuration for command execution
 }
 
 // clipboardTool represents a clipboard utility and its command-line arguments
@@ -143,12 +147,15 @@ func newPlatformClipboard() (Clipboard, error) {
 		return nil, fmt.Errorf("no clipboard tool found (install xsel, xclip, or wl-clipboard)")
 	}
 
+	c.cmdConfig = DefaultCommandConfig()
 	return c, nil
 }
 
 // Read returns the current clipboard contents using the selected tool.
 // Handles special cases like empty clipboard (which may return exit code 1)
 // and the wl-copy/wl-paste split in Wayland environments.
+// The operation has a 5-second timeout to prevent hanging on system issues.
+// Content size is checked to prevent memory issues with extremely large clipboard data.
 func (c *LinuxClipboard) Read() (string, error) {
 	// Handle special case where we have wl-copy but need wl-paste for reading
 	readTool := c.tool.name
@@ -156,14 +163,13 @@ func (c *LinuxClipboard) Read() (string, error) {
 		readTool = "wl-paste"
 	}
 
-	cmd := exec.Command(readTool, c.tool.readArgs...)
-	output, err := cmd.Output()
+	output, err := RunCommand(readTool, c.tool.readArgs, c.cmdConfig)
 	if err != nil {
-		// Check if the error is because clipboard is empty
-		if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {
-			return "", nil
-		}
 		return "", fmt.Errorf("failed to read clipboard with %s: %w", readTool, err)
+	}
+
+	if err := ValidateContent(output); err != nil {
+		return "", err
 	}
 
 	return string(output), nil
@@ -172,47 +178,41 @@ func (c *LinuxClipboard) Read() (string, error) {
 // Write sets the clipboard contents using the selected tool.
 // The content is piped to the tool's stdin. After a successful write,
 // the internal tracking state is updated with the content hash.
+// The operation has a 5-second timeout to prevent hanging on system issues.
+// Content size is limited to MaxClipboardSize to prevent memory issues.
 func (c *LinuxClipboard) Write(content string) error {
-	cmd := exec.Command(c.tool.name, c.tool.writeArgs...)
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		return fmt.Errorf("failed to create stdin pipe: %w", err)
+	contentBytes := []byte(content)
+	if err := ValidateContent(contentBytes); err != nil {
+		return err
+	}
+	
+	if err := RunCommandWithInput(c.tool.name, c.tool.writeArgs, contentBytes, c.cmdConfig); err != nil {
+		return fmt.Errorf("clipboard write failed: %w", err)
 	}
 
-	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("failed to start %s: %w", c.tool.name, err)
-	}
-
-	if _, err := stdin.Write([]byte(content)); err != nil {
-		_ = stdin.Close()
-		_ = cmd.Process.Kill()
-		return fmt.Errorf("failed to write to clipboard: %w", err)
-	}
-
-	if err := stdin.Close(); err != nil {
-		return fmt.Errorf("failed to close stdin: %w", err)
-	}
-
-	if err := cmd.Wait(); err != nil {
-		return fmt.Errorf("%s failed: %w", c.tool.name, err)
-	}
-
-	// Update our tracking state
+	// Update our tracking state only after successful write
 	c.mu.Lock()
 	c.lastHash = c.hashContent(content)
+	c.sequenceNumber.Add(1)
+	c.lastModified = time.Now()
 	c.mu.Unlock()
 
 	return nil
 }
 
-// Watch monitors the clipboard for changes and returns a channel that emits
-// new content when detected. It automatically selects the best monitoring strategy:
+// Watch monitors the clipboard for changes and returns a channel that signals
+// when clipboard state changes. The channel receives empty structs as notifications.
+// Actual content must be retrieved using Read().
+//
+// It automatically selects the best monitoring strategy:
 //   - Uses clipnotify for efficient event-based monitoring if available
 //   - Falls back to smart polling with adaptive intervals otherwise
 //
 // The returned channel is closed when the context is cancelled.
-func (c *LinuxClipboard) Watch(ctx context.Context) <-chan string {
-	ch := make(chan string)
+func (c *LinuxClipboard) Watch(ctx context.Context) <-chan struct{} {
+	// Use buffered channel to prevent blocking the watcher goroutine
+	// Buffer size of 10 allows for burst of changes without blocking
+	ch := make(chan struct{}, 10)
 
 	go func() {
 		defer close(ch)
@@ -236,7 +236,7 @@ func (c *LinuxClipboard) Watch(ctx context.Context) <-chan string {
 // watchWithClipnotify uses the clipnotify tool for efficient clipboard monitoring.
 // Clipnotify blocks until a clipboard change event occurs, eliminating the need
 // for polling. If clipnotify fails, this method automatically falls back to polling.
-func (c *LinuxClipboard) watchWithClipnotify(ctx context.Context, ch chan<- string) {
+func (c *LinuxClipboard) watchWithClipnotify(ctx context.Context, ch chan<- struct{}) {
 	// Initialize with current content
 	if content, err := c.Read(); err == nil {
 		c.mu.Lock()
@@ -250,6 +250,7 @@ func (c *LinuxClipboard) watchWithClipnotify(ctx context.Context, ch chan<- stri
 			return
 		default:
 			// clipnotify blocks until clipboard changes
+			// We don't use RunCommand here because clipnotify blocks indefinitely
 			cmd := exec.CommandContext(ctx, "clipnotify")
 			if err := cmd.Run(); err != nil {
 				// If clipnotify fails, fall back to polling
@@ -272,12 +273,19 @@ func (c *LinuxClipboard) watchWithClipnotify(ctx context.Context, ch chan<- stri
 			c.mu.Lock()
 			if newHash != c.lastHash {
 				c.lastHash = newHash
+				c.sequenceNumber.Add(1)
+				c.lastModified = time.Now()
 				c.mu.Unlock()
 
+				// Send notification (non-blocking to prevent deadlock)
 				select {
-				case ch <- content:
+				case ch <- struct{}{}:
+					// Successfully sent
 				case <-ctx.Done():
 					return
+				default:
+					// Channel full - skip notification
+					// This prevents the watcher from blocking if the consumer is slow
 				}
 			} else {
 				c.mu.Unlock()
@@ -289,7 +297,7 @@ func (c *LinuxClipboard) watchWithClipnotify(ctx context.Context, ch chan<- stri
 // watchWithPolling implements polling-based clipboard monitoring.
 // Uses adaptive polling intervals that speed up when changes are detected
 // and slow down during idle periods to reduce CPU usage.
-func (c *LinuxClipboard) watchWithPolling(ctx context.Context, ch chan<- string) {
+func (c *LinuxClipboard) watchWithPolling(ctx context.Context, ch chan<- struct{}) {
 	// Initialize with current content
 	if content, err := c.Read(); err == nil {
 		c.mu.Lock()
@@ -323,16 +331,23 @@ func (c *LinuxClipboard) watchWithPolling(ctx context.Context, ch chan<- string)
 			if newHash != lastHash {
 				c.mu.Lock()
 				c.lastHash = newHash
+				c.sequenceNumber.Add(1)
+				c.lastModified = time.Now()
 				c.mu.Unlock()
 
 				// Reset idle count and speed up polling
 				idleCount = 0
 				ticker.Reset(500 * time.Millisecond)
 
+				// Send notification (non-blocking to prevent deadlock)
 				select {
-				case ch <- content:
+				case ch <- struct{}{}:
+					// Successfully sent
 				case <-ctx.Done():
 					return
+				default:
+					// Channel full - skip notification
+					// This prevents the watcher from blocking if the consumer is slow
 				}
 			} else {
 				// No change, increment idle count
@@ -354,4 +369,16 @@ func (c *LinuxClipboard) hashContent(content string) string {
 	normalized := strings.ReplaceAll(content, "\r\n", "\n")
 	h := sha256.Sum256([]byte(normalized))
 	return hex.EncodeToString(h[:])
+}
+
+// GetState returns current state information
+func (c *LinuxClipboard) GetState() ClipboardState {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	
+	return ClipboardState{
+		SequenceNumber: c.sequenceNumber.Load(),
+		LastModified:   c.lastModified,
+		ContentHash:    c.lastHash,
+	}
 }
