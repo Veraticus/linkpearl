@@ -55,8 +55,15 @@ func (c *mockTopologyConn) Send(msg interface{}) error {
 	if err != nil {
 		return err
 	}
+
+	// Marshal the message to JSON like the real transport does
+	data, err := json.Marshal(msg)
+	if err != nil {
+		return fmt.Errorf("failed to marshal message: %w", err)
+	}
+
 	select {
-	case c.sendChan <- msg:
+	case c.sendChan <- data:
 		return nil
 	case <-time.After(10 * time.Millisecond):
 		return errors.New("send timeout")
@@ -850,7 +857,10 @@ func TestMessageRouting(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 
 		// Send message to peer
-		testMsg := map[string]string{"type": "test", "data": "hello"}
+		testData := map[string]string{"type": "test", "data": "hello"}
+		data, err := json.Marshal(testData)
+		require.NoError(t, err)
+		testMsg := NewClipboardMessage("node1", json.RawMessage(data))
 		err = topo.SendToPeer("peer1", testMsg)
 		require.NoError(t, err)
 
@@ -898,7 +908,10 @@ func TestMessageRouting(t *testing.T) {
 		assert.Equal(t, 3, topo.PeerCount())
 
 		// Broadcast message
-		testMsg := map[string]string{"type": "broadcast", "data": "hello all"}
+		testData := map[string]string{"type": "broadcast", "data": "hello all"}
+		data, err := json.Marshal(testData)
+		require.NoError(t, err)
+		testMsg := NewClipboardMessage("node1", json.RawMessage(data))
 		err = topo.Broadcast(testMsg)
 		require.NoError(t, err)
 
@@ -937,8 +950,12 @@ func TestMessageRouting(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 
 		// Send clipboard message from peer
-		clipboardMsg := map[string]string{"content": "test clipboard data"}
-		msgData, err := marshalMessage(MessageTypeClipboard, "peer1", clipboardMsg)
+		clipboardData := map[string]string{"content": "test clipboard data"}
+		data, err := json.Marshal(clipboardData)
+		require.NoError(t, err)
+
+		clipMsg := NewClipboardMessage("peer1", json.RawMessage(data))
+		msgData, err := clipMsg.Marshal()
 		require.NoError(t, err)
 
 		select {
@@ -986,12 +1003,13 @@ func TestMessageRouting(t *testing.T) {
 		}
 
 		// Send ping from peer
-		pingMsg := PingMessage{Timestamp: time.Now().Unix()}
-		msgData, err := marshalMessage(MessageTypePing, "peer1", pingMsg)
+		timestamp := time.Now().Unix()
+		pingMsg := NewPingMessage("peer1", timestamp)
+		pingMsgData, err := pingMsg.Marshal()
 		require.NoError(t, err)
 
 		select {
-		case peerConn.receiveChan <- msgData:
+		case peerConn.receiveChan <- pingMsgData:
 		case <-time.After(100 * time.Millisecond):
 			t.Fatal("failed to send message to peer")
 		}
@@ -1010,7 +1028,7 @@ func TestMessageRouting(t *testing.T) {
 			var pong PongMessage
 			err = json.Unmarshal(payload, &pong)
 			require.NoError(t, err)
-			assert.Equal(t, pingMsg.Timestamp, pong.Timestamp)
+			assert.Equal(t, timestamp, pong.Timestamp)
 		case <-time.After(time.Second):
 			t.Fatal("pong not received")
 		}
@@ -1117,7 +1135,9 @@ func TestTopologyConcurrentOperations(t *testing.T) {
 			wg.Add(1)
 			go func(n int) {
 				defer wg.Done()
-				msg := map[string]int{"id": n}
+				msgData := map[string]int{"id": n}
+				data, _ := json.Marshal(msgData)
+				msg := NewClipboardMessage("node1", json.RawMessage(data))
 				if err := topo.SendToPeer("peer1", msg); err != nil {
 					errors <- err
 				}
@@ -1311,7 +1331,10 @@ func TestErrorHandling(t *testing.T) {
 		require.NoError(t, err)
 
 		// Send to non-existent peer
-		err = topo.SendToPeer("ghost", map[string]string{"test": "data"})
+		testData := map[string]string{"test": "data"}
+		data, _ := json.Marshal(testData)
+		msg := NewClipboardMessage("node1", json.RawMessage(data))
+		err = topo.SendToPeer("ghost", msg)
 		assert.ErrorIs(t, err, ErrPeerNotFound)
 	})
 
@@ -1338,8 +1361,10 @@ func TestErrorHandling(t *testing.T) {
 
 		// Send many messages quickly
 		for i := 0; i < 10; i++ {
-			msg := map[string]int{"seq": i}
-			msgData, _ := marshalMessage(MessageTypeClipboard, "peer1", msg)
+			msgPayload := map[string]int{"seq": i}
+			data, _ := json.Marshal(msgPayload)
+			clipMsg := NewClipboardMessage("peer1", json.RawMessage(data))
+			msgData, _ := clipMsg.Marshal()
 			select {
 			case peerConn.receiveChan <- msgData:
 			case <-time.After(10 * time.Millisecond):

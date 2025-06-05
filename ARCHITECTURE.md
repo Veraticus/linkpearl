@@ -690,6 +690,115 @@ func TestReconnection(t *testing.T) {
 
 ---
 
+### Message Architecture and Type Safety
+
+The mesh network uses a type-safe message passing system that ensures compile-time safety while maintaining flexibility for future extensions.
+
+#### Architecture Overview
+
+The message system uses Go interfaces to enforce type safety at the API boundary while maintaining a generic transport layer:
+
+```go
+// MeshMessage is the public interface for all mesh messages
+type MeshMessage interface {
+    Type() MessageType
+    From() string
+    Marshal() ([]byte, error)
+}
+```
+
+All messages in the system must implement this interface, ensuring:
+- **No raw `interface{}`** usage in public APIs
+- **Compile-time validation** of message types
+- **Consistent wire format** through the `Marshal()` method
+- **Clear message ownership** via the `From()` method
+
+#### Message Types
+
+The system defines concrete message types for each protocol operation:
+
+1. **ClipboardSyncMessage**: Carries clipboard synchronization data
+2. **PeerListSyncMessage**: Exchanges connected peer information
+3. **PingSyncMessage**: Heartbeat/keepalive messages
+4. **PongSyncMessage**: Responses to ping messages
+
+Each type encapsulates its payload and provides type-safe construction:
+
+```go
+// Example: Creating a clipboard sync message
+clipboardData := sync.NewClipboardMessage(nodeID, content)
+data, _ := clipboardData.Marshal()
+meshMsg := mesh.NewClipboardMessage(nodeID, json.RawMessage(data))
+
+// Send through topology - compile error if wrong type passed
+err := topology.Broadcast(meshMsg)
+```
+
+#### Wire Format
+
+Messages are serialized as JSON with a consistent structure:
+
+```json
+{
+  "type": "clipboard",
+  "from": "node-123",
+  "payload": {
+    // Message-specific data
+  }
+}
+```
+
+This format allows:
+- Easy debugging and logging
+- Cross-platform compatibility
+- Future protocol extensions
+- Backward compatibility through versioning
+
+#### Type Safety Enforcement
+
+The topology layer enforces type safety at the API boundary:
+
+```go
+func (t *topology) Broadcast(msg interface{}) error {
+    // Only MeshMessage types accepted
+    meshMsg, ok := msg.(MeshMessage)
+    if !ok {
+        return fmt.Errorf("invalid message type %T: must implement MeshMessage", msg)
+    }
+    
+    // Type-safe marshaling
+    data, err := meshMsg.Marshal()
+    if err != nil {
+        return fmt.Errorf("failed to marshal %s message: %w", meshMsg.Type(), err)
+    }
+    
+    return t.peers.BroadcastBytes(data)
+}
+```
+
+#### Benefits
+
+1. **Compile-Time Safety**: Incorrect message types are caught during compilation
+2. **Clear Contracts**: The `MeshMessage` interface defines exact requirements
+3. **No Dead Code**: Single message path with no legacy compatibility layers
+4. **Testability**: Concrete types make testing predictable and reliable
+5. **Extensibility**: New message types simply implement the interface
+6. **Performance**: No runtime type assertions in the hot path
+
+#### Adding New Message Types
+
+To add a new message type:
+
+1. Define the message type constant in `messages.go`
+2. Create a struct implementing `MeshMessage`
+3. Implement `Type()`, `From()`, and `Marshal()` methods
+4. Add a constructor function (e.g., `NewCustomMessage()`)
+5. Register a handler in the message router
+
+The consistent typing ensures that new messages integrate seamlessly with existing infrastructure without breaking type safety.
+
+---
+
 ### Group 4: Sync Engine
 **Goal**: Coordinate clipboard synchronization across the mesh
 

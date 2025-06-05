@@ -112,11 +112,17 @@ func NewTopology(config *TopologyConfig) (Topology, error) {
 
 	// Set up message router
 	t.router = newMessageRouter(t.self.ID, func(nodeID string, data []byte) error {
+		// Unmarshal the data back to a meshMessage for sending through transport
+		var msg meshMessage
+		if err := json.Unmarshal(data, &msg); err != nil {
+			return fmt.Errorf("failed to unmarshal message for sending: %w", err)
+		}
+
 		if nodeID == "" {
 			// Broadcast
-			return t.peers.Broadcast(data)
+			return t.peers.Broadcast(msg)
 		}
-		return t.peers.SendToPeer(nodeID, data)
+		return t.peers.SendToPeer(nodeID, msg)
 	})
 
 	// Register message handlers
@@ -268,12 +274,48 @@ func (t *topology) PeerCount() int {
 
 // SendToPeer sends a message to a specific peer
 func (t *topology) SendToPeer(nodeID string, msg interface{}) error {
-	return t.peers.SendToPeer(nodeID, msg)
+	// Message must be a type-safe MeshMessage
+	meshMsg, ok := msg.(MeshMessage)
+	if !ok {
+		return fmt.Errorf("invalid message type %T: must implement MeshMessage", msg)
+	}
+
+	// Marshal the message
+	data, err := meshMsg.Marshal()
+	if err != nil {
+		return fmt.Errorf("failed to marshal %s message: %w", meshMsg.Type(), err)
+	}
+
+	// Unmarshal to get the wire format for transport
+	var wireMsg meshMessage
+	if err := json.Unmarshal(data, &wireMsg); err != nil {
+		return fmt.Errorf("failed to prepare message for transport: %w", err)
+	}
+
+	return t.peers.SendToPeer(nodeID, wireMsg)
 }
 
 // Broadcast sends a message to all connected peers
 func (t *topology) Broadcast(msg interface{}) error {
-	return t.peers.Broadcast(msg)
+	// Message must be a type-safe MeshMessage
+	meshMsg, ok := msg.(MeshMessage)
+	if !ok {
+		return fmt.Errorf("invalid message type %T: must implement MeshMessage", msg)
+	}
+
+	// Marshal the message
+	data, err := meshMsg.Marshal()
+	if err != nil {
+		return fmt.Errorf("failed to marshal %s message: %w", meshMsg.Type(), err)
+	}
+
+	// Unmarshal to get the wire format for transport
+	var wireMsg meshMessage
+	if err := json.Unmarshal(data, &wireMsg); err != nil {
+		return fmt.Errorf("failed to prepare message for transport: %w", err)
+	}
+
+	return t.peers.Broadcast(wireMsg)
 }
 
 // Events returns a channel of topology events
@@ -440,21 +482,28 @@ func (t *topology) handleConnection(p *peer) {
 
 	// Read messages until connection closes
 	for {
-		var msg interface{}
-		if err := p.Receive(&msg); err != nil {
+		var rawMsg json.RawMessage
+		if err := p.Receive(&rawMsg); err != nil {
 			t.config.Logger.Debug("connection closed", "node", p.ID, "error", err)
 			break
 		}
 
+		// Parse as meshMessage
+		var msg meshMessage
+		if err := json.Unmarshal(rawMsg, &msg); err != nil {
+			t.config.Logger.Error("failed to unmarshal message", "node", p.ID, "error", err)
+			continue
+		}
+
+		// Validate message has required fields
+		if msg.Type == "" {
+			t.config.Logger.Error("received message without type", "node", p.ID)
+			continue
+		}
+
 		// Process the message
-		if data, ok := msg.([]byte); ok {
-			if err := t.router.ProcessMessage(data); err != nil {
-				t.config.Logger.Error("failed to process message", "node", p.ID, "error", err)
-			}
-		} else if data, err := json.Marshal(msg); err == nil {
-			if err := t.router.ProcessMessage(data); err != nil {
-				t.config.Logger.Error("failed to process message", "node", p.ID, "error", err)
-			}
+		if err := t.router.ProcessMessage(rawMsg); err != nil {
+			t.config.Logger.Error("failed to process message", "node", p.ID, "error", err)
 		}
 	}
 
@@ -498,13 +547,24 @@ func (t *topology) sendPeerList(p *peer) {
 		}
 	}
 
-	msg := PeerListMessage{Peers: nodes}
-	data, err := marshalMessage(MessageTypePeerList, t.self.ID, msg)
+	// Create type-safe message
+	msg := NewPeerListMessage(t.self.ID, nodes)
+
+	// Marshal and send
+	data, err := msg.Marshal()
 	if err != nil {
 		t.config.Logger.Error("failed to marshal peer list", "error", err)
 		return
 	}
-	if err := p.Send(data); err != nil {
+
+	// Unmarshal to get wire format
+	var wireMsg meshMessage
+	if err := json.Unmarshal(data, &wireMsg); err != nil {
+		t.config.Logger.Error("failed to prepare peer list for sending", "error", err)
+		return
+	}
+
+	if err := p.Send(wireMsg); err != nil {
 		t.config.Logger.Error("failed to send peer list", "to", p.ID, "error", err)
 	}
 }

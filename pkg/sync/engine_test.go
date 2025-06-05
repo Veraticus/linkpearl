@@ -102,14 +102,27 @@ func TestEngineLocalChanges(t *testing.T) {
 	broadcasts := topology.GetBroadcasts()
 	require.Len(t, broadcasts, 1)
 
-	msgMap, ok := broadcasts[0].(map[string]interface{})
+	// Should be a MeshMessage
+	meshMsg, ok := broadcasts[0].(mesh.MeshMessage)
 	require.True(t, ok)
-	assert.Equal(t, string(MessageTypeClipboard), msgMap["type"])
+	assert.Equal(t, mesh.MessageTypeClipboard, meshMsg.Type())
+	assert.Equal(t, "test-node", meshMsg.From())
 
-	// Parse the payload
-	payloadBytes := msgMap["payload"].(json.RawMessage)
+	// Marshal and unmarshal to get the payload
+	data, err := meshMsg.Marshal()
+	require.NoError(t, err)
+
+	var wireMsg struct {
+		Type    string          `json:"type"`
+		From    string          `json:"from"`
+		Payload json.RawMessage `json:"payload"`
+	}
+	err = json.Unmarshal(data, &wireMsg)
+	require.NoError(t, err)
+
+	// Parse the clipboard message from the payload
 	var clipMsg ClipboardMessage
-	err = json.Unmarshal(payloadBytes, &clipMsg)
+	err = json.Unmarshal(wireMsg.Payload, &clipMsg)
 	require.NoError(t, err)
 
 	assert.Equal(t, "test-node", clipMsg.NodeID)

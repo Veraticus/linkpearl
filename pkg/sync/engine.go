@@ -284,14 +284,25 @@ func (e *engine) handleLocalChange(content string, state clipboard.ClipboardStat
 	}
 
 	// Create and broadcast message
-	msg := NewClipboardMessage(e.config.NodeID, content)
+	clipboardMsg := NewClipboardMessage(e.config.NodeID, content)
+
+	// Marshal the clipboard message
+	data, err := clipboardMsg.Marshal()
+	if err != nil {
+		e.logger.Error("failed to marshal clipboard message", "error", err)
+		atomic.AddUint64(&e.stats.SendErrors, 1)
+		return
+	}
+
+	// Create type-safe mesh message
+	meshMsg := mesh.NewClipboardMessage(e.config.NodeID, json.RawMessage(data))
 
 	e.logger.Info("broadcasting local clipboard change",
 		"content_length", len(content),
 		"checksum", checksum[:8],
 	)
 
-	if err := e.broadcastMessage(msg); err != nil {
+	if err := e.topology.Broadcast(meshMsg); err != nil {
 		e.logger.Error("failed to broadcast clipboard change", "error", err)
 		atomic.AddUint64(&e.stats.SendErrors, 1)
 	} else {
@@ -487,22 +498,6 @@ func (e *engine) isSyncLoop() bool {
 	}
 
 	return false
-}
-
-// broadcastMessage sends a message to all peers
-func (e *engine) broadcastMessage(msg *ClipboardMessage) error {
-	data, err := json.Marshal(msg)
-	if err != nil {
-		return fmt.Errorf("failed to marshal message: %w", err)
-	}
-
-	// Create mesh message wrapper
-	meshMsg := map[string]interface{}{
-		"type":    string(MessageTypeClipboard), // Use the defined constant
-		"payload": json.RawMessage(data),
-	}
-
-	return e.topology.Broadcast(meshMsg)
 }
 
 // handleTopologyEvent processes topology changes

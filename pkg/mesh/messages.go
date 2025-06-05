@@ -37,6 +37,116 @@ const (
 	MessageTypePong MessageType = "pong"
 )
 
+// MeshMessage is the public interface for all mesh messages
+type MeshMessage interface {
+	Type() MessageType
+	From() string
+	Marshal() ([]byte, error)
+}
+
+// ClipboardSyncMessage represents a clipboard synchronization message
+type ClipboardSyncMessage struct {
+	FromNode    string
+	MessageData json.RawMessage // Will contain sync.ClipboardMessage
+}
+
+// Type returns the message type
+func (m ClipboardSyncMessage) Type() MessageType { return MessageTypeClipboard }
+
+// From returns the sender node ID
+func (m ClipboardSyncMessage) From() string { return m.FromNode }
+
+// Marshal serializes the message for transport
+func (m ClipboardSyncMessage) Marshal() ([]byte, error) {
+	wrapper := meshMessage{
+		Type:    m.Type(),
+		From:    m.From(),
+		Payload: m.MessageData,
+	}
+	return json.Marshal(wrapper)
+}
+
+// PeerListSyncMessage represents a peer list exchange message
+type PeerListSyncMessage struct {
+	FromNode string
+	Peers    []Node
+}
+
+// Type returns the message type
+func (m PeerListSyncMessage) Type() MessageType { return MessageTypePeerList }
+
+// From returns the sender node ID
+func (m PeerListSyncMessage) From() string { return m.FromNode }
+
+// Marshal serializes the message for transport
+func (m PeerListSyncMessage) Marshal() ([]byte, error) {
+	payload, err := json.Marshal(PeerListMessage{Peers: m.Peers})
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal peer list: %w", err)
+	}
+
+	wrapper := meshMessage{
+		Type:    m.Type(),
+		From:    m.From(),
+		Payload: payload,
+	}
+	return json.Marshal(wrapper)
+}
+
+// PingSyncMessage represents a ping message for keepalive
+type PingSyncMessage struct {
+	FromNode  string
+	Timestamp int64
+}
+
+// Type returns the message type
+func (m PingSyncMessage) Type() MessageType { return MessageTypePing }
+
+// From returns the sender node ID
+func (m PingSyncMessage) From() string { return m.FromNode }
+
+// Marshal serializes the message for transport
+func (m PingSyncMessage) Marshal() ([]byte, error) {
+	payload, err := json.Marshal(PingMessage{Timestamp: m.Timestamp})
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal ping: %w", err)
+	}
+
+	wrapper := meshMessage{
+		Type:    m.Type(),
+		From:    m.From(),
+		Payload: payload,
+	}
+	return json.Marshal(wrapper)
+}
+
+// PongSyncMessage represents a pong response message
+type PongSyncMessage struct {
+	FromNode  string
+	Timestamp int64
+}
+
+// Type returns the message type
+func (m PongSyncMessage) Type() MessageType { return MessageTypePong }
+
+// From returns the sender node ID
+func (m PongSyncMessage) From() string { return m.FromNode }
+
+// Marshal serializes the message for transport
+func (m PongSyncMessage) Marshal() ([]byte, error) {
+	payload, err := json.Marshal(PongMessage{Timestamp: m.Timestamp})
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal pong: %w", err)
+	}
+
+	wrapper := meshMessage{
+		Type:    m.Type(),
+		From:    m.From(),
+		Payload: payload,
+	}
+	return json.Marshal(wrapper)
+}
+
 // meshMessage is the base structure for all mesh messages
 type meshMessage struct {
 	Type    MessageType     `json:"type"`
@@ -57,25 +167,6 @@ type PingMessage struct {
 // PongMessage is the response to a ping
 type PongMessage struct {
 	Timestamp int64 `json:"timestamp"`
-}
-
-// marshalMessage creates a mesh message with the given type and payload
-func marshalMessage(msgType MessageType, from string, payload interface{}) ([]byte, error) {
-	// Marshal the payload
-	payloadBytes, err := json.Marshal(payload)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal payload: %w", err)
-	}
-
-	// Create the mesh message
-	msg := meshMessage{
-		Type:    msgType,
-		From:    from,
-		Payload: payloadBytes,
-	}
-
-	// Marshal the complete message
-	return json.Marshal(msg)
 }
 
 // unmarshalMessage extracts the message type and payload
@@ -119,6 +210,26 @@ func (h *messageHandler) Handle(msgType MessageType, from string, payload json.R
 	return handler(from, payload)
 }
 
+// NewClipboardMessage creates a new clipboard sync message
+func NewClipboardMessage(from string, data json.RawMessage) MeshMessage {
+	return ClipboardSyncMessage{FromNode: from, MessageData: data}
+}
+
+// NewPeerListMessage creates a new peer list message
+func NewPeerListMessage(from string, peers []Node) MeshMessage {
+	return PeerListSyncMessage{FromNode: from, Peers: peers}
+}
+
+// NewPingMessage creates a new ping message
+func NewPingMessage(from string, timestamp int64) MeshMessage {
+	return PingSyncMessage{FromNode: from, Timestamp: timestamp}
+}
+
+// NewPongMessage creates a new pong message
+func NewPongMessage(from string, timestamp int64) MeshMessage {
+	return PongSyncMessage{FromNode: from, Timestamp: timestamp}
+}
+
 // messageRouter routes messages between peers and local handlers.
 // It acts as the central message processing component, handling both
 // incoming messages (routing them to appropriate handlers) and outgoing
@@ -144,7 +255,33 @@ func newMessageRouter(localNode string, sendFunc func(nodeID string, data []byte
 
 // SendToPeer sends a message to a specific peer
 func (r *messageRouter) SendToPeer(nodeID string, msgType MessageType, payload interface{}) error {
-	data, err := marshalMessage(msgType, r.localNode, payload)
+	// Create appropriate message type
+	var msg MeshMessage
+	switch msgType {
+	case MessageTypePing:
+		if ping, ok := payload.(PingMessage); ok {
+			msg = NewPingMessage(r.localNode, ping.Timestamp)
+		} else {
+			return fmt.Errorf("invalid payload for ping message")
+		}
+	case MessageTypePong:
+		if pong, ok := payload.(PongMessage); ok {
+			msg = NewPongMessage(r.localNode, pong.Timestamp)
+		} else {
+			return fmt.Errorf("invalid payload for pong message")
+		}
+	case MessageTypePeerList:
+		if peerList, ok := payload.(PeerListMessage); ok {
+			msg = NewPeerListMessage(r.localNode, peerList.Peers)
+		} else {
+			return fmt.Errorf("invalid payload for peer list message")
+		}
+	default:
+		return fmt.Errorf("unsupported message type: %s", msgType)
+	}
+
+	// Marshal the type-safe message
+	data, err := msg.Marshal()
 	if err != nil {
 		return err
 	}
@@ -154,7 +291,33 @@ func (r *messageRouter) SendToPeer(nodeID string, msgType MessageType, payload i
 
 // Broadcast sends a message to all peers
 func (r *messageRouter) Broadcast(msgType MessageType, payload interface{}) error {
-	data, err := marshalMessage(msgType, r.localNode, payload)
+	// Create appropriate message type
+	var msg MeshMessage
+	switch msgType {
+	case MessageTypePing:
+		if ping, ok := payload.(PingMessage); ok {
+			msg = NewPingMessage(r.localNode, ping.Timestamp)
+		} else {
+			return fmt.Errorf("invalid payload for ping message")
+		}
+	case MessageTypePong:
+		if pong, ok := payload.(PongMessage); ok {
+			msg = NewPongMessage(r.localNode, pong.Timestamp)
+		} else {
+			return fmt.Errorf("invalid payload for pong message")
+		}
+	case MessageTypePeerList:
+		if peerList, ok := payload.(PeerListMessage); ok {
+			msg = NewPeerListMessage(r.localNode, peerList.Peers)
+		} else {
+			return fmt.Errorf("invalid payload for peer list message")
+		}
+	default:
+		return fmt.Errorf("unsupported message type: %s", msgType)
+	}
+
+	// Marshal the type-safe message
+	data, err := msg.Marshal()
 	if err != nil {
 		return err
 	}
