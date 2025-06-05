@@ -193,6 +193,13 @@
               description = lib.mdDoc "Path to file containing the shared secret (required if secret is not set)";
             };
             
+            listen = mkOption {
+              type = types.nullOr types.str;
+              default = null;
+              example = ":9437";
+              description = lib.mdDoc "Address to listen on (for full nodes)";
+            };
+            
             join = mkOption {
               type = types.listOf types.str;
               default = [];
@@ -258,12 +265,35 @@
                 message = "linkpearl: 'secret' and 'secretFile' are mutually exclusive";
               }
               {
-                assertion = cfg.join != [];
-                message = "linkpearl: 'join' must be set for client mode in home-manager";
+                assertion = (cfg.listen != null) || (cfg.join != []);
+                message = "linkpearl: either 'listen' (for server mode) or 'join' (for client mode) must be set";
               }
             ];
             
-            systemd.user.services.linkpearl = {
+            # Use launchd on macOS, systemd on Linux
+            launchd.agents.linkpearl = mkIf pkgs.stdenv.isDarwin {
+              enable = true;
+              config = {
+                ProgramArguments = [ "${cfg.package}/bin/linkpearl" "run" "--poll-interval" cfg.pollInterval ];
+                KeepAlive = true;
+                RunAtLoad = true;
+                StandardErrorPath = "/tmp/linkpearl.err";
+                StandardOutPath = "/tmp/linkpearl.out";
+                EnvironmentVariables = lib.mkMerge [
+                  (mkIf (cfg.secret != null) { LINKPEARL_SECRET = cfg.secret; })
+                  (mkIf (cfg.secretFile != null) { LINKPEARL_SECRET_FILE = toString cfg.secretFile; })
+                  (mkIf (cfg.listen != null) { LINKPEARL_LISTEN = cfg.listen; })
+                  (mkIf (cfg.join != []) { LINKPEARL_JOIN = concatStringsSep "," cfg.join; })
+                  (mkIf (cfg.nodeId != null) { LINKPEARL_NODE_ID = cfg.nodeId; })
+                  (mkIf cfg.verbose { LINKPEARL_VERBOSE = "true"; })
+                  (mkIf (cfg.socketPath != null) { LINKPEARL_SOCKET = cfg.socketPath; })
+                  # Ensure PATH includes clipboard tools
+                  { PATH = "/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin"; }
+                ];
+              };
+            };
+            
+            systemd.user.services.linkpearl = mkIf (!pkgs.stdenv.isDarwin) {
               Unit = {
                 Description = "Linkpearl clipboard synchronization";
                 After = [ "graphical-session.target" ];
@@ -273,6 +303,7 @@
                 Environment = lib.mkMerge [
                   (mkIf (cfg.secret != null) [ "LINKPEARL_SECRET=${cfg.secret}" ])
                   (mkIf (cfg.secretFile != null) [ "LINKPEARL_SECRET_FILE=${toString cfg.secretFile}" ])
+                  (mkIf (cfg.listen != null) [ "LINKPEARL_LISTEN=${cfg.listen}" ])
                   (mkIf (cfg.join != []) [ "LINKPEARL_JOIN=${concatStringsSep "," cfg.join}" ])
                   (mkIf (cfg.nodeId != null) [ "LINKPEARL_NODE_ID=${cfg.nodeId}" ])
                   (mkIf cfg.verbose [ "LINKPEARL_VERBOSE=true" ])
