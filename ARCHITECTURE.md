@@ -272,8 +272,9 @@ type State struct {
 
 // Platform-specific implementations
 // pkg/clipboard/darwin.go  - Uses pbcopy/pbpaste
-// pkg/clipboard/linux/xsel.go - Linux clipboard providers, this one is xsel
+// pkg/clipboard/linux.go   - Linux clipboard providers (xsel, xclip, wl-clipboard)
 // pkg/clipboard/mock.go    - For testing
+// pkg/clipboard/noop.go    - Headless server fallback (no clipboard tools)
 
 func (c *DarwinClipboard) Watch(ctx context.Context) <-chan struct{} {
     ch := make(chan struct{}, 10) // Buffered to handle bursts

@@ -265,6 +265,20 @@ linkpearl paste
 linkpearl status
 ```
 
+### Headless Servers
+
+Linkpearl can run on headless servers without clipboard tools. It will automatically use an in-memory clipboard, allowing it to work as a network pipe:
+
+```bash
+# On server without xsel/xclip/wl-clipboard
+linkpearl run --secret "mysecret" --listen :9437
+# linkpearl will log: "no clipboard tool found, using in-memory clipboard"
+
+# From another machine, you can still copy/paste
+echo "data for server" | linkpearl copy
+linkpearl paste  # retrieves from server's in-memory clipboard
+```
+
 ### Multiple Computers
 
 Create a mesh network with multiple devices:

@@ -28,6 +28,18 @@ var (
 		Short: "Run linkpearl daemon",
 		Long: `Run the linkpearl daemon for clipboard synchronization.
 
+This starts a background service that:
+- Monitors the local clipboard for changes (if available)
+- Synchronizes clipboard content with connected nodes  
+- Provides a local API for the copy/paste commands
+
+The daemon requires a shared secret for authentication. All nodes
+in your mesh must use the same secret.
+
+Note: If no clipboard tool is found (xsel, xclip, wl-clipboard on Linux,
+or pbcopy/pbpaste on macOS), linkpearl will still run using an in-memory
+clipboard. This allows it to work as a network pipe on headless servers.
+
 The daemon runs continuously, monitoring local clipboard changes and 
 synchronizing with connected peers. It also provides a local Unix socket 
 API for client commands (copy, paste, status).
@@ -112,7 +124,7 @@ func runDaemonWithConfig(cfg *config.Config, log *logger) error {
 
 	// Create clipboard
 	log.Info("initializing clipboard")
-	clip, err := createClipboard()
+	clip, err := createClipboard(log)
 	if err != nil {
 		return fmt.Errorf("failed to create clipboard: %w", err)
 	}
@@ -241,16 +253,26 @@ func runDaemonWithConfig(cfg *config.Config, log *logger) error {
 }
 
 // createClipboard creates the appropriate clipboard implementation.
-func createClipboard() (clipboard.Clipboard, error) {
-	// Use the platform clipboard factory
+func createClipboard(log *logger) (clipboard.Clipboard, error) {
+	// Try to use the platform clipboard factory
 	clip, err := clipboard.NewPlatformClipboard()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create platform clipboard: %w", err)
+		// Log warning but don't fail - use noop clipboard instead
+		log.Error("WARNING: No clipboard tool found, using in-memory clipboard",
+			"error", err,
+			"solution", "Install xsel, xclip, or wl-clipboard for system clipboard integration",
+			"note", "linkpearl will still work for network synchronization")
+		return clipboard.NewNoopClipboard(), nil
 	}
 
 	// Test clipboard access
 	if _, err := clip.Read(); err != nil {
-		return nil, fmt.Errorf("clipboard access test failed: %w", err)
+		// If clipboard exists but can't be accessed, fall back to noop
+		log.Error("WARNING: Clipboard access failed, using in-memory clipboard",
+			"error", err,
+			"solution", "Check clipboard tool permissions and X11/Wayland access",
+			"note", "linkpearl will still work for network synchronization")
+		return clipboard.NewNoopClipboard(), nil
 	}
 
 	return clip, nil

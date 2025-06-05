@@ -419,13 +419,13 @@ func TestRun(t *testing.T) {
 // TestComponentCreators tests the individual component creation functions.
 func TestComponentCreators(t *testing.T) {
 	t.Run("createClipboard", func(t *testing.T) {
-		// This will likely fail in CI without clipboard access
-		clip, err := createClipboard()
+		// Create a test logger
+		log := newLogger(false)
+
+		// This will likely fall back to noop clipboard in test environments
+		clip, err := createClipboard(log)
 		if err != nil {
-			// Expected in most test environments
-			if !strings.Contains(err.Error(), "clipboard") {
-				t.Errorf("unexpected error: %v", err)
-			}
+			t.Errorf("createClipboard() should not fail with noop fallback: %v", err)
 			return
 		}
 
