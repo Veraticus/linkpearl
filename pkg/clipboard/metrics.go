@@ -2,7 +2,6 @@
 //
 // This file provides a metrics interface for monitoring clipboard operations,
 // allowing integration with various metrics backends like Prometheus, StatsD, etc.
-
 package clipboard
 
 import (
@@ -107,21 +106,21 @@ func (m *DefaultMetricsCollector) RecordOperation(op string, duration time.Durat
 
 	// Update min/max times
 	for {
-		min := stats.minTime.Load()
-		if int64(duration) >= min && min != 0 {
+		minTime := stats.minTime.Load()
+		if int64(duration) >= minTime && minTime != 0 {
 			break
 		}
-		if stats.minTime.CompareAndSwap(min, int64(duration)) {
+		if stats.minTime.CompareAndSwap(minTime, int64(duration)) {
 			break
 		}
 	}
 
 	for {
-		max := stats.maxTime.Load()
-		if int64(duration) <= max {
+		maxTime := stats.maxTime.Load()
+		if int64(duration) <= maxTime {
 			break
 		}
-		if stats.maxTime.CompareAndSwap(max, int64(duration)) {
+		if stats.maxTime.CompareAndSwap(maxTime, int64(duration)) {
 			break
 		}
 	}
@@ -153,21 +152,21 @@ func (m *DefaultMetricsCollector) RecordSize(op string, size int) {
 
 	// Update min/max sizes
 	for {
-		min := stats.minBytes.Load()
-		if sizeUint64 >= min && min != 0 {
+		minBytes := stats.minBytes.Load()
+		if sizeUint64 >= minBytes && minBytes != 0 {
 			break
 		}
-		if stats.minBytes.CompareAndSwap(min, sizeUint64) {
+		if stats.minBytes.CompareAndSwap(minBytes, sizeUint64) {
 			break
 		}
 	}
 
 	for {
-		max := stats.maxBytes.Load()
-		if sizeUint64 <= max {
+		maxBytes := stats.maxBytes.Load()
+		if sizeUint64 <= maxBytes {
 			break
 		}
-		if stats.maxBytes.CompareAndSwap(max, sizeUint64) {
+		if stats.maxBytes.CompareAndSwap(maxBytes, sizeUint64) {
 			break
 		}
 	}
@@ -335,11 +334,26 @@ func categorizeError(err error) string {
 // NoOpMetricsCollector is a no-op implementation for when metrics are disabled.
 type NoOpMetricsCollector struct{}
 
+// RecordOperation is a no-op for the NoOpMetricsCollector.
 func (n *NoOpMetricsCollector) RecordOperation(_ string, _ time.Duration, _ error) {}
-func (n *NoOpMetricsCollector) RecordSize(_ string, _ int)                               {}
-func (n *NoOpMetricsCollector) RecordError(_ string, _ error)                             {}
-func (n *NoOpMetricsCollector) RecordTimeout(_ string)                                      {}
-func (n *NoOpMetricsCollector) RecordRateLimitHit(_ string)                                 {}
-func (n *NoOpMetricsCollector) RecordWatcherCount(_ int)                                 {}
-func (n *NoOpMetricsCollector) RecordSequenceNumber(_ uint64)                              {}
-func (n *NoOpMetricsCollector) GetMetrics() MetricsSnapshot                                  { return MetricsSnapshot{} }
+
+// RecordSize is a no-op for the NoOpMetricsCollector.
+func (n *NoOpMetricsCollector) RecordSize(_ string, _ int) {}
+
+// RecordError is a no-op for the NoOpMetricsCollector.
+func (n *NoOpMetricsCollector) RecordError(_ string, _ error) {}
+
+// RecordTimeout is a no-op for the NoOpMetricsCollector.
+func (n *NoOpMetricsCollector) RecordTimeout(_ string) {}
+
+// RecordRateLimitHit is a no-op for the NoOpMetricsCollector.
+func (n *NoOpMetricsCollector) RecordRateLimitHit(_ string) {}
+
+// RecordWatcherCount is a no-op for the NoOpMetricsCollector.
+func (n *NoOpMetricsCollector) RecordWatcherCount(_ int) {}
+
+// RecordSequenceNumber is a no-op for the NoOpMetricsCollector.
+func (n *NoOpMetricsCollector) RecordSequenceNumber(_ uint64) {}
+
+// GetMetrics returns an empty MetricsSnapshot for the NoOpMetricsCollector.
+func (n *NoOpMetricsCollector) GetMetrics() MetricsSnapshot { return MetricsSnapshot{} }

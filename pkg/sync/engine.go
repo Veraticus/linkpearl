@@ -236,7 +236,7 @@ func (e *engine) initializeState() error {
 // Sync loop detection prevents infinite loops when our own changes echo back
 // through the network. This uses timing windows to identify suspiciously fast
 // round-trip updates.
-func (e *engine) handleLocalChange(content string, state clipboard.ClipboardState) {
+func (e *engine) handleLocalChange(content string, state clipboard.State) {
 	checksum := computeChecksum(content)
 
 	// Verify state hash matches content (defensive check)

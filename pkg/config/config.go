@@ -5,9 +5,9 @@
 // Configuration Sources:
 //
 // Configuration can be loaded from multiple sources with the following precedence:
-//   1. Command-line flags (highest priority)
-//   2. Environment variables
-//   3. Default values (lowest priority)
+//  1. Command-line flags (highest priority)
+//  2. Environment variables
+//  3. Default values (lowest priority)
 //
 // Environment Variables:
 //
@@ -26,11 +26,11 @@
 //
 // Linkpearl supports two operational modes:
 //
-//   1. Client Mode: Connects to other nodes but doesn't accept connections.
-//      Ideal for devices behind NAT or with limited resources.
+//  1. Client Mode: Connects to other nodes but doesn't accept connections.
+//     Ideal for devices behind NAT or with limited resources.
 //
-//   2. Full Mode: Accepts incoming connections and fully participates in
-//      the mesh. Requires a publicly accessible address or port forwarding.
+//  2. Full Mode: Accepts incoming connections and fully participates in
+//     the mesh. Requires a publicly accessible address or port forwarding.
 //
 // Security:
 //
@@ -45,7 +45,6 @@
 //   - Mode-specific requirements are met
 //   - Network addresses are properly formatted
 //   - Duration values are within reasonable bounds
-
 package config
 
 import (

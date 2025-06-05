@@ -2,7 +2,6 @@
 //
 // This file provides an instrumented clipboard wrapper that collects metrics
 // for all clipboard operations.
-
 package clipboard
 
 import (
@@ -114,7 +113,7 @@ func (ic *InstrumentedClipboard) Watch(ctx context.Context) <-chan struct{} {
 }
 
 // GetState returns current state information.
-func (ic *InstrumentedClipboard) GetState() ClipboardState {
+func (ic *InstrumentedClipboard) GetState() State {
 	return ic.clipboard.GetState()
 }
 

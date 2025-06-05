@@ -42,12 +42,12 @@ type ExponentialBackoff struct {
 }
 
 // NewExponentialBackoff creates a new exponential backoff..
-func NewExponentialBackoff(initial, max time.Duration, factor, jitter float64) *ExponentialBackoff {
+func NewExponentialBackoff(initial, maxDuration time.Duration, factor, jitter float64) *ExponentialBackoff {
 	if initial <= 0 {
 		initial = time.Second
 	}
-	if max <= 0 {
-		max = 5 * time.Minute
+	if maxDuration <= 0 {
+		maxDuration = 5 * time.Minute
 	}
 	if factor <= 1 {
 		factor = 2.0
@@ -58,7 +58,7 @@ func NewExponentialBackoff(initial, max time.Duration, factor, jitter float64) *
 
 	return &ExponentialBackoff{
 		initial: initial,
-		max:     max,
+		max:     maxDuration,
 		factor:  factor,
 		jitter:  jitter,
 		current: initial,
@@ -222,14 +222,14 @@ func (m *backoffManager) Clear() {
 }
 
 // calculateBackoffDuration is a helper for testing specific backoff calculations.
-func calculateBackoffDuration(attempt int, initial, max time.Duration, factor float64) time.Duration {
+func calculateBackoffDuration(attempt int, initial, maxDuration time.Duration, factor float64) time.Duration {
 	if attempt <= 0 {
 		return initial
 	}
 
 	duration := initial * time.Duration(math.Pow(factor, float64(attempt-1)))
-	if duration > max {
-		return max
+	if duration > maxDuration {
+		return maxDuration
 	}
 	return duration
 }

@@ -2,7 +2,6 @@
 //
 // This file provides retry functionality with exponential backoff for clipboard operations.
 // It helps handle transient failures that may occur when accessing system clipboard.
-
 package clipboard
 
 import (

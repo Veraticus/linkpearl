@@ -58,10 +58,10 @@ func TestExponentialBackoff(t *testing.T) {
 			seen[d] = true
 
 			// Check within jitter range (±50%)
-			min := 500 * time.Millisecond
-			max := 1500 * time.Millisecond
-			assert.GreaterOrEqual(t, d, min, "duration should be >= min")
-			assert.LessOrEqual(t, d, max, "duration should be <= max")
+			minTime := 500 * time.Millisecond
+			maxTime := 1500 * time.Millisecond
+			assert.GreaterOrEqual(t, d, minTime, "duration should be >= min")
+			assert.LessOrEqual(t, d, maxTime, "duration should be <= max")
 		}
 
 		// Should see some variation

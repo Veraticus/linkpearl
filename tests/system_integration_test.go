@@ -279,7 +279,7 @@ func (n *systemTestNode) Start(ctx context.Context) error {
 	// Start sync engine
 	go func() {
 		if err := n.engine.Run(nodeCtx); err != nil && err != context.Canceled {
-			fmt.Printf("Sync engine error for %s: %v\n", n.id, err)
+			// Sync engine error for n.id: err (logging suppressed in tests)
 		}
 	}()
 
@@ -318,7 +318,7 @@ func createSystemTestNode(t *testing.T, cfg *config.Config) (*systemTestNode, fu
 	}
 
 	// Create transport config
-	transportConfig := &transport.TransportConfig{
+	transportConfig := &transport.Config{
 		NodeID: cfg.NodeID,
 		Mode:   mode,
 		Secret: cfg.Secret,

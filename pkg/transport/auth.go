@@ -1,4 +1,4 @@
-// auth.go implements the authentication and TLS setup for secure connections.
+// Package transport implements the authentication and TLS setup for secure connections.
 //
 // This file provides the security foundation for LinkPearl's transport layer:
 //

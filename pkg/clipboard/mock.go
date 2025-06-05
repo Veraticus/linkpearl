@@ -206,11 +206,11 @@ func (m *MockClipboard) GetWatcherCount() int {
 }
 
 // GetState returns current state information.
-func (m *MockClipboard) GetState() ClipboardState {
+func (m *MockClipboard) GetState() State {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	return ClipboardState{
+	return State{
 		SequenceNumber: m.sequenceNumber.Load(),
 		LastModified:   m.lastModified,
 		ContentHash:    m.contentHash,

@@ -1,4 +1,4 @@
-// conn.go implements secure connections for the transport layer.
+// Package transport implements secure connections for the transport layer.
 //
 // This file provides the Conn interface implementation that wraps
 // TLS connections with additional functionality:

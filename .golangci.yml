@@ -182,6 +182,24 @@ issues:
         - forbidigo
       text: "exec\\.Command"
       
+    # Allow empty blocks in test files for channel draining
+    - path: _test\.go
+      linters:
+        - revive
+      text: "empty-block"
+      
+    # Allow MeshMessage name - can't rename due to existing Message struct
+    - path: pkg/mesh/messages\.go
+      linters:
+        - revive
+      text: "type name will be used as mesh.MeshMessage"
+      
+    # Allow fmt.Print in test files for debugging
+    - path: tests/
+      linters:
+        - forbidigo
+      text: "fmt\\.Print"
+      
      
   # Don't be too strict about TODO comments
   exclude:
@@ -193,6 +211,13 @@ issues:
   
   # Show all issues from a linter
   max-issues-per-linter: 0
+  
+  # Enable use of nolint directives
+  exclude-use-default: false
+  
+  # Don't ignore issues with nolint directives without specific linter
+  nolint-require-explanation: false
+  nolint-require-specific: true
 
 run:
   # Timeout for analysis

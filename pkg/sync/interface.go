@@ -169,6 +169,6 @@ func (c *Config) Validate() error {
 // noopLogger implements Logger with no operations.
 type noopLogger struct{}
 
-func (n *noopLogger) Debug(msg string, keysAndValues ...interface{}) {}
-func (n *noopLogger) Info(msg string, keysAndValues ...interface{})  {}
-func (n *noopLogger) Error(msg string, keysAndValues ...interface{}) {}
+func (n *noopLogger) Debug(_ string, _ ...interface{}) {}
+func (n *noopLogger) Info(_ string, _ ...interface{})  {}
+func (n *noopLogger) Error(_ string, _ ...interface{}) {}

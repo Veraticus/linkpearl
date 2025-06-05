@@ -2,7 +2,6 @@
 //
 // This file provides rate limiting functionality for clipboard operations
 // to prevent abuse and protect system resources.
-
 package clipboard
 
 import (

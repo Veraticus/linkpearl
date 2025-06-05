@@ -144,15 +144,15 @@ func (c *mockTopologyConn) RemoteAddr() net.Addr {
 	return &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 8081}
 }
 
-func (c *mockTopologyConn) SetDeadline(t time.Time) error {
+func (c *mockTopologyConn) SetDeadline(_ time.Time) error {
 	return nil
 }
 
-func (c *mockTopologyConn) SetReadDeadline(t time.Time) error {
+func (c *mockTopologyConn) SetReadDeadline(_ time.Time) error {
 	return nil
 }
 
-func (c *mockTopologyConn) SetWriteDeadline(t time.Time) error {
+func (c *mockTopologyConn) SetWriteDeadline(_ time.Time) error {
 	return nil
 }
 
@@ -715,7 +715,7 @@ func TestOutboundConnections(t *testing.T) {
 	t.Run("successful connection", func(t *testing.T) {
 		connected := make(chan bool, 1)
 		transport := newMockTopologyTransport()
-		transport.connectFunc = func(_ context.Context, addr string) (transportConn, error) {
+		transport.connectFunc = func(_ context.Context, _ string) (transportConn, error) {
 			connected <- true
 			conn := newMockTopologyConn("remote-node", "full")
 			conn.version = "localhost:9090" // Remote listen address
@@ -766,7 +766,7 @@ func TestOutboundConnections(t *testing.T) {
 	t.Run("connection with retry and backoff", func(t *testing.T) {
 		attempts := atomic.Int32{}
 		transport := newMockTopologyTransport()
-		transport.connectFunc = func(ctx context.Context, addr string) (transportConn, error) {
+		transport.connectFunc = func(_ context.Context, _ string) (transportConn, error) {
 			count := attempts.Add(1)
 			if count < 3 {
 				return nil, errors.New("connection refused")
@@ -806,7 +806,7 @@ func TestOutboundConnections(t *testing.T) {
 
 	t.Run("avoid duplicate outbound connections", func(t *testing.T) {
 		transport := newMockTopologyTransport()
-		transport.connectFunc = func(ctx context.Context, addr string) (transportConn, error) {
+		transport.connectFunc = func(_ context.Context, _ string) (transportConn, error) {
 			// Always return the same node ID
 			return newMockTopologyConn("same-node", "full"), nil
 		}
@@ -1493,7 +1493,7 @@ func TestReconnectionBehavior(t *testing.T) {
 		var currentConn *mockTopologyConn
 		var mu sync.Mutex
 
-		transport.connectFunc = func(ctx context.Context, addr string) (transportConn, error) {
+		transport.connectFunc = func(_ context.Context, _ string) (transportConn, error) {
 			count := connectCount.Add(1)
 
 			mu.Lock()
@@ -1572,7 +1572,7 @@ func TestReconnectionBehavior(t *testing.T) {
 		var mu sync.Mutex
 
 		transport := newMockTopologyTransport()
-		transport.connectFunc = func(ctx context.Context, addr string) (transportConn, error) {
+		transport.connectFunc = func(_ context.Context, _ string) (transportConn, error) {
 			mu.Lock()
 			attempts = append(attempts, time.Now())
 			mu.Unlock()

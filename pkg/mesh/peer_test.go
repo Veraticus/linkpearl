@@ -515,7 +515,7 @@ func TestConcurrentOperations(t *testing.T) {
 		assert.Len(t, received, numMessages, "expected all unique messages")
 	})
 
-	t.Run("concurrent peer manager operations", func(t *testing.T) {
+	t.Run("concurrent peer manager operations", func(_ *testing.T) {
 		m := newPeerManager()
 
 		var wg sync.WaitGroup
@@ -552,7 +552,7 @@ func TestConcurrentOperations(t *testing.T) {
 		m.Stop()
 	})
 
-	t.Run("concurrent disconnect and send", func(t *testing.T) {
+	t.Run("concurrent disconnect and send", func(_ *testing.T) {
 		node := Node{ID: "node1", Mode: "full"}
 		conn := newMockConn("node1", "full")
 		p := newPeer(node, conn, "inbound")
@@ -739,7 +739,7 @@ func TestEdgeCases(t *testing.T) {
 		p2.stop()
 	})
 
-	t.Run("connection state during concurrent operations", func(t *testing.T) {
+	t.Run("connection state during concurrent operations", func(_ *testing.T) {
 		node := Node{ID: "node1", Mode: "full"}
 		p := newOutboundPeer(node, "127.0.0.1:8080")
 		defer p.stop()

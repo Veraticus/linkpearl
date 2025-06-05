@@ -44,7 +44,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -87,9 +86,7 @@ func (c *DarwinClipboard) Read() (string, error) {
 		return "", err
 	}
 
-	if os.Getenv("CI") == "true" {
-		fmt.Printf("[DarwinClipboard.Read] Read %d bytes from clipboard\n", len(output))
-	}
+	// Debug logging removed - use metrics collector for monitoring
 
 	return string(output), nil
 }
@@ -195,9 +192,6 @@ func (c *DarwinClipboard) Watch(ctx context.Context) <-chan struct{} {
 							return
 						default:
 							// Channel full - skip notification
-							if os.Getenv("CI") == "true" {
-								fmt.Printf("[DarwinClipboard.Watch] Dropped clipboard notification - channel full\n")
-							}
 						}
 					} else {
 						c.lastChangeCount = currentCount
@@ -263,11 +257,11 @@ func (c *DarwinClipboard) hashContent(content string) string {
 }
 
 // GetState returns current state information
-func (c *DarwinClipboard) GetState() ClipboardState {
+func (c *DarwinClipboard) GetState() State {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	return ClipboardState{
+	return State{
 		SequenceNumber: c.sequenceNumber.Load(),
 		LastModified:   c.lastModified,
 		ContentHash:    c.lastHash,

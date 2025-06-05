@@ -119,8 +119,7 @@ func main() {
 
 	// Show version if requested
 	if *showVersion {
-		//nolint:forbidigo // fmt.Printf is appropriate for CLI version output
-		fmt.Printf("linkpearl version %s (commit: %s, built: %s)\n", version, commit, date)
+		fmt.Printf("linkpearl version %s (commit: %s, built: %s)\n", version, commit, date) //nolint:forbidigo // fmt.Printf is appropriate for CLI version output
 		os.Exit(0)
 	}
 
@@ -304,7 +303,7 @@ func createClipboard() (clipboard.Clipboard, error) {
 // createTransport creates the network transport.
 func createTransport(cfg *config.Config, log *logger) (transport.Transport, error) {
 	// Create transport config
-	transportCfg := &transport.TransportConfig{
+	transportCfg := &transport.Config{
 		NodeID: cfg.NodeID,
 		Mode:   string(cfg.Mode),
 		Secret: cfg.Secret,

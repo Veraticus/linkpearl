@@ -11,7 +11,7 @@ import (
 func TestTCPTransport(t *testing.T) {
 	t.Run("ListenAndAccept", func(t *testing.T) {
 		// Create transport
-		config := &TransportConfig{
+		config := &Config{
 			NodeID: "test-server",
 			Mode:   "full",
 			Secret: "test-secret",
@@ -41,7 +41,7 @@ func TestTCPTransport(t *testing.T) {
 		secret := "shared-secret"
 
 		// Create server transport
-		serverConfig := &TransportConfig{
+		serverConfig := &Config{
 			NodeID: "server",
 			Mode:   "full",
 			Secret: secret,
@@ -67,7 +67,7 @@ func TestTCPTransport(t *testing.T) {
 		}()
 
 		// Create client transport
-		clientConfig := &TransportConfig{
+		clientConfig := &Config{
 			NodeID: "client",
 			Mode:   "client",
 			Secret: secret,
@@ -133,7 +133,7 @@ func TestTCPTransport(t *testing.T) {
 
 	t.Run("AuthenticationFailure", func(t *testing.T) {
 		// Create server with one secret
-		serverConfig := &TransportConfig{
+		serverConfig := &Config{
 			NodeID: "server",
 			Mode:   "full",
 			Secret: "server-secret",
@@ -160,7 +160,7 @@ func TestTCPTransport(t *testing.T) {
 		}()
 
 		// Create client with different secret
-		clientConfig := &TransportConfig{
+		clientConfig := &Config{
 			NodeID: "client",
 			Mode:   "client",
 			Secret: "wrong-secret",
@@ -185,7 +185,7 @@ func TestTCPTransport(t *testing.T) {
 		secret := "shared-secret"
 
 		// Create server
-		serverConfig := &TransportConfig{
+		serverConfig := &Config{
 			NodeID: "server",
 			Mode:   "full",
 			Secret: secret,
@@ -219,7 +219,7 @@ func TestTCPTransport(t *testing.T) {
 
 		// Create multiple clients
 		for i := 0; i < connections; i++ {
-			clientConfig := &TransportConfig{
+			clientConfig := &Config{
 				NodeID: fmt.Sprintf("client-%d", i),
 				Mode:   "client",
 				Secret: secret,
@@ -249,7 +249,7 @@ func TestTCPTransport(t *testing.T) {
 	})
 
 	t.Run("CloseTransport", func(t *testing.T) {
-		config := &TransportConfig{
+		config := &Config{
 			NodeID: "test",
 			Mode:   "full",
 			Secret: "secret",
@@ -288,7 +288,7 @@ func TestTCPTransport(t *testing.T) {
 	})
 
 	t.Run("ConnectTimeout", func(t *testing.T) {
-		config := &TransportConfig{
+		config := &Config{
 			NodeID: "client",
 			Mode:   "client",
 			Secret: "secret",
@@ -315,7 +315,7 @@ func TestIntegration(t *testing.T) {
 		secret := "integration-secret"
 
 		// Create server
-		serverConfig := &TransportConfig{
+		serverConfig := &Config{
 			NodeID: "integration-server",
 			Mode:   "full",
 			Secret: secret,
@@ -342,7 +342,7 @@ func TestIntegration(t *testing.T) {
 		}()
 
 		// Create client
-		clientConfig := &TransportConfig{
+		clientConfig := &Config{
 			NodeID: "integration-client",
 			Mode:   "client",
 			Secret: secret,

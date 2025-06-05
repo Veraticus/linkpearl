@@ -154,10 +154,10 @@ const KeepAliveInterval = 30 * time.Second
 // MaxMessageSize is the maximum allowed message size (1MB).
 const MaxMessageSize = 1024 * 1024
 
-// TransportConfig holds configuration for creating a transport instance.
+// Config holds configuration for creating a transport instance.
 // This configuration defines the node's identity, operational mode,
 // authentication credentials, and optional TLS settings.
-type TransportConfig struct {
+type Config struct {
 	// NodeID is this node's unique identifier
 	NodeID string
 
@@ -187,9 +187,9 @@ type Logger interface {
 // noopLogger implements Logger with no-op methods.
 type noopLogger struct{}
 
-func (noopLogger) Debug(msg string, args ...interface{}) {}
-func (noopLogger) Info(msg string, args ...interface{})  {}
-func (noopLogger) Error(msg string, args ...interface{}) {}
+func (noopLogger) Debug(_ string, _ ...interface{}) {}
+func (noopLogger) Info(_ string, _ ...interface{})  {}
+func (noopLogger) Error(_ string, _ ...interface{}) {}
 
 // DefaultLogger returns a no-op logger.
 func DefaultLogger() Logger {

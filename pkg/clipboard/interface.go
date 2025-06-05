@@ -127,11 +127,11 @@ type Clipboard interface {
 	Watch(ctx context.Context) <-chan struct{}
 
 	// GetState returns current state information
-	GetState() ClipboardState
+	GetState() State
 }
 
-// ClipboardState provides metadata about clipboard state.
-type ClipboardState struct {
+// State provides metadata about clipboard state.
+type State struct {
 	SequenceNumber uint64    // Monotonically increasing counter
 	LastModified   time.Time // When clipboard was last changed
 	ContentHash    string    // SHA256 hash of current content
@@ -142,8 +142,8 @@ func NewPlatformClipboard() (Clipboard, error) {
 	return newPlatformClipboard()
 }
 
-// ClipboardOptions configures the hardened clipboard.
-type ClipboardOptions struct {
+// Options configures the hardened clipboard.
+type Options struct {
 	// Enable retry logic with exponential backoff
 	EnableRetry bool
 
@@ -163,9 +163,9 @@ type ClipboardOptions struct {
 	MetricsCollector MetricsCollector
 }
 
-// DefaultClipboardOptions returns sensible default options.
-func DefaultClipboardOptions() *ClipboardOptions {
-	return &ClipboardOptions{
+// DefaultOptions returns sensible default options.
+func DefaultOptions() *Options {
+	return &Options{
 		EnableRetry:           true,
 		EnableRateLimit:       true,
 		RateLimitOpsPerMinute: 100,
@@ -174,9 +174,9 @@ func DefaultClipboardOptions() *ClipboardOptions {
 }
 
 // NewHardenedClipboard creates a production-ready clipboard with all hardening features.
-func NewHardenedClipboard(options *ClipboardOptions) (Clipboard, error) {
+func NewHardenedClipboard(options *Options) (Clipboard, error) {
 	if options == nil {
-		options = DefaultClipboardOptions()
+		options = DefaultOptions()
 	}
 
 	// Create base platform clipboard

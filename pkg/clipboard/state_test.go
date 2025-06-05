@@ -6,8 +6,8 @@ import (
 	"time"
 )
 
-// TestClipboardStateTracking tests the state tracking functionality.
-func TestClipboardStateTracking(t *testing.T) {
+// TestStateTracking tests the state tracking functionality.
+func TestStateTracking(t *testing.T) {
 	t.Run("MockClipboard state tracking", func(t *testing.T) {
 		mock := NewMockClipboard()
 

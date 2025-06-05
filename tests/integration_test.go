@@ -552,7 +552,7 @@ func (n *testNode) Start(ctx context.Context) error {
 	go func() {
 		if err := n.engine.Run(nodeCtx); err != nil && err != context.Canceled {
 			// Log error but don't fail the test
-			fmt.Printf("Sync engine error for %s: %v\n", n.id, err)
+			// Sync engine error for n.id: err (logging suppressed in tests)
 		}
 	}()
 
@@ -579,7 +579,7 @@ func createTestNode(t testing.TB, nodeID, listenAddr string, joinAddrs []string)
 	}
 
 	// Create transport config
-	transportConfig := &transport.TransportConfig{
+	transportConfig := &transport.Config{
 		NodeID: nodeID,
 		Mode:   mode,
 		Secret: "test-secret",

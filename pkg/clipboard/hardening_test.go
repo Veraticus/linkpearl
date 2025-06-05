@@ -356,7 +356,7 @@ func TestHardenedClipboard(t *testing.T) {
 		// This test can only run with a mock clipboard
 		// In real usage, it would create a platform clipboard
 		mock := NewMockClipboard()
-		options := DefaultClipboardOptions()
+		options := DefaultOptions()
 
 		// We can't directly test NewHardenedClipboard because it creates
 		// a platform clipboard, but we can test the layering manually

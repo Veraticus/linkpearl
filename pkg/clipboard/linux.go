@@ -372,11 +372,11 @@ func (c *LinuxClipboard) hashContent(content string) string {
 }
 
 // GetState returns current state information.
-func (c *LinuxClipboard) GetState() ClipboardState {
+func (c *LinuxClipboard) GetState() State {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	return ClipboardState{
+	return State{
 		SequenceNumber: c.sequenceNumber.Load(),
 		LastModified:   c.lastModified,
 		ContentHash:    c.lastHash,

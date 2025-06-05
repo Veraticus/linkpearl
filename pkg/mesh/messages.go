@@ -38,6 +38,8 @@ const (
 )
 
 // MeshMessage is the public interface for all mesh messages.
+//
+//nolint:revive // Can't rename to Message due to existing Message struct
 type MeshMessage interface {
 	Type() MessageType
 	From() string

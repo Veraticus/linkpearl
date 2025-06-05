@@ -64,7 +64,7 @@ func (m *mockClipboard) Write(content string) error {
 	return nil
 }
 
-func (m *mockClipboard) Watch(ctx context.Context) <-chan struct{} {
+func (m *mockClipboard) Watch(_ context.Context) <-chan struct{} {
 	if m.watchErr != nil {
 		ch := make(chan struct{})
 		close(ch)
@@ -87,11 +87,11 @@ func (m *mockClipboard) EmitChange(content string) {
 	}
 }
 
-func (m *mockClipboard) GetState() clipboard.ClipboardState {
+func (m *mockClipboard) GetState() clipboard.State {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	return clipboard.ClipboardState{
+	return clipboard.State{
 		SequenceNumber: m.sequenceNumber.Load(),
 		LastModified:   m.lastModified,
 		ContentHash:    m.contentHash,
@@ -116,7 +116,7 @@ func newMockTopology() *mockTopology {
 	}
 }
 
-func (m *mockTopology) Start(ctx context.Context) error {
+func (m *mockTopology) Start(_ context.Context) error {
 	return nil
 }
 
@@ -159,7 +159,7 @@ func (m *mockTopology) PeerCount() int {
 	return len(m.peers)
 }
 
-func (m *mockTopology) SendToPeer(_ string, msg interface{}) error {
+func (m *mockTopology) SendToPeer(_ string, _ interface{}) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 

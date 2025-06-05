@@ -2,7 +2,6 @@
 //
 // This file provides a resilient clipboard wrapper that adds production hardening
 // features like retry logic, rate limiting, and graceful degradation.
-
 package clipboard
 
 import (
@@ -144,7 +143,7 @@ func (rc *ResilientClipboard) Watch(ctx context.Context) <-chan struct{} {
 }
 
 // GetState returns current state information.
-func (rc *ResilientClipboard) GetState() ClipboardState {
+func (rc *ResilientClipboard) GetState() State {
 	return rc.clipboard.GetState()
 }
 

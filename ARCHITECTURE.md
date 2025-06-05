@@ -254,11 +254,11 @@ type Clipboard interface {
     Watch(ctx context.Context) <-chan struct{}
     
     // GetState returns current state information
-    GetState() ClipboardState
+    GetState() State
 }
 
-// ClipboardState provides metadata about clipboard state
-type ClipboardState struct {
+// State provides metadata about clipboard state
+type State struct {
     SequenceNumber uint64    // Monotonically increasing counter
     LastModified   time.Time // When clipboard was last changed
     ContentHash    string    // SHA256 hash of current content

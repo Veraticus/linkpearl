@@ -1,4 +1,4 @@
-// transport.go implements the TCP-based transport layer for LinkPearl.
+// Package transport implements the TCP-based transport layer for LinkPearl.
 //
 // This file contains the main transport implementation that handles:
 //   - TCP socket management and connection lifecycle
@@ -30,7 +30,7 @@ import (
 // It manages both server and client operations, maintaining a registry
 // of active connections and ensuring proper cleanup on shutdown.
 type tcpTransport struct {
-	config   *TransportConfig
+	config   *Config
 	auth     Authenticator
 	listener net.Listener
 	logger   Logger
@@ -46,7 +46,7 @@ type tcpTransport struct {
 //   - Mode: operational mode (e.g., "standard", "relay")
 //   - Secret: shared secret for authentication
 //   - Logger: optional logger (defaults to no-op if nil)
-func NewTCPTransport(config *TransportConfig) Transport {
+func NewTCPTransport(config *Config) Transport {
 	if config.Logger == nil {
 		config.Logger = DefaultLogger()
 	}

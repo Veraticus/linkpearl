@@ -550,8 +550,7 @@ func BenchmarkEventPumpPublish(b *testing.B) {
 		ch := make(chan TopologyEvent, 100)
 		pump.Subscribe(ch)
 		go func() {
-			for range ch {
-				// Drain channel
+			for range ch { //nolint:revive // Empty block needed to drain channel
 			}
 		}()
 	}

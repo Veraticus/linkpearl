@@ -352,7 +352,7 @@ func TestNodeInfo(t *testing.T) {
 }
 
 // createTestConnPair creates a pair of secure connections for testing.
-func createTestConnPair(t *testing.T) (*secureConn, *secureConn) {
+func createTestConnPair(_ *testing.T) (*secureConn, *secureConn) {
 	// Create pipe
 	client, server := net.Pipe()
 
