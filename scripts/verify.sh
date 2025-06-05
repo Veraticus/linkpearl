@@ -62,7 +62,7 @@ run_check "Quick tests" "go test -short ./..."
 # Check for common issues
 echo -e "==> Checking for common issues..."
 # Check for fmt.Print usage, excluding nolint lines and comments
-if grep -r "fmt\.Print" --include="*.go" . | grep -v "^scripts/" | grep -v "//nolint" | grep -v "//.*fmt\.Print" > /dev/null; then
+if grep -r "fmt\.Print" --include="*.go" . | grep -v "^scripts/" | grep -v "^./vendor/" | grep -v "//nolint" | grep -v "//.*fmt\.Print" > /dev/null; then
     echo -e "${YELLOW}⚠ Found fmt.Print usage (use logger instead)${NC}"
     FAILED=1
 fi

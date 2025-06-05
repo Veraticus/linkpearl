@@ -7,13 +7,13 @@ import (
 	"io"
 	"net"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/Veraticus/linkpearl/pkg/clipboard"
 	linksync "github.com/Veraticus/linkpearl/pkg/sync"
+	"github.com/Veraticus/linkpearl/pkg/testutil"
 )
 
 // mockClipboard implements clipboard.Clipboard for testing.
@@ -146,9 +146,7 @@ func TestNewServer(t *testing.T) {
 }
 
 func TestServerStartStop(t *testing.T) {
-	// Create temporary directory for socket
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "test.sock")
+	socketPath := testutil.SocketPath(t)
 
 	server, err := NewServer(&ServerConfig{
 		SocketPath: socketPath,
@@ -284,9 +282,7 @@ func TestServerCommands(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create temporary directory for socket
-			tmpDir := t.TempDir()
-			socketPath := filepath.Join(tmpDir, "test.sock")
+			socketPath := testutil.SocketPath(t)
 
 			// Add topology to engine if needed
 			if tt.engineState.topology.ListenAddress == "" {
@@ -382,9 +378,7 @@ func TestServerCommands(t *testing.T) {
 }
 
 func TestServerConcurrentConnections(t *testing.T) {
-	// Create temporary directory for socket
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "test.sock")
+	socketPath := testutil.SocketPath(t)
 
 	clipboard := &mockClipboard{content: "shared content"}
 	server, err := NewServer(&ServerConfig{
@@ -450,9 +444,7 @@ func TestServerConcurrentConnections(t *testing.T) {
 }
 
 func TestServerSocketPermissions(t *testing.T) {
-	// Create temporary directory for socket
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "test.sock")
+	socketPath := testutil.SocketPath(t)
 
 	server, err := NewServer(&ServerConfig{
 		SocketPath: socketPath,
@@ -491,9 +483,7 @@ func TestServerContentSizeLimit(t *testing.T) {
 	origTimeout := 5 * time.Second
 	defer func(_ time.Duration) { time.Sleep(0) }(origTimeout)
 
-	// Create temporary directory for socket
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "test.sock")
+	socketPath := testutil.SocketPath(t)
 
 	server, err := NewServer(&ServerConfig{
 		SocketPath: socketPath,

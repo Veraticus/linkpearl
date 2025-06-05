@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/Veraticus/linkpearl/pkg/api"
+	"github.com/Veraticus/linkpearl/pkg/testutil"
 )
 
 // mockServer creates a simple Unix socket server for testing.
@@ -210,8 +211,7 @@ func TestCopy(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tmpDir := t.TempDir()
-			socketPath := filepath.Join(tmpDir, "test.sock")
+			socketPath := testutil.SocketPath(t)
 
 			// Create mock server
 			server, err := newMockServer(socketPath, func(conn net.Conn) {
@@ -310,8 +310,7 @@ func TestPaste(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tmpDir := t.TempDir()
-			socketPath := filepath.Join(tmpDir, "test.sock")
+			socketPath := testutil.SocketPath(t)
 
 			// Create mock server
 			server, err := newMockServer(socketPath, func(conn net.Conn) {
@@ -435,8 +434,7 @@ func TestStatus(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tmpDir := t.TempDir()
-			socketPath := filepath.Join(tmpDir, "test.sock")
+			socketPath := testutil.SocketPath(t)
 
 			// Create mock server
 			server, err := newMockServer(socketPath, func(conn net.Conn) {
@@ -489,8 +487,7 @@ func TestStatus(t *testing.T) {
 }
 
 func TestIsRunning(t *testing.T) {
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "test.sock")
+	socketPath := testutil.SocketPath(t)
 
 	// Test when server is not running
 	client := New(&Config{
@@ -587,8 +584,7 @@ func TestHandleDialError(t *testing.T) {
 }
 
 func TestClientTimeout(t *testing.T) {
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "test.sock")
+	socketPath := testutil.SocketPath(t)
 
 	// Create a server that never responds
 	server, err := newMockServer(socketPath, func(conn net.Conn) {
