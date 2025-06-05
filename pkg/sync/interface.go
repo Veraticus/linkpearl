@@ -83,6 +83,9 @@ type Engine interface {
 
 	// Stats returns current engine statistics
 	Stats() *Stats
+
+	// Topology returns the underlying mesh topology
+	Topology() Topology
 }
 
 // Stats contains sync engine statistics.
@@ -105,6 +108,7 @@ type Stats struct {
 	// Timing
 	LastLocalChange  time.Time
 	LastRemoteChange time.Time
+	LastSyncTime     time.Time
 	StartTime        time.Time
 }
 
@@ -172,3 +176,38 @@ type noopLogger struct{}
 func (n *noopLogger) Debug(_ string, _ ...interface{}) {}
 func (n *noopLogger) Info(_ string, _ ...interface{})  {}
 func (n *noopLogger) Error(_ string, _ ...interface{}) {}
+
+// Topology provides information about the mesh network topology.
+// This is a simplified interface for querying topology state.
+type Topology interface {
+	// ListenAddr returns the address the node is listening on, or empty string if not listening
+	ListenAddr() string
+
+	// ConnectedPeers returns a list of connected peer node IDs
+	ConnectedPeers() []string
+
+	// JoinAddresses returns the list of addresses this node is configured to join
+	JoinAddresses() []string
+}
+
+// MockTopology implements Topology for testing.
+type MockTopology struct {
+	ListenAddress string
+	Peers         []string
+	JoinAddrs     []string
+}
+
+// ListenAddr returns the mock listen address.
+func (m *MockTopology) ListenAddr() string {
+	return m.ListenAddress
+}
+
+// ConnectedPeers returns the mock connected peers.
+func (m *MockTopology) ConnectedPeers() []string {
+	return m.Peers
+}
+
+// JoinAddresses returns the mock join addresses.
+func (m *MockTopology) JoinAddresses() []string {
+	return m.JoinAddrs
+}

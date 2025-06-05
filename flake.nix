@@ -16,7 +16,14 @@
         in
         {
           options.services.linkpearl = {
-            enable = mkEnableOption (lib.mdDoc "Linkpearl clipboard synchronization service");
+            enable = mkEnableOption (lib.mdDoc ''
+              Linkpearl clipboard synchronization service.
+              
+              This starts the linkpearl daemon. Once running, you can use:
+              - `linkpearl copy` to copy text to the shared clipboard
+              - `linkpearl paste` to paste from the shared clipboard  
+              - `linkpearl status` to check daemon status
+            '');
             
             secret = mkOption {
               type = types.nullOr types.str;
@@ -60,6 +67,16 @@
               type = types.bool;
               default = false;
               description = lib.mdDoc "Enable verbose logging";
+            };
+            
+            socketPath = mkOption {
+              type = types.nullOr types.str;
+              default = null;
+              example = "/run/user/1000/linkpearl/linkpearl.sock";
+              description = lib.mdDoc ''
+                Path to the unix socket for local API.
+                Defaults to $XDG_RUNTIME_DIR/linkpearl/linkpearl.sock if not specified.
+              '';
             };
             
             package = mkOption {
@@ -111,12 +128,14 @@
                 LINKPEARL_NODE_ID = cfg.nodeId;
               }) // (optionalAttrs cfg.verbose {
                 LINKPEARL_VERBOSE = "true";
+              }) // (optionalAttrs (cfg.socketPath != null) {
+                LINKPEARL_SOCKET = cfg.socketPath;
               });
               
               path = lib.optional (cfg.clipboardPackage != null) cfg.clipboardPackage;
               
               serviceConfig = {
-                ExecStart = "${cfg.package}/bin/linkpearl --poll-interval ${cfg.pollInterval}";
+                ExecStart = "${cfg.package}/bin/linkpearl run --poll-interval ${cfg.pollInterval}";
                 Restart = "on-failure";
                 RestartSec = 5;
                 
@@ -153,7 +172,14 @@
         in
         {
           options.services.linkpearl = {
-            enable = mkEnableOption (lib.mdDoc "Linkpearl clipboard synchronization service");
+            enable = mkEnableOption (lib.mdDoc ''
+              Linkpearl clipboard synchronization service.
+              
+              This starts the linkpearl daemon. Once running, you can use:
+              - `linkpearl copy` to copy text to the shared clipboard
+              - `linkpearl paste` to paste from the shared clipboard  
+              - `linkpearl status` to check daemon status
+            '');
             
             secret = mkOption {
               type = types.nullOr types.str;
@@ -190,6 +216,16 @@
               type = types.bool;
               default = false;
               description = lib.mdDoc "Enable verbose logging";
+            };
+            
+            socketPath = mkOption {
+              type = types.nullOr types.str;
+              default = null;
+              example = "/run/user/1000/linkpearl/linkpearl.sock";
+              description = lib.mdDoc ''
+                Path to the unix socket for local API.
+                Defaults to $XDG_RUNTIME_DIR/linkpearl/linkpearl.sock if not specified.
+              '';
             };
             
             package = mkOption {
@@ -240,9 +276,10 @@
                   (mkIf (cfg.join != []) [ "LINKPEARL_JOIN=${concatStringsSep "," cfg.join}" ])
                   (mkIf (cfg.nodeId != null) [ "LINKPEARL_NODE_ID=${cfg.nodeId}" ])
                   (mkIf cfg.verbose [ "LINKPEARL_VERBOSE=true" ])
+                  (mkIf (cfg.socketPath != null) [ "LINKPEARL_SOCKET=${cfg.socketPath}" ])
                 ];
                 
-                ExecStart = "${cfg.package}/bin/linkpearl --poll-interval ${cfg.pollInterval}";
+                ExecStart = "${cfg.package}/bin/linkpearl run --poll-interval ${cfg.pollInterval}";
                 Restart = "on-failure";
                 RestartSec = 5;
               };
@@ -266,7 +303,7 @@
           
           src = ./.;
           
-          vendorHash = "sha256-Y6/dBYyG252dmyVhcmN+25lqD4E0e9Vm5x8aFYC7J/I=";
+          vendorHash = "sha256-Wa0uvrk6zrGx2Uh2CrUeL7LFQf1+S4NeOLEQYxEP/fU=";
           
           # Disable tests on Darwin as they require pbcopy/pbpaste
           # which aren't available in the sandbox

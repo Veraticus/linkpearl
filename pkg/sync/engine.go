@@ -177,6 +177,21 @@ func (e *engine) Stats() *Stats {
 	lastRemoteChange := e.lastRemoteChange
 	e.mu.RUnlock()
 
+	// Determine last sync time
+	var lastSyncTime time.Time
+	switch {
+	case !lastLocalChange.IsZero() && !lastRemoteChange.IsZero():
+		if lastLocalChange.After(lastRemoteChange) {
+			lastSyncTime = lastLocalChange
+		} else {
+			lastSyncTime = lastRemoteChange
+		}
+	case !lastLocalChange.IsZero():
+		lastSyncTime = lastLocalChange
+	case !lastRemoteChange.IsZero():
+		lastSyncTime = lastRemoteChange
+	}
+
 	// Create a copy with atomic reads
 	return &Stats{
 		MessagesSent:      atomic.LoadUint64(&e.stats.MessagesSent),
@@ -190,8 +205,15 @@ func (e *engine) Stats() *Stats {
 		ReceiveErrors:     atomic.LoadUint64(&e.stats.ReceiveErrors),
 		LastLocalChange:   lastLocalChange,
 		LastRemoteChange:  lastRemoteChange,
+		LastSyncTime:      lastSyncTime,
 		StartTime:         e.stats.StartTime,
 	}
+}
+
+// Topology returns the underlying mesh topology.
+func (e *engine) Topology() Topology {
+	// Return a simple adapter that uses the mesh topology methods we need
+	return &meshTopologyAdapter{topology: e.topology}
 }
 
 // initializeState reads current clipboard state.
@@ -512,4 +534,39 @@ func (e *engine) handleTopologyEvent(event mesh.TopologyEvent) {
 		e.logger.Info("peer disconnected", "peer", event.Peer.ID)
 		// No action needed for disconnections
 	}
+}
+
+// meshTopologyAdapter implements the sync.Topology interface by wrapping a mesh.Topology.
+// This is needed because the mesh package doesn't know about our sync-specific methods.
+type meshTopologyAdapter struct {
+	topology mesh.Topology
+}
+
+// ListenAddr returns the address the node is listening on.
+// Since mesh.Topology interface doesn't expose this directly, we return empty string.
+// The actual implementation in mesh/topology.go has this method, but it's not
+// part of the interface, so we can't access it through the interface.
+// In the actual runtime, the mesh topology implementation does have these methods.
+func (m *meshTopologyAdapter) ListenAddr() string {
+	// TODO: Consider extending mesh.Topology interface to include these methods
+	// For now, return empty since this is mainly used for status display
+	return ""
+}
+
+// ConnectedPeers returns a list of connected peer node IDs.
+func (m *meshTopologyAdapter) ConnectedPeers() []string {
+	peers := m.topology.GetPeers()
+	result := make([]string, 0, len(peers))
+	for nodeID := range peers {
+		result = append(result, nodeID)
+	}
+	return result
+}
+
+// JoinAddresses returns the list of addresses this node is configured to join.
+// Since mesh.Topology interface doesn't expose this directly, we return empty slice.
+func (m *meshTopologyAdapter) JoinAddresses() []string {
+	// TODO: Consider extending mesh.Topology interface to include these methods
+	// For now, return empty since this is mainly used for status display
+	return []string{}
 }

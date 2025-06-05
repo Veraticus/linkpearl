@@ -624,3 +624,40 @@ func (t *topology) registerMessageHandlers() {
 	// Register default handler for clipboard messages
 	t.router.handler.Register(MessageTypeClipboard, defaultHandler(MessageTypeClipboard))
 }
+
+// ListenAddr returns the address the node is listening on, or empty string if not listening.
+// This implements the sync.Topology interface.
+func (t *topology) ListenAddr() string {
+	if t.config.Self.Mode != "full" {
+		return ""
+	}
+	if t.transport != nil {
+		if addr := t.transport.Addr(); addr != nil {
+			return addr.String()
+		}
+	}
+	return t.config.Self.Addr
+}
+
+// ConnectedPeers returns a list of connected peer node IDs.
+// This implements the sync.Topology interface.
+func (t *topology) ConnectedPeers() []string {
+	peers := t.GetPeers()
+	result := make([]string, 0, len(peers))
+	for nodeID := range peers {
+		result = append(result, nodeID)
+	}
+	return result
+}
+
+// JoinAddresses returns the list of addresses this node is configured to join.
+// This implements the sync.Topology interface.
+func (t *topology) JoinAddresses() []string {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+
+	// Return a copy to prevent external modification
+	result := make([]string, len(t.joinAddrs))
+	copy(result, t.joinAddrs)
+	return result
+}

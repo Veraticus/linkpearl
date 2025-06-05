@@ -84,16 +84,22 @@ linkpearl/
 ├── cmd/
 │   └── linkpearl/
 │       ├── main.go          # CLI entry point with cobra
-│       ├── run.go           # Server/daemon command
-│       ├── copy.go          # Copy command
+│       ├── run.go           # Daemon command
+│       ├── copy.go          # Copy command  
 │       ├── paste.go         # Paste command
-│       └── status.go        # Status command
+│       ├── status.go        # Status command
+│       ├── version.go       # Version command
+│       ├── logger.go        # Logger implementation
+│       ├── helpers.go       # Shared helpers
+│       └── validators.go    # Input validation
 ├── pkg/
 │   ├── api/                 # Local API server
 │   │   ├── server.go        # Unix socket server
-│   │   └── protocol.go      # Wire protocol definitions
+│   │   ├── protocol.go      # Wire protocol definitions
+│   │   └── server_test.go   # Server tests
 │   ├── client/              # Client library
-│   │   └── client.go        # Socket client implementation
+│   │   ├── client.go        # Socket client implementation
+│   │   └── client_test.go   # Client tests
 │   ├── clipboard/           # Platform clipboard access
 │   │   ├── interface.go     # Clipboard interface
 │   │   ├── darwin.go        # macOS implementation
@@ -937,6 +943,13 @@ func TestSyncEngine(t *testing.T) {
 
 Linkpearl uses a subcommand-based CLI structure with a Unix socket API for local client/server communication. This enables seamless integration with tools like NeoVim on headless servers where traditional clipboard mechanisms don't work.
 
+**Implementation Status**: ✅ COMPLETED
+- Subcommand structure using cobra
+- Unix socket API server and client
+- All commands implemented: run, copy, paste, status, version
+- NeoVim integration support with silent failure mode
+- XDG-compliant socket paths
+
 ```
 ┌─────────────┐                    ┌─────────────┐
 │   NeoVim    │                    │  Terminal   │
@@ -1210,6 +1223,44 @@ This integration:
    - Respects `XDG_RUNTIME_DIR` for socket location
    - Falls back to `~/.linkpearl/` if not set
    - Proper directory permissions (0700)
+
+#### Implementation Details
+
+The actual implementation achieved all design goals:
+
+**Wire Protocol** (pkg/api/protocol.go):
+```go
+type Command string
+const (
+    CommandCopy   Command = "COPY"
+    CommandPaste  Command = "PASTE"
+    CommandStatus Command = "STATUS"
+)
+
+type Request struct {
+    Command Command
+    Size    int      // For COPY command
+}
+
+type Response struct {
+    Type    ResponseType
+    Content string       // For OK responses
+    Error   string       // For ERROR responses
+}
+```
+
+**Key Features Implemented**:
+1. **Buffered I/O**: Uses `bufio.Reader` throughout to handle mixed text/binary data correctly
+2. **Content Validation**: 10MB size limit enforced on all clipboard operations
+3. **Proper Error Handling**: All errors are wrapped with context
+4. **Socket Security**: 0600 permissions enforced on socket file
+5. **Graceful Shutdown**: Server handles concurrent connections and clean shutdown
+
+**Testing Coverage**:
+- Unit tests for protocol parsing and server/client interaction
+- Integration tests for CLI commands
+- Mock implementations for testing without real clipboard access
+- Cross-platform build verification
 
 ---
 

@@ -235,24 +235,35 @@ The home-manager module:
 On your desktop (server):
 ```bash
 # Using command line secret (simple but less secure)
-linkpearl --secret "your-shared-secret" --listen :9437
+linkpearl run --secret "your-shared-secret" --listen :9437
 
 # Or using a secret file (recommended)
 echo "your-shared-secret" > ~/.linkpearl-secret
 chmod 600 ~/.linkpearl-secret
-linkpearl --secret-file ~/.linkpearl-secret --listen :9437
+linkpearl run --secret-file ~/.linkpearl-secret --listen :9437
 ```
 
 On your laptop (client):
 ```bash
 # Using the same secret
-linkpearl --secret "your-shared-secret" --join desktop.local:9437
+linkpearl run --secret "your-shared-secret" --join desktop.local:9437
 
 # Or with secret file
-linkpearl --secret-file ~/.linkpearl-secret --join desktop.local:9437
+linkpearl run --secret-file ~/.linkpearl-secret --join desktop.local:9437
 ```
 
-That's it! Copy text on one device and paste on the other.
+That's it! The daemons are now running. You can use the clipboard commands:
+
+```bash
+# Copy text to the shared clipboard
+echo "Hello from laptop" | linkpearl copy
+
+# Paste from the shared clipboard
+linkpearl paste
+
+# Check daemon status
+linkpearl status
+```
 
 ### Multiple Computers
 
@@ -260,21 +271,42 @@ Create a mesh network with multiple devices:
 
 ```bash
 # Desktop (full node - accepts connections)
-linkpearl --secret "mysecret" --listen :9437
+linkpearl run --secret "mysecret" --listen :9437
 
 # Laptop (full node - accepts and makes connections)
-linkpearl --secret "mysecret" --listen :9437 --join desktop.local:9437
+linkpearl run --secret "mysecret" --listen :9437 --join desktop.local:9437
 
 # Work machine (client node - only makes connections)
-linkpearl --secret "mysecret" --join desktop.local:9437 --join laptop.local:9437
+linkpearl run --secret "mysecret" --join desktop.local:9437 --join laptop.local:9437
 ```
 
 ## 📖 Usage
 
-### Command Line Flags
+### Commands
+
+Linkpearl uses a subcommand structure:
 
 ```
-linkpearl [flags]
+linkpearl <command> [flags]
+
+Commands:
+  run      Start the linkpearl daemon
+  copy     Copy stdin to the clipboard
+  paste    Output clipboard contents to stdout
+  status   Show daemon status and statistics
+  version  Show version information
+
+Global Flags:
+  --socket string   Path to unix socket (default: $XDG_RUNTIME_DIR/linkpearl/linkpearl.sock)
+  -h, --help        Show help message
+```
+
+### Running the Daemon
+
+The `run` command starts the linkpearl daemon:
+
+```
+linkpearl run [flags]
 
 Flags:
   --secret string       Shared secret for authentication (required if --secret-file not used)
@@ -284,14 +316,65 @@ Flags:
   --node-id string      Unique node identifier (default: hostname-timestamp)
   --poll-interval       Clipboard check interval (default: 500ms)
   -v, --verbose         Enable verbose logging
-  -h, --help            Show help message
   
 Note: Either --secret or --secret-file must be provided, but not both.
 ```
 
+### Client Commands
+
+Once the daemon is running, use these commands to interact with it:
+
+```bash
+# Copy from stdin
+echo "Hello, world!" | linkpearl copy
+cat document.txt | linkpearl copy
+
+# Copy from file
+linkpearl copy < file.txt
+
+# Paste to stdout
+linkpearl paste
+
+# Paste to file
+linkpearl paste > output.txt
+
+# Check daemon status
+linkpearl status
+
+# Get detailed JSON status
+linkpearl status --json
+
+# Show version
+linkpearl version
+```
+
+### NeoVim Integration
+
+Linkpearl can be used as a clipboard provider for NeoVim:
+
+```vim
+" In your init.vim or init.lua
+if executable('linkpearl')
+  let g:clipboard = {
+    \ 'name': 'linkpearl',
+    \ 'copy': {
+    \   '+': ['linkpearl', 'copy'],
+    \   '*': ['linkpearl', 'copy'],
+    \ },
+    \ 'paste': {
+    \   '+': ['linkpearl', 'paste'],
+    \   '*': ['linkpearl', 'paste'],
+    \ },
+    \ 'cache_enabled': 0,
+    \ }
+endif
+```
+
+Linkpearl will automatically fail silently if the daemon is not running when used from NeoVim.
+
 ### Environment Variables
 
-All flags can be set via environment variables:
+All daemon flags can be set via environment variables:
 
 ```bash
 export LINKPEARL_SECRET="your-shared-secret"
@@ -300,7 +383,14 @@ export LINKPEARL_LISTEN=":9437"
 export LINKPEARL_JOIN="server1:9437,server2:9437"
 export LINKPEARL_VERBOSE=true
 
-linkpearl  # Uses environment variables
+linkpearl run  # Uses environment variables
+```
+
+The socket path for client commands can also be set:
+
+```bash
+export LINKPEARL_SOCKET="/custom/path/to/linkpearl.sock"
+linkpearl copy  # Uses custom socket path
 ```
 
 ### Node Types
@@ -321,20 +411,20 @@ Linkpearl supports two node types:
 
 ```bash
 # Desktop in home office
-linkpearl --secret "home-secret" --listen :9437
+linkpearl run --secret "home-secret" --listen :9437
 
 # Laptop anywhere in house
-linkpearl --secret "home-secret" --join desktop.local:9437
+linkpearl run --secret "home-secret" --join desktop.local:9437
 ```
 
 ### Remote Work Setup
 
 ```bash
 # Home desktop (behind router)
-linkpearl --secret "work-secret" --listen :9437
+linkpearl run --secret "work-secret" --listen :9437
 
 # Work laptop (behind corporate firewall)  
-linkpearl --secret "work-secret" --join home.example.com:9437
+linkpearl run --secret "work-secret" --join home.example.com:9437
 
 # Note: Requires port forwarding on home router
 ```
@@ -343,13 +433,13 @@ linkpearl --secret "work-secret" --join home.example.com:9437
 
 ```bash
 # Server A (full node)
-linkpearl --secret "team-secret" --listen :9437
+linkpearl run --secret "team-secret" --listen :9437
 
 # Server B (full node) 
-linkpearl --secret "team-secret" --listen :9437 --join server-a:9437
+linkpearl run --secret "team-secret" --listen :9437 --join server-a:9437
 
 # Client devices
-linkpearl --secret "team-secret" --join server-a:9437 --join server-b:9437
+linkpearl run --secret "team-secret" --join server-a:9437 --join server-b:9437
 ```
 
 ## 🔒 Security
@@ -379,11 +469,11 @@ openssl rand -base64 32 > ~/.linkpearl-secret
 chmod 600 ~/.linkpearl-secret
 
 # Use the secret file
-linkpearl --secret-file ~/.linkpearl-secret --listen :9437
+linkpearl run --secret-file ~/.linkpearl-secret --listen :9437
 
 # Or via environment variable
 export LINKPEARL_SECRET_FILE=~/.linkpearl-secret
-linkpearl --listen :9437
+linkpearl run --listen :9437
 ```
 
 This approach is recommended for production deployments and integrates well with:
@@ -409,11 +499,17 @@ This approach is recommended for production deployments and integrates well with
 **Clipboard not syncing**
 - Verify same secret on all nodes
 - Check network connectivity with ping
-- Look for errors with `--verbose` flag
+- Look for errors with `--verbose` flag on the daemon
+- Check daemon is running: `linkpearl status`
 
 **High CPU usage**
-- Increase poll interval: `--poll-interval 2s`
+- Increase poll interval: `linkpearl run --poll-interval 2s`
 - On Linux, install `clipnotify` for efficient monitoring
+
+**Client commands fail**
+- Check daemon is running: `linkpearl status`
+- Verify socket path matches between daemon and client
+- Check socket permissions and directory exists
 
 ### Platform-Specific
 
