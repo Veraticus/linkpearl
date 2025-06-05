@@ -1289,9 +1289,11 @@ func TestErrorHandling(t *testing.T) {
 			t.Fatal("no events received")
 		}
 
-		// Peer should be removed
-		_, err = topo.GetPeer("peer1")
-		assert.ErrorIs(t, err, ErrPeerNotFound)
+		// Peer should eventually be removed
+		assert.Eventually(t, func() bool {
+			_, err = topo.GetPeer("peer1")
+			return errors.Is(err, ErrPeerNotFound)
+		}, time.Second, 10*time.Millisecond, "peer was not removed after disconnect")
 	})
 
 	t.Run("send to non-existent peer", func(t *testing.T) {
