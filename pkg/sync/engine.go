@@ -291,7 +291,7 @@ func (e *engine) handleIncomingMessage(msg mesh.Message) {
 	atomic.AddUint64(&e.stats.MessagesReceived, 1)
 	
 	// Only handle clipboard messages
-	if msg.Type != "clipboard" {
+	if msg.Type != string(MessageTypeClipboard) {
 		e.logger.Debug("ignoring non-clipboard message", "type", msg.Type)
 		return
 	}
@@ -460,7 +460,7 @@ func (e *engine) broadcastMessage(msg *ClipboardMessage) error {
 	
 	// Create mesh message wrapper
 	meshMsg := map[string]interface{}{
-		"type":    "clipboard", // Use the mesh package's message type
+		"type":    string(MessageTypeClipboard), // Use the defined constant
 		"payload": json.RawMessage(data),
 	}
 	

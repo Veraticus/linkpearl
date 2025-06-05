@@ -104,7 +104,7 @@ func TestEngineLocalChanges(t *testing.T) {
 	
 	msgMap, ok := broadcasts[0].(map[string]interface{})
 	require.True(t, ok)
-	assert.Equal(t, MessageTypeClipboard, msgMap["type"])
+	assert.Equal(t, string(MessageTypeClipboard), msgMap["type"])
 	
 	// Parse the payload
 	payloadBytes := msgMap["payload"].(json.RawMessage)
