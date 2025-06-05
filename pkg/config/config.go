@@ -13,6 +13,7 @@
 //
 // All configuration options can be set via environment variables:
 //   - LINKPEARL_SECRET: Shared secret for node authentication
+//   - LINKPEARL_SECRET_FILE: Path to file containing the shared secret
 //   - LINKPEARL_NODE_ID: Unique identifier for this node
 //   - LINKPEARL_MODE: Operational mode (client or full)
 //   - LINKPEARL_LISTEN: Address to listen on (full nodes only)
@@ -76,9 +77,10 @@ const (
 //   - Secure by default (no sensitive data in logs)
 type Config struct {
 	// Core settings
-	Secret string   `env:"LINKPEARL_SECRET"`
-	NodeID string   `env:"LINKPEARL_NODE_ID"`
-	Mode   NodeMode `env:"LINKPEARL_MODE"`
+	Secret     string   `env:"LINKPEARL_SECRET"`
+	SecretFile string   `env:"LINKPEARL_SECRET_FILE"`
+	NodeID     string   `env:"LINKPEARL_NODE_ID"`
+	Mode       NodeMode `env:"LINKPEARL_MODE"`
 
 	// Network settings
 	Listen string   `env:"LINKPEARL_LISTEN"`
@@ -117,7 +119,7 @@ func NewConfig() *Config {
 // This method checks all requirements and relationships between settings.
 //
 // Validation rules:
-//   - Secret is required (no default for security)
+//   - Secret is required (no default for security) - can be provided via --secret, LINKPEARL_SECRET, or --secret-file
 //   - NodeID is required (must be unique per node)
 //   - Mode must be either "client" or "full"
 //   - Full nodes must specify a listen address
@@ -126,11 +128,26 @@ func NewConfig() *Config {
 //
 // The method also performs automatic adjustments:
 //   - If Listen is set, mode is upgraded to FullNode
+//   - If SecretFile is set, reads the secret from the file
 //
 // Returns an error describing the first validation failure found.
 func (c *Config) Validate() error {
+	// Handle secret file if provided
+	if c.SecretFile != "" {
+		if c.Secret != "" {
+			return fmt.Errorf("cannot specify both --secret and --secret-file")
+		}
+
+		content, err := os.ReadFile(c.SecretFile)
+		if err != nil {
+			return fmt.Errorf("failed to read secret file: %w", err)
+		}
+
+		c.Secret = strings.TrimSpace(string(content))
+	}
+
 	if c.Secret == "" {
-		return fmt.Errorf("secret is required")
+		return fmt.Errorf("secret is required (use --secret, LINKPEARL_SECRET, or --secret-file)")
 	}
 
 	if c.NodeID == "" {
@@ -171,10 +188,11 @@ func (c *Config) Validate() error {
 //
 // Environment variable mappings:
 //   - LINKPEARL_SECRET -> Secret (required for security)
+//   - LINKPEARL_SECRET_FILE -> SecretFile (path to file containing secret)
 //   - LINKPEARL_NODE_ID -> NodeID (defaults to generated ID)
 //   - LINKPEARL_MODE -> Mode ("client" or "full")
-//   - LINKPEARL_LISTEN -> Listen (e.g., ":8080" or "0.0.0.0:8080")
-//   - LINKPEARL_JOIN -> Join (comma-separated, e.g., "host1:8080,host2:8080")
+//   - LINKPEARL_LISTEN -> Listen (e.g., ":9437" or "0.0.0.0:9437")
+//   - LINKPEARL_JOIN -> Join (comma-separated, e.g., "host1:9437,host2:9437")
 //   - LINKPEARL_POLL_INTERVAL -> PollInterval (e.g., "500ms", "1s")
 //   - LINKPEARL_RECONNECT_BACKOFF -> ReconnectBackoff (e.g., "1s", "5s")
 //   - LINKPEARL_VERBOSE -> Verbose ("true" or "false")
@@ -184,6 +202,10 @@ func (c *Config) Validate() error {
 func (c *Config) LoadFromEnv() {
 	if secret := os.Getenv("LINKPEARL_SECRET"); secret != "" {
 		c.Secret = secret
+	}
+
+	if secretFile := os.Getenv("LINKPEARL_SECRET_FILE"); secretFile != "" {
+		c.SecretFile = secretFile
 	}
 
 	if nodeID := os.Getenv("LINKPEARL_NODE_ID"); nodeID != "" {

@@ -149,7 +149,12 @@ Linkpearl includes a NixOS module for running as a systemd user service:
 {
   services.linkpearl = {
     enable = true;
-    secret = "your-shared-secret";  # Consider using secrets management
+    # Option 1: Direct secret (simple but less secure)
+    secret = "your-shared-secret";
+    
+    # Option 2: Secret from file (recommended)
+    # secretFile = "/run/secrets/linkpearl-secret";
+    
     listen = ":9437";               # Optional: for full nodes
     join = [                        # Optional: peers to connect to
       "desktop.local:9437"
@@ -168,11 +173,60 @@ For secret management, consider using [agenix](https://github.com/ryantm/agenix)
 {
   services.linkpearl = {
     enable = true;
-    secret = config.age.secrets.linkpearl-secret.path;
+    secretFile = config.age.secrets.linkpearl-secret.path;
     # ... other options
   };
 }
 ```
+
+#### Home Manager Configuration
+
+For user-level client configurations (no listening, only joining), use the home-manager module:
+
+```nix
+# In your home.nix or home-manager configuration
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    home-manager.url = "github:nix-community/home-manager";
+    linkpearl.url = "github:Veraticus/linkpearl";
+  };
+
+  outputs = { self, nixpkgs, home-manager, linkpearl }: {
+    homeConfigurations.myuser = home-manager.lib.homeManagerConfiguration {
+      modules = [
+        linkpearl.homeManagerModules.default
+        {
+          services.linkpearl = {
+            enable = true;
+            
+            # Choose one:
+            secret = "your-shared-secret";
+            # secretFile = "${config.home.homeDirectory}/.config/linkpearl/secret";
+            
+            # Required for client mode
+            join = [
+              "desktop.local:9437"
+              "server.example.com:9437"
+            ];
+            
+            # Optional settings
+            nodeId = "laptop-client";
+            pollInterval = "500ms";
+            verbose = false;
+          };
+        }
+      ];
+    };
+  };
+}
+```
+
+The home-manager module:
+- Runs as a user systemd service
+- Requires `join` addresses (client-only mode)
+- Starts after graphical session is available
+- Automatically installs the linkpearl package
 
 ## 🚀 Quick Start
 
@@ -180,12 +234,22 @@ For secret management, consider using [agenix](https://github.com/ryantm/agenix)
 
 On your desktop (server):
 ```bash
+# Using command line secret (simple but less secure)
 linkpearl --secret "your-shared-secret" --listen :9437
+
+# Or using a secret file (recommended)
+echo "your-shared-secret" > ~/.linkpearl-secret
+chmod 600 ~/.linkpearl-secret
+linkpearl --secret-file ~/.linkpearl-secret --listen :9437
 ```
 
 On your laptop (client):
 ```bash
+# Using the same secret
 linkpearl --secret "your-shared-secret" --join desktop.local:9437
+
+# Or with secret file
+linkpearl --secret-file ~/.linkpearl-secret --join desktop.local:9437
 ```
 
 That's it! Copy text on one device and paste on the other.
@@ -213,13 +277,16 @@ linkpearl --secret "mysecret" --join desktop.local:9437 --join laptop.local:9437
 linkpearl [flags]
 
 Flags:
-  --secret string     Shared secret for authentication (required)
-  --listen string     Address to listen on (recommended: :9437)
-  --join strings      Addresses to connect to (can be repeated)
-  --node-id string    Unique node identifier (default: hostname-timestamp)
-  --poll-interval     Clipboard check interval (default: 500ms)
-  -v, --verbose       Enable verbose logging
-  -h, --help          Show help message
+  --secret string       Shared secret for authentication (required if --secret-file not used)
+  --secret-file string  Path to file containing the shared secret (required if --secret not used)
+  --listen string       Address to listen on (recommended: :9437)
+  --join strings        Addresses to connect to (can be repeated)
+  --node-id string      Unique node identifier (default: hostname-timestamp)
+  --poll-interval       Clipboard check interval (default: 500ms)
+  -v, --verbose         Enable verbose logging
+  -h, --help            Show help message
+  
+Note: Either --secret or --secret-file must be provided, but not both.
 ```
 
 ### Environment Variables
@@ -228,6 +295,7 @@ All flags can be set via environment variables:
 
 ```bash
 export LINKPEARL_SECRET="your-shared-secret"
+export LINKPEARL_SECRET_FILE="/path/to/secret.txt"
 export LINKPEARL_LISTEN=":9437"
 export LINKPEARL_JOIN="server1:9437,server2:9437"
 export LINKPEARL_VERBOSE=true
@@ -301,10 +369,33 @@ Linkpearl protects against:
 3. **Limit network exposure**: Use firewalls to restrict access
 4. **Monitor connections**: Use `--verbose` to see all peer connections
 
+### Secure Secret Management
+
+To avoid exposing secrets in process lists or shell history, use the `--secret-file` option:
+
+```bash
+# Generate a strong secret
+openssl rand -base64 32 > ~/.linkpearl-secret
+chmod 600 ~/.linkpearl-secret
+
+# Use the secret file
+linkpearl --secret-file ~/.linkpearl-secret --listen :9437
+
+# Or via environment variable
+export LINKPEARL_SECRET_FILE=~/.linkpearl-secret
+linkpearl --listen :9437
+```
+
+This approach is recommended for production deployments and integrates well with:
+- Kubernetes Secrets (mounted as files)
+- HashiCorp Vault (via agent injection)
+- systemd credentials (`LoadCredential=`)
+- Docker secrets
+
 ### What's NOT Encrypted
 
 - Clipboard data at rest (in system clipboard)
-- Command line arguments (secret visible in process list)
+- Command line arguments (secret visible in process list unless using `--secret-file`)
 
 ## 🛠️ Troubleshooting
 

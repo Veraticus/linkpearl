@@ -83,21 +83,22 @@ var (
 func main() {
 	// Create config with defaults
 	cfg := config.NewConfig()
-	
+
 	// Define flags
 	var joinAddrs stringSliceFlag
-	
+
 	flag.StringVar(&cfg.Secret, "secret", "", "Shared secret for linkshell (required)")
+	flag.StringVar(&cfg.SecretFile, "secret-file", "", "Path to file containing the shared secret")
 	flag.StringVar(&cfg.NodeID, "node-id", cfg.NodeID, "Node identifier (auto-generated if not set)")
 	flag.StringVar(&cfg.Listen, "listen", "", "Listen address (default: :9437 for full nodes)")
 	flag.Var(&joinAddrs, "join", "Address to join (can be repeated or comma-separated)")
 	flag.DurationVar(&cfg.PollInterval, "poll-interval", cfg.PollInterval, "Clipboard polling interval")
 	flag.DurationVar(&cfg.ReconnectBackoff, "reconnect-backoff", cfg.ReconnectBackoff, "Initial reconnection backoff")
 	flag.BoolVar(&cfg.Verbose, "v", false, "Enable verbose logging")
-	
+
 	// Version flag
 	showVersion := flag.Bool("version", false, "Show version information")
-	
+
 	// Custom usage
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "linkpearl - Secure P2P clipboard synchronization\n\n")
@@ -113,52 +114,52 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		flag.PrintDefaults()
 	}
-	
+
 	flag.Parse()
-	
+
 	// Show version if requested
 	if *showVersion {
 		fmt.Printf("linkpearl version %s (commit: %s, built: %s)\n", version, commit, date)
 		os.Exit(0)
 	}
-	
+
 	// Load environment variables
 	cfg.LoadFromEnv()
-	
+
 	// Set join addresses from flag
 	if len(joinAddrs) > 0 {
 		cfg.Join = joinAddrs.Get()
 	}
-	
+
 	// Auto-determine mode based on listen flag
 	if cfg.Listen != "" {
 		cfg.Mode = config.FullNode
 	} else {
 		cfg.Mode = config.ClientNode
 	}
-	
+
 	// Validate configuration
 	if err := cfg.Validate(); err != nil {
 		fmt.Fprintf(os.Stderr, "Configuration error: %v\n", err)
 		flag.Usage()
 		os.Exit(1)
 	}
-	
+
 	// Create logger
 	log := newLogger(cfg.Verbose)
-	
+
 	// Log startup info
-	log.Info("starting linkpearl", 
+	log.Info("starting linkpearl",
 		"version", version,
 		"node_id", cfg.NodeID,
 		"mode", cfg.Mode,
 	)
-	
+
 	if cfg.Verbose {
 		// Log configuration (without secret)
 		log.Debug("configuration", "config", cfg.String())
 	}
-	
+
 	// Run the application
 	if err := run(cfg, log); err != nil {
 		log.Fatal("failed to run", "error", err)
@@ -172,18 +173,18 @@ func run(cfg *config.Config, log *logger) error {
 	// Create root context for graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	
+
 	// Setup signal handling
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
-	
+
 	// Create clipboard
 	log.Info("initializing clipboard")
 	clip, err := createClipboard()
 	if err != nil {
 		return fmt.Errorf("failed to create clipboard: %w", err)
 	}
-	
+
 	// Create transport
 	log.Info("initializing transport")
 	trans, err := createTransport(cfg, log)
@@ -195,7 +196,7 @@ func run(cfg *config.Config, log *logger) error {
 			log.Error("failed to close transport", "error", err)
 		}
 	}()
-	
+
 	// Create topology
 	log.Info("initializing mesh topology")
 	topo, err := createTopology(cfg, trans, log)
@@ -207,12 +208,12 @@ func run(cfg *config.Config, log *logger) error {
 			log.Error("failed to stop topology", "error", err)
 		}
 	}()
-	
+
 	// Start topology
 	if err := topo.Start(ctx); err != nil {
 		return fmt.Errorf("failed to start topology: %w", err)
 	}
-	
+
 	// Add join addresses
 	for _, addr := range cfg.Join {
 		if err := topo.AddJoinAddr(addr); err != nil {
@@ -221,34 +222,34 @@ func run(cfg *config.Config, log *logger) error {
 			log.Info("added join address", "addr", addr)
 		}
 	}
-	
+
 	// Create sync engine
 	log.Info("initializing sync engine")
 	engine, err := createSyncEngine(cfg, clip, topo, log)
 	if err != nil {
 		return fmt.Errorf("failed to create sync engine: %w", err)
 	}
-	
+
 	// Start sync engine in background
 	engineDone := make(chan error, 1)
 	go func() {
 		log.Info("sync engine started")
 		engineDone <- engine.Run(ctx)
 	}()
-	
+
 	// Log successful startup
 	log.Info("linkpearl is running",
 		"mode", cfg.Mode,
 		"listen", cfg.Listen,
 		"peers", len(cfg.Join),
 	)
-	
+
 	// Wait for shutdown signal or engine error
 	select {
 	case sig := <-sigCh:
 		log.Info("received signal, shutting down", "signal", sig)
 		cancel()
-		
+
 	case err := <-engineDone:
 		if err != nil {
 			log.Error("sync engine error", "error", err)
@@ -256,11 +257,11 @@ func run(cfg *config.Config, log *logger) error {
 		}
 		log.Info("sync engine stopped")
 	}
-	
+
 	// Graceful shutdown with timeout
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownCancel()
-	
+
 	// Wait for engine to stop
 	select {
 	case <-engineDone:
@@ -268,7 +269,7 @@ func run(cfg *config.Config, log *logger) error {
 	case <-shutdownCtx.Done():
 		log.Error("sync engine shutdown timeout")
 	}
-	
+
 	// Log final stats
 	stats := engine.Stats()
 	log.Info("final statistics",
@@ -278,7 +279,7 @@ func run(cfg *config.Config, log *logger) error {
 		"remote_changes", stats.RemoteChanges,
 		"uptime", time.Since(stats.StartTime),
 	)
-	
+
 	log.Info("linkpearl stopped")
 	return nil
 }
@@ -290,12 +291,12 @@ func createClipboard() (clipboard.Clipboard, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create platform clipboard: %w", err)
 	}
-	
+
 	// Test clipboard access
 	if _, err := clip.Read(); err != nil {
 		return nil, fmt.Errorf("clipboard access test failed: %w", err)
 	}
-	
+
 	return clip, nil
 }
 
@@ -308,10 +309,10 @@ func createTransport(cfg *config.Config, log *logger) (transport.Transport, erro
 		Secret: cfg.Secret,
 		Logger: transportLogger{log.withPrefix("transport")},
 	}
-	
+
 	// Create TCP transport
 	trans := transport.NewTCPTransport(transportCfg)
-	
+
 	// Listen if we're a full node
 	if cfg.Mode == config.FullNode && cfg.Listen != "" {
 		if err := trans.Listen(cfg.Listen); err != nil {
@@ -319,7 +320,7 @@ func createTransport(cfg *config.Config, log *logger) (transport.Transport, erro
 		}
 		log.Info("listening for connections", "addr", trans.Addr())
 	}
-	
+
 	return trans, nil
 }
 
@@ -332,7 +333,7 @@ func createTopology(cfg *config.Config, trans transport.Transport, log *logger) 
 			Mode: string(cfg.Mode),
 			Addr: cfg.Listen,
 		},
-		Transport:             trans,
+		Transport:            trans,
 		JoinAddrs:            cfg.Join,
 		ReconnectInterval:    cfg.ReconnectBackoff,
 		MaxReconnectInterval: cfg.ReconnectBackoff * 300, // 5 minutes if backoff is 1s
@@ -340,20 +341,20 @@ func createTopology(cfg *config.Config, trans transport.Transport, log *logger) 
 		MessageBufferSize:    1000,
 		Logger:               meshLogger{log.withPrefix("mesh")},
 	}
-	
+
 	// Validate join addresses
 	for _, addr := range topoCfg.JoinAddrs {
 		if err := validateAddress(addr); err != nil {
 			return nil, fmt.Errorf("invalid join address %q: %w", addr, err)
 		}
 	}
-	
+
 	// Create topology
 	topo, err := mesh.NewTopology(topoCfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create topology: %w", err)
 	}
-	
+
 	return topo, nil
 }
 
@@ -369,13 +370,13 @@ func createSyncEngine(cfg *config.Config, clip clipboard.Clipboard, topo mesh.To
 		MinChangeInterval: 100 * time.Millisecond,
 		Logger:            log.withPrefix("sync"),
 	}
-	
+
 	// Create sync engine
 	engine, err := sync.NewEngine(syncCfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create sync engine: %w", err)
 	}
-	
+
 	return engine, nil
 }
 
@@ -383,7 +384,7 @@ func createSyncEngine(cfg *config.Config, clip clipboard.Clipboard, topo mesh.To
 func init() {
 	// Remove timestamp from standard logger as we add our own
 	log.SetFlags(0)
-	
+
 	// Color output support could be added here in the future
 	// based on TERM environment variable
 }
