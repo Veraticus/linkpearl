@@ -80,10 +80,6 @@
                 assertion = !((cfg.secret != null) && (cfg.secretFile != null));
                 message = "linkpearl: 'secret' and 'secretFile' are mutually exclusive";
               }
-              {
-                assertion = (cfg.secretFile == null) || (builtins.pathExists cfg.secretFile);
-                message = "linkpearl: secretFile '${toString cfg.secretFile}' does not exist";
-              }
             ];
             
             systemd.user.services.linkpearl = {
@@ -210,10 +206,6 @@
               {
                 assertion = !((cfg.secret != null) && (cfg.secretFile != null));
                 message = "linkpearl: 'secret' and 'secretFile' are mutually exclusive";
-              }
-              {
-                assertion = (cfg.secretFile == null) || (builtins.pathExists cfg.secretFile);
-                message = "linkpearl: secretFile '${toString cfg.secretFile}' does not exist";
               }
               {
                 assertion = cfg.join != [];
