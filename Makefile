@@ -128,6 +128,11 @@ check: fmt vet test
 # CI workflow - all checks
 ci: deps verify fmt vet lint test test-coverage
 
+# Update all Nix hashes to point to current HEAD
+update-nix:
+	@echo "Updating all Nix hashes to current HEAD..."
+	@./scripts/update-nix-hashes.sh $(ARGS)
+
 # Help
 help:
 	@echo "Linkpearl Makefile targets:"
@@ -147,4 +152,5 @@ help:
 	@echo "  make deps           - Update dependencies"
 	@echo "  make check          - Run fmt, vet, and test"
 	@echo "  make ci             - Run full CI workflow"
+	@echo "  make update-nix     - Update all Nix hashes to current HEAD (use ARGS=-f to force)"
 	@echo "  make help           - Show this help message"
