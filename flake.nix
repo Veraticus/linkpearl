@@ -68,6 +68,17 @@
               defaultText = literalExpression "pkgs.linkpearl";
               description = lib.mdDoc "The linkpearl package to use";
             };
+            
+            clipboardPackage = mkOption {
+              type = types.nullOr types.package;
+              default = null;
+              example = literalExpression "pkgs.xsel";
+              description = lib.mdDoc ''
+                Clipboard tool package to add to PATH.
+                Common options include pkgs.xsel, pkgs.xclip, or pkgs.wl-clipboard.
+                Set to null to use system clipboard tools.
+              '';
+            };
           };
           
           config = mkIf cfg.enable {
@@ -101,6 +112,8 @@
               }) // (optionalAttrs cfg.verbose {
                 LINKPEARL_VERBOSE = "true";
               });
+              
+              path = lib.optional (cfg.clipboardPackage != null) cfg.clipboardPackage;
               
               serviceConfig = {
                 ExecStart = "${cfg.package}/bin/linkpearl --poll-interval ${cfg.pollInterval}";
@@ -185,6 +198,17 @@
               defaultText = literalExpression "pkgs.linkpearl";
               description = lib.mdDoc "The linkpearl package to use";
             };
+            
+            clipboardPackage = mkOption {
+              type = types.nullOr types.package;
+              default = null;
+              example = literalExpression "pkgs.xsel";
+              description = lib.mdDoc ''
+                Clipboard tool package to add to PATH.
+                Common options include pkgs.xsel, pkgs.xclip, or pkgs.wl-clipboard.
+                Set to null to use system clipboard tools.
+              '';
+            };
           };
           
           config = mkIf cfg.enable {
@@ -228,7 +252,7 @@
               };
             };
             
-            home.packages = [ cfg.package ];
+            home.packages = [ cfg.package ] ++ lib.optional (cfg.clipboardPackage != null) cfg.clipboardPackage;
           };
         };
     in
