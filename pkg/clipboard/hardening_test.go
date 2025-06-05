@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// TestSizeLimit tests the clipboard size limit enforcement
+// TestSizeLimit tests the clipboard size limit enforcement.
 func TestSizeLimit(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -52,7 +52,7 @@ func TestSizeLimit(t *testing.T) {
 	}
 }
 
-// TestRetryLogic tests the retry functionality
+// TestRetryLogic tests the retry functionality.
 func TestRetryLogic(t *testing.T) {
 	t.Run("Successful retry", func(t *testing.T) {
 		attempts := 0
@@ -139,7 +139,7 @@ func TestRetryLogic(t *testing.T) {
 	})
 }
 
-// TestRateLimiter tests the rate limiting functionality
+// TestRateLimiter tests the rate limiting functionality.
 func TestRateLimiter(t *testing.T) {
 	t.Run("Basic rate limiting", func(t *testing.T) {
 		limiter := NewRateLimiter(5, 100*time.Millisecond)
@@ -191,7 +191,7 @@ func TestRateLimiter(t *testing.T) {
 	})
 }
 
-// TestMetricsCollection tests the metrics collector
+// TestMetricsCollection tests the metrics collector.
 func TestMetricsCollection(t *testing.T) {
 	collector := NewDefaultMetricsCollector()
 
@@ -252,7 +252,7 @@ func TestMetricsCollection(t *testing.T) {
 	}
 }
 
-// TestResilientClipboard tests the resilient clipboard wrapper
+// TestResilientClipboard tests the resilient clipboard wrapper.
 func TestResilientClipboard(t *testing.T) {
 	t.Run("Fallback mode after failures", func(t *testing.T) {
 		// Create a failing mock clipboard
@@ -296,7 +296,7 @@ func TestResilientClipboard(t *testing.T) {
 	})
 }
 
-// TestInstrumentedClipboard tests the instrumented clipboard wrapper
+// TestInstrumentedClipboard tests the instrumented clipboard wrapper.
 func TestInstrumentedClipboard(t *testing.T) {
 	mock := NewMockClipboard()
 	collector := NewDefaultMetricsCollector()
@@ -350,7 +350,7 @@ func TestInstrumentedClipboard(t *testing.T) {
 	}
 }
 
-// TestHardenedClipboard tests the fully hardened clipboard
+// TestHardenedClipboard tests the fully hardened clipboard.
 func TestHardenedClipboard(t *testing.T) {
 	t.Run("Default configuration", func(t *testing.T) {
 		// This test can only run with a mock clipboard
@@ -397,7 +397,7 @@ func TestHardenedClipboard(t *testing.T) {
 	})
 }
 
-// failingClipboard is a mock that fails operations until a certain count
+// failingClipboard is a mock that fails operations until a certain count.
 type failingClipboard struct {
 	failUntil int
 	failCount int

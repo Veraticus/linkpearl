@@ -60,23 +60,23 @@ import (
 )
 
 var (
-	// ErrInvalidMessage indicates a malformed message
+	// ErrInvalidMessage indicates a malformed message.
 	ErrInvalidMessage = errors.New("invalid message")
 
-	// ErrChecksumMismatch indicates content doesn't match checksum
+	// ErrChecksumMismatch indicates content doesn't match checksum.
 	ErrChecksumMismatch = errors.New("checksum mismatch")
 
-	// ErrDuplicateMessage indicates we've already seen this message
+	// ErrDuplicateMessage indicates we've already seen this message.
 	ErrDuplicateMessage = errors.New("duplicate message")
 
-	// ErrOldMessage indicates message is older than our current state
+	// ErrOldMessage indicates message is older than our current state.
 	ErrOldMessage = errors.New("message older than current state")
 
-	// ErrSyncLoop indicates potential sync loop detected
+	// ErrSyncLoop indicates potential sync loop detected.
 	ErrSyncLoop = errors.New("sync loop detected")
 )
 
-// Engine coordinates clipboard synchronization across the mesh
+// Engine coordinates clipboard synchronization across the mesh.
 type Engine interface {
 	// Run starts the sync engine main loop
 	Run(ctx context.Context) error
@@ -85,7 +85,7 @@ type Engine interface {
 	Stats() *Stats
 }
 
-// Stats contains sync engine statistics
+// Stats contains sync engine statistics.
 type Stats struct {
 	// Messages
 	MessagesSent      uint64
@@ -108,7 +108,7 @@ type Stats struct {
 	StartTime        time.Time
 }
 
-// Config holds sync engine configuration
+// Config holds sync engine configuration.
 type Config struct {
 	// Required
 	NodeID    string
@@ -124,14 +124,14 @@ type Config struct {
 	Logger            Logger        // Logger interface (default: no-op)
 }
 
-// Logger interface for sync engine logging
+// Logger interface for sync engine logging.
 type Logger interface {
 	Debug(msg string, keysAndValues ...interface{})
 	Info(msg string, keysAndValues ...interface{})
 	Error(msg string, keysAndValues ...interface{})
 }
 
-// Validate checks if config is valid
+// Validate checks if config is valid.
 func (c *Config) Validate() error {
 	if c.NodeID == "" {
 		return errors.New("node ID is required")
@@ -166,7 +166,7 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-// noopLogger implements Logger with no operations
+// noopLogger implements Logger with no operations.
 type noopLogger struct{}
 
 func (n *noopLogger) Debug(msg string, keysAndValues ...interface{}) {}

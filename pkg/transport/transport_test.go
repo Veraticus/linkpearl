@@ -309,7 +309,7 @@ func TestTCPTransport(t *testing.T) {
 	})
 }
 
-// TestIntegration performs end-to-end integration tests
+// TestIntegration performs end-to-end integration tests.
 func TestIntegration(t *testing.T) {
 	t.Run("FullHandshakeAndTLS", func(t *testing.T) {
 		secret := "integration-secret"

@@ -205,7 +205,7 @@ func (m *MockClipboard) GetWatcherCount() int {
 	return len(m.watchers)
 }
 
-// GetState returns current state information
+// GetState returns current state information.
 func (m *MockClipboard) GetState() ClipboardState {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -217,7 +217,7 @@ func (m *MockClipboard) GetState() ClipboardState {
 	}
 }
 
-// hashContent creates a SHA-256 hash of the content
+// hashContent creates a SHA-256 hash of the content.
 func hashContent(content string) string {
 	h := sha256.Sum256([]byte(content))
 	return hex.EncodeToString(h[:])

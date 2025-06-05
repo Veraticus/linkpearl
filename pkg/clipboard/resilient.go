@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-// ResilientClipboard wraps a platform clipboard with additional hardening features
+// ResilientClipboard wraps a platform clipboard with additional hardening features.
 type ResilientClipboard struct {
 	clipboard    Clipboard
 	retryConfig  *RetryConfig
@@ -23,7 +23,7 @@ type ResilientClipboard struct {
 	fallbackMode bool
 }
 
-// NewResilientClipboard creates a new resilient clipboard wrapper
+// NewResilientClipboard creates a new resilient clipboard wrapper.
 func NewResilientClipboard(clipboard Clipboard) *ResilientClipboard {
 	return &ResilientClipboard{
 		clipboard:   clipboard,
@@ -32,7 +32,7 @@ func NewResilientClipboard(clipboard Clipboard) *ResilientClipboard {
 	}
 }
 
-// Read returns the current clipboard contents with retry logic
+// Read returns the current clipboard contents with retry logic.
 func (rc *ResilientClipboard) Read() (string, error) {
 	// Check rate limit
 	if !rc.rateLimiter.Allow() {
@@ -59,7 +59,7 @@ func (rc *ResilientClipboard) Read() (string, error) {
 	return result, err
 }
 
-// Write sets the clipboard contents with retry logic
+// Write sets the clipboard contents with retry logic.
 func (rc *ResilientClipboard) Write(content string) error {
 	// Check rate limit
 	if !rc.rateLimiter.Allow() {
@@ -83,7 +83,7 @@ func (rc *ResilientClipboard) Write(content string) error {
 	return err
 }
 
-// Watch monitors clipboard changes with automatic reconnection on failures
+// Watch monitors clipboard changes with automatic reconnection on failures.
 func (rc *ResilientClipboard) Watch(ctx context.Context) <-chan struct{} {
 	ch := make(chan struct{}, 10)
 
@@ -143,12 +143,12 @@ func (rc *ResilientClipboard) Watch(ctx context.Context) <-chan struct{} {
 	return ch
 }
 
-// GetState returns current state information
+// GetState returns current state information.
 func (rc *ResilientClipboard) GetState() ClipboardState {
 	return rc.clipboard.GetState()
 }
 
-// updateErrorState tracks errors and manages fallback mode
+// updateErrorState tracks errors and manages fallback mode.
 func (rc *ResilientClipboard) updateErrorState(err error) {
 	rc.mu.Lock()
 	defer rc.mu.Unlock()
@@ -172,7 +172,7 @@ func (rc *ResilientClipboard) updateErrorState(err error) {
 	}
 }
 
-// scheduleRecovery attempts to recover from fallback mode
+// scheduleRecovery attempts to recover from fallback mode.
 func (rc *ResilientClipboard) scheduleRecovery() {
 	time.Sleep(30 * time.Second)
 
@@ -190,21 +190,21 @@ func (rc *ResilientClipboard) scheduleRecovery() {
 	}
 }
 
-// GetErrorState returns the current error state for monitoring
+// GetErrorState returns the current error state for monitoring.
 func (rc *ResilientClipboard) GetErrorState() (int, bool, error) {
 	rc.mu.RLock()
 	defer rc.mu.RUnlock()
 	return rc.errorCount, rc.fallbackMode, rc.lastError
 }
 
-// SetRetryConfig updates the retry configuration
+// SetRetryConfig updates the retry configuration.
 func (rc *ResilientClipboard) SetRetryConfig(config *RetryConfig) {
 	rc.mu.Lock()
 	defer rc.mu.Unlock()
 	rc.retryConfig = config
 }
 
-// SetRateLimiter updates the rate limiter
+// SetRateLimiter updates the rate limiter.
 func (rc *ResilientClipboard) SetRateLimiter(limiter *RateLimiter) {
 	rc.mu.Lock()
 	defer rc.mu.Unlock()

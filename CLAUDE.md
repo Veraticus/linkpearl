@@ -10,18 +10,57 @@ Linkpearl is a secure, peer-to-peer clipboard synchronization tool that creates 
 - **Pull-based design**: Consumers read clipboard content when ready, preventing blocking
 - **Production hardening**: All external commands have timeouts, size limits, and proper error handling
 
-## Pre-Commit Testing
+## Pre-Commit Testing & Code Quality Enforcement
 
-**IMPORTANT**: Before committing any changes, run the comprehensive test suite:
+**MANDATORY**: Before committing ANY changes, you MUST run verification:
 
 ```bash
+# Quick verification (MINIMUM requirement before any commit)
+make verify
+
+# Full test suite (REQUIRED before pull requests)
+make test-all
+# OR
 ./scripts/test-all.sh
 ```
 
-This script performs:
+### Development Workflow
+
+1. **Before starting work**: Install development tools
+   ```bash
+   make install-tools    # Install golangci-lint and other required tools
+   make setup-hooks      # Setup git pre-commit hooks (one-time)
+   ```
+
+2. **During development**: Use these helpers
+   ```bash
+   make quick           # Format code and run tests
+   make fix             # Auto-fix formatting, imports, and common issues
+   make lint            # Run golangci-lint to catch quality issues
+   ```
+
+3. **Before committing**: ALWAYS run verification
+   ```bash
+   make verify          # Fast verification checks (MINIMUM)
+   ```
+
+4. **Before pull requests**: Run comprehensive tests
+   ```bash
+   make test-all        # Full test suite including cross-platform builds
+   ```
+
+### What These Scripts Check
+
+The `verify` script (quick checks):
+- Code formatting (gofmt -s)
+- Go vet static analysis
+- golangci-lint (comprehensive linting)
+- Quick unit tests
+
+The `test-all` script (comprehensive):
 1. Go formatting checks (gofmt -s)
 2. go vet static analysis
-3. golangci-lint (if installed)
+3. golangci-lint with custom rules
 4. Unit tests
 5. Race detection tests
 6. Integration tests
@@ -29,9 +68,10 @@ This script performs:
 8. **Cross-platform build verification** (Darwin/Linux, multiple architectures)
    - Binary builds for darwin/amd64, darwin/arm64, linux/amd64, linux/arm64, linux/386
    - **Test compilation** for each platform to catch platform-specific syntax errors
-9. Code quality checks (TODOs, fmt.Print usage)
+9. Nix build verification (if nix is installed)
+10. Code quality checks (TODOs, fmt.Print usage)
 
-The test script now catches platform-specific compilation errors that only appear when building for specific GOOS/GOARCH combinations.
+The test scripts catch platform-specific compilation errors that only appear when building for specific GOOS/GOARCH combinations.
 
 ## Common Issues to Avoid
 
@@ -52,7 +92,7 @@ GOOS=linux go build ./...
 All external commands MUST use the centralized command execution functions:
 - Use `RunCommand()` for commands that return output
 - Use `RunCommandWithInput()` for commands that need stdin
-- Never use `exec.Command()` directly
+- Never use `exec.Command()` directly (golangci-lint will catch this!)
 - Always enforce timeouts (default 5s)
 
 ### 4. Size Limits
@@ -109,33 +149,28 @@ Group imports in this order:
 ## Quick Commands
 
 ```bash
-# Format all code
-gofmt -s -w .
+# DEVELOPMENT WORKFLOW (use these!)
+make quick          # Format and test quickly
+make fix            # Auto-fix common issues
+make verify         # Pre-commit verification
+make test-all       # Comprehensive test suite
 
-# Run all tests
-go test ./...
+# Individual operations
+make fmt            # Format all code
+make lint           # Run golangci-lint
+make test           # Run unit tests
+make test-race      # Run with race detection
+make test-integration # Run integration tests
+make cover          # Generate HTML coverage report
 
-# Run linter
-golangci-lint run ./...
+# Build operations
+make build          # Build for current platform
+make build-all      # Build for all platforms
+make install        # Install binary locally
 
-# Build for current platform
-go build ./cmd/linkpearl
-
-# Cross-platform builds
+# Cross-platform builds (manual)
 GOOS=darwin GOARCH=amd64 go build ./cmd/linkpearl
 GOOS=linux GOARCH=amd64 go build ./cmd/linkpearl
-
-# Run specific package tests
-go test -v ./pkg/clipboard/...
-
-# Run with race detection
-go test -race ./...
-
-# Run integration tests
-go test -tags=integration ./...
-
-# Check test coverage
-go test -cover ./...
 ```
 
 ## Architecture Reminders
@@ -159,26 +194,49 @@ go test -cover ./...
 - [ ] Rate limiting where appropriate
 - [ ] Metrics collection for observability
 
-## Common Makefile Targets
+## Essential Makefile Targets
 
+### For Daily Development
 ```bash
-make test       # Run all tests
-make lint       # Run linters
-make build      # Build binary
-make clean      # Clean build artifacts
-make coverage   # Generate coverage report
-make test-builds # Test cross-platform builds and test compilation
-make test-nix   # Test nix build for current system
-make test-all   # Run comprehensive test suite (fmt, vet, lint, test, race, integration, builds, nix)
+make quick       # Format and test - use this frequently!
+make fix         # Auto-fix issues (formatting, imports, etc.)
+make verify      # Pre-commit checks - ALWAYS run before committing!
+make lint        # Run golangci-lint to catch issues early
+make cover       # Generate HTML coverage report
 ```
 
-The `test-builds` target now includes:
-- Binary compilation for all supported platforms
-- Test compilation for all platforms (catches platform-specific syntax errors)
+### Before Pull Requests
+```bash
+make test-all    # Comprehensive test suite - REQUIRED before PRs!
+```
 
-The `test-nix` target:
-- Tests nix build for the current system
-- Ensures vendorHash is correct
-- Validates the flake.nix configuration
+### Other Useful Targets
+```bash
+make build       # Build binary
+make build-all   # Build for all platforms
+make clean       # Clean build artifacts
+make install     # Install binary
+make test        # Run unit tests
+make test-race   # Run with race detection
+make test-integration # Run integration tests
+make test-builds # Test cross-platform builds
+make test-nix    # Test nix build
+make install-tools # Install dev tools (golangci-lint, etc.)
+make setup-hooks # Setup git pre-commit hooks
+```
 
-Remember: Always run `./scripts/test-all.sh` or `make test-all` before committing!
+## CRITICAL REMINDERS
+
+1. **ALWAYS run `make verify` before ANY commit** - This is non-negotiable!
+2. **ALWAYS run `make test-all` before creating pull requests**
+3. **Use `make fix` to automatically fix common issues**
+4. **golangci-lint is configured to catch:**
+   - Direct use of `exec.Command()` (use `RunCommand()` instead)
+   - Use of `interface{}` (use `any` instead)
+   - Use of `panic()` (return errors instead)
+   - Use of `fmt.Print*` (use Logger interface)
+   - Many other code quality issues
+
+The build system will catch platform-specific compilation errors that only appear when building for specific GOOS/GOARCH combinations.
+
+Remember: The tools are here to help you ship high-quality code. Use them!

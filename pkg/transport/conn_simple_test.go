@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-// TestSecureConnSimple tests basic functionality without complex I/O
+// TestSecureConnSimple tests basic functionality without complex I/O.
 func TestSecureConnSimple(t *testing.T) {
 	t.Run("BasicProperties", func(t *testing.T) {
 		conn := &secureConn{

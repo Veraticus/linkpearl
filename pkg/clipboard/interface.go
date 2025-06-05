@@ -101,16 +101,16 @@ import (
 	"time"
 )
 
-// ErrNotSupported indicates the platform is not supported
+// ErrNotSupported indicates the platform is not supported.
 var ErrNotSupported = errors.New("clipboard: platform not supported")
 
-// ErrContentTooLarge indicates the content exceeds the maximum allowed size
+// ErrContentTooLarge indicates the content exceeds the maximum allowed size.
 var ErrContentTooLarge = errors.New("clipboard: content exceeds maximum size")
 
-// MaxClipboardSize is the maximum allowed clipboard content size (10MB)
+// MaxClipboardSize is the maximum allowed clipboard content size (10MB).
 const MaxClipboardSize = 10 * 1024 * 1024 // 10MB
 
-// Clipboard defines the interface for platform-specific clipboard access
+// Clipboard defines the interface for platform-specific clipboard access.
 type Clipboard interface {
 	// Read returns the current clipboard contents
 	Read() (string, error)
@@ -130,19 +130,19 @@ type Clipboard interface {
 	GetState() ClipboardState
 }
 
-// ClipboardState provides metadata about clipboard state
+// ClipboardState provides metadata about clipboard state.
 type ClipboardState struct {
 	SequenceNumber uint64    // Monotonically increasing counter
 	LastModified   time.Time // When clipboard was last changed
 	ContentHash    string    // SHA256 hash of current content
 }
 
-// NewPlatformClipboard returns a clipboard implementation for the current platform
+// NewPlatformClipboard returns a clipboard implementation for the current platform.
 func NewPlatformClipboard() (Clipboard, error) {
 	return newPlatformClipboard()
 }
 
-// ClipboardOptions configures the hardened clipboard
+// ClipboardOptions configures the hardened clipboard.
 type ClipboardOptions struct {
 	// Enable retry logic with exponential backoff
 	EnableRetry bool
@@ -163,7 +163,7 @@ type ClipboardOptions struct {
 	MetricsCollector MetricsCollector
 }
 
-// DefaultClipboardOptions returns sensible default options
+// DefaultClipboardOptions returns sensible default options.
 func DefaultClipboardOptions() *ClipboardOptions {
 	return &ClipboardOptions{
 		EnableRetry:           true,
@@ -173,7 +173,7 @@ func DefaultClipboardOptions() *ClipboardOptions {
 	}
 }
 
-// NewHardenedClipboard creates a production-ready clipboard with all hardening features
+// NewHardenedClipboard creates a production-ready clipboard with all hardening features.
 func NewHardenedClipboard(options *ClipboardOptions) (Clipboard, error) {
 	if options == nil {
 		options = DefaultClipboardOptions()

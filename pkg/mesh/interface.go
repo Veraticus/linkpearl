@@ -125,18 +125,18 @@ import (
 	"github.com/Veraticus/linkpearl/pkg/transport"
 )
 
-// Common errors
+// Common errors.
 var (
-	// ErrClosed indicates the topology is closed
+	// ErrClosed indicates the topology is closed.
 	ErrClosed = errors.New("topology closed")
 
-	// ErrPeerExists indicates a peer with the same ID already exists
+	// ErrPeerExists indicates a peer with the same ID already exists.
 	ErrPeerExists = errors.New("peer already exists")
 
-	// ErrPeerNotFound indicates the requested peer was not found
+	// ErrPeerNotFound indicates the requested peer was not found.
 	ErrPeerNotFound = errors.New("peer not found")
 
-	// ErrInvalidNode indicates invalid node configuration
+	// ErrInvalidNode indicates invalid node configuration.
 	ErrInvalidNode = errors.New("invalid node configuration")
 )
 
@@ -221,14 +221,14 @@ type Topology interface {
 	Messages() <-chan Message
 }
 
-// Node represents a node in the network
+// Node represents a node in the network.
 type Node struct {
 	ID   string `json:"id"`
 	Mode string `json:"mode"` // "client" or "full"
 	Addr string `json:"addr"` // Listen address (empty for client nodes)
 }
 
-// Validate checks if the node configuration is valid
+// Validate checks if the node configuration is valid.
 func (n *Node) Validate() error {
 	if n.ID == "" {
 		return errors.New("node ID is required")
@@ -245,7 +245,7 @@ func (n *Node) Validate() error {
 	return nil
 }
 
-// PeerInfo contains information about a connected peer
+// PeerInfo contains information about a connected peer.
 type PeerInfo struct {
 	Node
 	ConnectedAt time.Time
@@ -253,14 +253,14 @@ type PeerInfo struct {
 	Reconnects  int    // Number of reconnection attempts
 }
 
-// Message represents a message received from a peer
+// Message represents a message received from a peer.
 type Message struct {
 	From    string      // Node ID of sender
 	Type    string      // Message type
 	Payload interface{} // Message payload
 }
 
-// TopologyConfig holds configuration for creating a topology
+// TopologyConfig holds configuration for creating a topology.
 type TopologyConfig struct {
 	// Self is this node's information
 	Self Node
@@ -287,7 +287,7 @@ type TopologyConfig struct {
 	Logger Logger
 }
 
-// DefaultTopologyConfig returns a topology config with sensible defaults
+// DefaultTopologyConfig returns a topology config with sensible defaults.
 func DefaultTopologyConfig() *TopologyConfig {
 	return &TopologyConfig{
 		ReconnectInterval:    time.Second,
@@ -298,7 +298,7 @@ func DefaultTopologyConfig() *TopologyConfig {
 	}
 }
 
-// Logger interface for topology logging
+// Logger interface for topology logging.
 type Logger interface {
 	Debug(msg string, args ...interface{})
 	Info(msg string, args ...interface{})
@@ -306,15 +306,15 @@ type Logger interface {
 	Error(msg string, args ...interface{})
 }
 
-// noopLogger implements Logger with no-op methods
+// noopLogger implements Logger with no-op methods.
 type noopLogger struct{}
 
-func (noopLogger) Debug(msg string, args ...interface{}) {}
-func (noopLogger) Info(msg string, args ...interface{})  {}
-func (noopLogger) Warn(msg string, args ...interface{})  {}
-func (noopLogger) Error(msg string, args ...interface{}) {}
+func (noopLogger) Debug(_ string, _ ...interface{}) {}
+func (noopLogger) Info(_ string, _ ...interface{})  {}
+func (noopLogger) Warn(_ string, _ ...interface{})  {}
+func (noopLogger) Error(_ string, _ ...interface{}) {}
 
-// DefaultLogger returns a no-op logger
+// DefaultLogger returns a no-op logger.
 func DefaultLogger() Logger {
 	return noopLogger{}
 }

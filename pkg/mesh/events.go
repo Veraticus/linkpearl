@@ -26,13 +26,13 @@ import (
 type EventType int
 
 const (
-	// PeerConnected indicates a peer has connected
+	// PeerConnected indicates a peer has connected.
 	PeerConnected EventType = iota
-	// PeerDisconnected indicates a peer has disconnected
+	// PeerDisconnected indicates a peer has disconnected.
 	PeerDisconnected
 )
 
-// String returns the string representation of the event type
+// String returns the string representation of the event type.
 func (e EventType) String() string {
 	switch e {
 	case PeerConnected:
@@ -44,7 +44,7 @@ func (e EventType) String() string {
 	}
 }
 
-// TopologyEvent represents an event in the topology
+// TopologyEvent represents an event in the topology.
 type TopologyEvent struct {
 	Type EventType
 	Peer Node
@@ -68,7 +68,7 @@ type eventBuffer struct {
 	mu     sync.Mutex
 }
 
-// newEventBuffer creates a new event buffer with the given capacity
+// newEventBuffer creates a new event buffer with the given capacity.
 func newEventBuffer(capacity int) *eventBuffer {
 	if capacity <= 0 {
 		capacity = 1000 // Default capacity
@@ -79,7 +79,7 @@ func newEventBuffer(capacity int) *eventBuffer {
 	}
 }
 
-// Push adds an event to the buffer
+// Push adds an event to the buffer.
 func (b *eventBuffer) Push(event TopologyEvent) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -96,7 +96,7 @@ func (b *eventBuffer) Push(event TopologyEvent) {
 	}
 }
 
-// Pop removes and returns the oldest event
+// Pop removes and returns the oldest event.
 func (b *eventBuffer) Pop() (TopologyEvent, bool) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -112,14 +112,14 @@ func (b *eventBuffer) Pop() (TopologyEvent, bool) {
 	return event, true
 }
 
-// Size returns the current number of events in the buffer
+// Size returns the current number of events in the buffer.
 func (b *eventBuffer) Size() int {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	return b.size
 }
 
-// Clear removes all events from the buffer
+// Clear removes all events from the buffer.
 func (b *eventBuffer) Clear() {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -129,7 +129,7 @@ func (b *eventBuffer) Clear() {
 	b.size = 0
 }
 
-// ToSlice returns all events in the buffer as a slice
+// ToSlice returns all events in the buffer as a slice.
 func (b *eventBuffer) ToSlice() []TopologyEvent {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -163,7 +163,7 @@ type eventPump struct {
 	closed    bool
 }
 
-// newEventPump creates a new event pump
+// newEventPump creates a new event pump.
 func newEventPump(bufferSize int) *eventPump {
 	return &eventPump{
 		buffer:    newEventBuffer(bufferSize),
@@ -171,7 +171,7 @@ func newEventPump(bufferSize int) *eventPump {
 	}
 }
 
-// Subscribe adds a listener for events
+// Subscribe adds a listener for events.
 func (p *eventPump) Subscribe(ch chan<- TopologyEvent) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -181,7 +181,7 @@ func (p *eventPump) Subscribe(ch chan<- TopologyEvent) {
 	}
 }
 
-// Unsubscribe removes a listener
+// Unsubscribe removes a listener.
 func (p *eventPump) Unsubscribe(ch chan<- TopologyEvent) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -194,7 +194,7 @@ func (p *eventPump) Unsubscribe(ch chan<- TopologyEvent) {
 	}
 }
 
-// Publish sends an event to all listeners
+// Publish sends an event to all listeners.
 func (p *eventPump) Publish(event TopologyEvent) {
 	p.mu.RLock()
 	if p.closed {
@@ -219,7 +219,7 @@ func (p *eventPump) Publish(event TopologyEvent) {
 	}
 }
 
-// Close shuts down the event pump
+// Close shuts down the event pump.
 func (p *eventPump) Close() {
 	p.mu.Lock()
 	defer p.mu.Unlock()

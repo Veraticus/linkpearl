@@ -45,7 +45,7 @@ type peer struct {
 	onDisconnect func(*peer)
 }
 
-// newPeer creates a new peer
+// newPeer creates a new peer.
 func newPeer(node Node, conn transport.Conn, direction string) *peer {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &peer{
@@ -59,7 +59,7 @@ func newPeer(node Node, conn transport.Conn, direction string) *peer {
 	}
 }
 
-// newOutboundPeer creates a new outbound peer that will reconnect
+// newOutboundPeer creates a new outbound peer that will reconnect.
 func newOutboundPeer(node Node, addr string) *peer {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &peer{
@@ -72,7 +72,7 @@ func newOutboundPeer(node Node, addr string) *peer {
 	}
 }
 
-// Info returns information about the peer
+// Info returns information about the peer.
 func (p *peer) Info() *PeerInfo {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
@@ -85,14 +85,14 @@ func (p *peer) Info() *PeerInfo {
 	}
 }
 
-// IsConnected returns true if the peer is connected
+// IsConnected returns true if the peer is connected.
 func (p *peer) IsConnected() bool {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 	return p.connected
 }
 
-// Send sends a message to the peer
+// Send sends a message to the peer.
 func (p *peer) Send(msg interface{}) error {
 	p.mu.RLock()
 	if !p.connected || p.conn == nil {
@@ -105,7 +105,7 @@ func (p *peer) Send(msg interface{}) error {
 	return conn.Send(msg)
 }
 
-// Receive receives a message from the peer
+// Receive receives a message from the peer.
 func (p *peer) Receive(msg interface{}) error {
 	p.mu.RLock()
 	if !p.connected || p.conn == nil {
@@ -118,7 +118,7 @@ func (p *peer) Receive(msg interface{}) error {
 	return conn.Receive(msg)
 }
 
-// setConnection updates the peer's connection
+// setConnection updates the peer's connection.
 func (p *peer) setConnection(conn transport.Conn) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -129,7 +129,7 @@ func (p *peer) setConnection(conn transport.Conn) {
 	p.reconnects++
 }
 
-// disconnect marks the peer as disconnected
+// disconnect marks the peer as disconnected.
 func (p *peer) disconnect() {
 	p.mu.Lock()
 	wasConnected := p.connected
@@ -150,7 +150,7 @@ func (p *peer) disconnect() {
 	}
 }
 
-// stop stops the peer
+// stop stops the peer.
 func (p *peer) stop() {
 	p.cancel()
 	p.disconnect()
@@ -173,14 +173,14 @@ type peerManager struct {
 	onPeerDisconnected func(*peer)
 }
 
-// newPeerManager creates a new peer manager
+// newPeerManager creates a new peer manager.
 func newPeerManager() *peerManager {
 	return &peerManager{
 		peers: make(map[string]*peer),
 	}
 }
 
-// AddPeer adds a peer to the manager
+// AddPeer adds a peer to the manager.
 func (m *peerManager) AddPeer(p *peer) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -206,7 +206,7 @@ func (m *peerManager) AddPeer(p *peer) error {
 	return nil
 }
 
-// RemovePeer removes a peer from the manager
+// RemovePeer removes a peer from the manager.
 func (m *peerManager) RemovePeer(nodeID string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -222,7 +222,7 @@ func (m *peerManager) RemovePeer(nodeID string) error {
 	return nil
 }
 
-// GetPeer returns a peer by ID
+// GetPeer returns a peer by ID.
 func (m *peerManager) GetPeer(nodeID string) (*peer, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -235,7 +235,7 @@ func (m *peerManager) GetPeer(nodeID string) (*peer, error) {
 	return p, nil
 }
 
-// GetPeers returns all peers
+// GetPeers returns all peers.
 func (m *peerManager) GetPeers() []*peer {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -248,7 +248,7 @@ func (m *peerManager) GetPeers() []*peer {
 	return peers
 }
 
-// GetConnectedPeers returns all connected peers
+// GetConnectedPeers returns all connected peers.
 func (m *peerManager) GetConnectedPeers() []*peer {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -263,14 +263,14 @@ func (m *peerManager) GetConnectedPeers() []*peer {
 	return peers
 }
 
-// Count returns the total number of peers
+// Count returns the total number of peers.
 func (m *peerManager) Count() int {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return len(m.peers)
 }
 
-// ConnectedCount returns the number of connected peers
+// ConnectedCount returns the number of connected peers.
 func (m *peerManager) ConnectedCount() int {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -284,7 +284,7 @@ func (m *peerManager) ConnectedCount() int {
 	return count
 }
 
-// SendToPeer sends a message to a specific peer
+// SendToPeer sends a message to a specific peer.
 func (m *peerManager) SendToPeer(nodeID string, msg interface{}) error {
 	p, err := m.GetPeer(nodeID)
 	if err != nil {
@@ -294,7 +294,7 @@ func (m *peerManager) SendToPeer(nodeID string, msg interface{}) error {
 	return p.Send(msg)
 }
 
-// Broadcast sends a message to all connected peers
+// Broadcast sends a message to all connected peers.
 func (m *peerManager) Broadcast(msg interface{}) error {
 	peers := m.GetConnectedPeers()
 
@@ -308,7 +308,7 @@ func (m *peerManager) Broadcast(msg interface{}) error {
 	return firstErr
 }
 
-// Stop stops all peers
+// Stop stops all peers.
 func (m *peerManager) Stop() {
 	m.mu.Lock()
 	peers := make([]*peer, 0, len(m.peers))

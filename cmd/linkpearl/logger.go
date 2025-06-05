@@ -54,13 +54,13 @@ import (
 	"time"
 )
 
-// logger provides structured logging for the application
+// logger provides structured logging for the application.
 type logger struct {
 	verbose bool
 	prefix  string
 }
 
-// newLogger creates a new logger
+// newLogger creates a new logger.
 func newLogger(verbose bool) *logger {
 	return &logger{
 		verbose: verbose,
@@ -68,7 +68,7 @@ func newLogger(verbose bool) *logger {
 	}
 }
 
-// withPrefix creates a new logger with a prefix
+// withPrefix creates a new logger with a prefix.
 func (l *logger) withPrefix(prefix string) *logger {
 	return &logger{
 		verbose: l.verbose,
@@ -76,7 +76,7 @@ func (l *logger) withPrefix(prefix string) *logger {
 	}
 }
 
-// formatMessage formats a log message with key-value pairs
+// formatMessage formats a log message with key-value pairs.
 func (l *logger) formatMessage(level, msg string, keysAndValues ...interface{}) string {
 	var sb strings.Builder
 
@@ -121,24 +121,24 @@ func (l *logger) formatMessage(level, msg string, keysAndValues ...interface{}) 
 	return sb.String()
 }
 
-// Debug logs a debug message (only in verbose mode)
+// Debug logs a debug message (only in verbose mode).
 func (l *logger) Debug(msg string, keysAndValues ...interface{}) {
 	if l.verbose {
 		log.Println(l.formatMessage("DEBUG", msg, keysAndValues...))
 	}
 }
 
-// Info logs an info message
+// Info logs an info message.
 func (l *logger) Info(msg string, keysAndValues ...interface{}) {
 	log.Println(l.formatMessage("INFO", msg, keysAndValues...))
 }
 
-// Error logs an error message
+// Error logs an error message.
 func (l *logger) Error(msg string, keysAndValues ...interface{}) {
 	log.Println(l.formatMessage("ERROR", msg, keysAndValues...))
 }
 
-// Fatal logs a fatal message and exits
+// Fatal logs a fatal message and exits.
 func (l *logger) Fatal(msg string, keysAndValues ...interface{}) {
 	log.Println(l.formatMessage("FATAL", msg, keysAndValues...))
 	os.Exit(1)
@@ -146,7 +146,7 @@ func (l *logger) Fatal(msg string, keysAndValues ...interface{}) {
 
 // Adapters for component loggers
 
-// meshLogger adapts our logger to mesh.Logger interface
+// meshLogger adapts our logger to mesh.Logger interface.
 type meshLogger struct {
 	*logger
 }
@@ -155,7 +155,7 @@ func (m meshLogger) Warn(msg string, keysAndValues ...interface{}) {
 	m.Info(msg, keysAndValues...)
 }
 
-// transportLogger adapts our logger to transport.Logger interface
+// transportLogger adapts our logger to transport.Logger interface.
 type transportLogger struct {
 	*logger
 }

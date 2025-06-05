@@ -18,9 +18,10 @@ GOOS ?= $(shell go env GOOS)
 GOARCH ?= $(shell go env GOARCH)
 
 .PHONY: all build clean test test-verbose test-coverage test-integration bench fmt lint vet run help
+.PHONY: cover fix verify quick setup-hooks install-tools
 
 # Default target
-all: build
+all: fmt test build
 
 # Build the binary
 build:
@@ -65,13 +66,6 @@ test-verbose:
 test-coverage:
 	@echo "Running tests with coverage..."
 	$(GOTEST) -cover ./...
-
-# Generate coverage report
-coverage-report:
-	@echo "Generating coverage report..."
-	$(GOTEST) -coverprofile=coverage.out ./...
-	$(GO) tool cover -html=coverage.out -o coverage.html
-	@echo "Coverage report generated: coverage.html"
 
 # Run integration tests
 test-integration:
@@ -118,7 +112,7 @@ deps:
 	$(GO) mod tidy
 
 # Verify dependencies
-verify:
+verify-deps:
 	@echo "Verifying dependencies..."
 	$(GO) mod verify
 
@@ -160,31 +154,80 @@ test-all: fmt vet lint test test-race test-integration test-builds test-nix
 	@echo "All tests passed!"
 
 # CI workflow - all checks
-ci: deps verify fmt vet lint test test-race test-coverage test-builds
+ci: deps verify-deps fmt vet lint test test-race test-coverage test-builds
 
 # Update all Nix hashes to point to current HEAD
 update-nix:
 	@echo "Updating all Nix hashes to current HEAD..."
 	@./scripts/update-nix-hashes.sh $(ARGS)
 
+# Development helpers
+
+# Generate coverage report with HTML output
+cover:
+	@echo "Generating coverage report..."
+	$(GOTEST) -race -coverprofile=coverage.out ./...
+	$(GO) tool cover -html=coverage.out -o coverage.html
+	@echo "Coverage report generated: coverage.html"
+
+# Auto-fix issues
+fix:
+	@echo "Auto-fixing issues..."
+	@bash scripts/fix.sh
+
+# Comprehensive verification (for CI/pre-commit)
+verify:
+	@echo "Running verification checks..."
+	@bash scripts/verify.sh
+
+# Quick check (format and test)
+quick: fmt test
+
+# Setup git hooks
+setup-hooks:
+	@echo "Setting up git hooks..."
+	@bash scripts/setup-hooks.sh
+
+# Install required development tools
+install-tools:
+	@echo "Installing development tools..."
+	@bash scripts/install-tools.sh
+
 # Help
 help:
 	@echo "Linkpearl Makefile targets:"
+	@echo ""
+	@echo "Core targets:"
 	@echo "  make build          - Build the binary"
 	@echo "  make build-all      - Build for all platforms"
 	@echo "  make clean          - Remove build artifacts"
 	@echo "  make test           - Run tests"
+	@echo "  make test-race      - Run tests with race detection"
 	@echo "  make test-verbose   - Run tests with verbose output"
 	@echo "  make test-coverage  - Run tests with coverage"
 	@echo "  make test-integration - Run integration tests"
+	@echo "  make test-all       - Run all tests and checks (comprehensive)"
 	@echo "  make bench          - Run benchmarks"
+	@echo ""
+	@echo "Code quality:"
 	@echo "  make fmt            - Format code"
 	@echo "  make lint           - Run linter"
 	@echo "  make vet            - Run go vet"
+	@echo "  make check          - Run fmt, vet, and test"
+	@echo "  make fix            - Auto-fix formatting and other issues"
+	@echo "  make verify         - Run all checks (for CI/pre-commit)"
+	@echo ""
+	@echo "Development helpers:"
 	@echo "  make run            - Build and run the application"
 	@echo "  make install        - Install the binary"
 	@echo "  make deps           - Update dependencies"
-	@echo "  make check          - Run fmt, vet, and test"
+	@echo "  make cover          - Generate coverage report"
+	@echo "  make quick          - Format and test (for development)"
+	@echo "  make setup-hooks    - Setup git hooks"
+	@echo "  make install-tools  - Install required development tools"
+	@echo ""
+	@echo "CI/Release:"
 	@echo "  make ci             - Run full CI workflow"
 	@echo "  make update-nix     - Update all Nix hashes to current HEAD (use ARGS=-f to force)"
+	@echo ""
 	@echo "  make help           - Show this help message"

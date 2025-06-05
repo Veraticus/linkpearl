@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-// RateLimiter implements a token bucket rate limiter
+// RateLimiter implements a token bucket rate limiter.
 type RateLimiter struct {
 	mu         sync.Mutex
 	tokens     float64
@@ -31,12 +31,12 @@ func NewRateLimiter(maxOps int, period time.Duration) *RateLimiter {
 	}
 }
 
-// Allow checks if an operation is allowed under the rate limit
+// Allow checks if an operation is allowed under the rate limit.
 func (rl *RateLimiter) Allow() bool {
 	return rl.AllowN(1)
 }
 
-// AllowN checks if n operations are allowed under the rate limit
+// AllowN checks if n operations are allowed under the rate limit.
 func (rl *RateLimiter) AllowN(n int) bool {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
@@ -51,7 +51,7 @@ func (rl *RateLimiter) AllowN(n int) bool {
 	return false
 }
 
-// refill adds tokens based on time elapsed
+// refill adds tokens based on time elapsed.
 func (rl *RateLimiter) refill() {
 	now := time.Now()
 	elapsed := now.Sub(rl.lastRefill).Seconds()
@@ -64,7 +64,7 @@ func (rl *RateLimiter) refill() {
 	rl.lastRefill = now
 }
 
-// TokensAvailable returns the current number of available tokens
+// TokensAvailable returns the current number of available tokens.
 func (rl *RateLimiter) TokensAvailable() float64 {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
@@ -73,7 +73,7 @@ func (rl *RateLimiter) TokensAvailable() float64 {
 	return rl.tokens
 }
 
-// Reset resets the rate limiter to full capacity
+// Reset resets the rate limiter to full capacity.
 func (rl *RateLimiter) Reset() {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()

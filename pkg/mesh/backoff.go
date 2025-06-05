@@ -41,7 +41,7 @@ type ExponentialBackoff struct {
 	resetTime time.Time
 }
 
-// NewExponentialBackoff creates a new exponential backoff
+// NewExponentialBackoff creates a new exponential backoff..
 func NewExponentialBackoff(initial, max time.Duration, factor, jitter float64) *ExponentialBackoff {
 	if initial <= 0 {
 		initial = time.Second
@@ -65,7 +65,7 @@ func NewExponentialBackoff(initial, max time.Duration, factor, jitter float64) *
 	}
 }
 
-// DefaultBackoff returns a backoff with default settings
+// DefaultBackoff returns a backoff with default settings.
 func DefaultBackoff() *ExponentialBackoff {
 	return NewExponentialBackoff(
 		time.Second,   // 1s initial
@@ -75,7 +75,7 @@ func DefaultBackoff() *ExponentialBackoff {
 	)
 }
 
-// Next returns the next backoff duration
+// Next returns the next backoff duration.
 func (b *ExponentialBackoff) Next() time.Duration {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -86,6 +86,7 @@ func (b *ExponentialBackoff) Next() time.Duration {
 	// Apply jitter
 	if b.jitter > 0 {
 		jitterRange := float64(duration) * b.jitter
+		//nolint:gosec // math/rand is acceptable for backoff jitter
 		jitterValue := (rand.Float64()*2 - 1) * jitterRange // -jitter to +jitter
 		duration = time.Duration(float64(duration) + jitterValue)
 	}
@@ -105,7 +106,7 @@ func (b *ExponentialBackoff) Next() time.Duration {
 	return duration
 }
 
-// Reset resets the backoff to initial state
+// Reset resets the backoff to initial state.
 func (b *ExponentialBackoff) Reset() {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -115,21 +116,21 @@ func (b *ExponentialBackoff) Reset() {
 	b.resetTime = time.Time{}
 }
 
-// Attempts returns the number of attempts since last reset
+// Attempts returns the number of attempts since last reset.
 func (b *ExponentialBackoff) Attempts() int {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	return b.attempts
 }
 
-// Duration returns the current backoff duration without advancing
+// Duration returns the current backoff duration without advancing.
 func (b *ExponentialBackoff) Duration() time.Duration {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	return b.current
 }
 
-// ShouldReset returns true if the backoff should be reset due to inactivity
+// ShouldReset returns true if the backoff should be reset due to inactivity.
 func (b *ExponentialBackoff) ShouldReset() bool {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -156,7 +157,7 @@ type backoffManager struct {
 	mu       sync.RWMutex
 }
 
-// newBackoffManager creates a new backoff manager
+// newBackoffManager creates a new backoff manager.
 func newBackoffManager(factory func() *ExponentialBackoff) *backoffManager {
 	if factory == nil {
 		factory = DefaultBackoff
@@ -167,7 +168,7 @@ func newBackoffManager(factory func() *ExponentialBackoff) *backoffManager {
 	}
 }
 
-// Get returns the backoff for the given key, creating it if necessary
+// Get returns the backoff for the given key, creating it if necessary.
 func (m *backoffManager) Get(key string) *ExponentialBackoff {
 	m.mu.RLock()
 	backoff, exists := m.backoffs[key]
@@ -195,7 +196,7 @@ func (m *backoffManager) Get(key string) *ExponentialBackoff {
 	return backoff
 }
 
-// Reset resets the backoff for the given key
+// Reset resets the backoff for the given key.
 func (m *backoffManager) Reset(key string) {
 	m.mu.RLock()
 	backoff, exists := m.backoffs[key]
@@ -206,21 +207,21 @@ func (m *backoffManager) Reset(key string) {
 	}
 }
 
-// Remove removes the backoff for the given key
+// Remove removes the backoff for the given key.
 func (m *backoffManager) Remove(key string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	delete(m.backoffs, key)
 }
 
-// Clear removes all backoffs
+// Clear removes all backoffs.
 func (m *backoffManager) Clear() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.backoffs = make(map[string]*ExponentialBackoff)
 }
 
-// calculateBackoffDuration is a helper for testing specific backoff calculations
+// calculateBackoffDuration is a helper for testing specific backoff calculations.
 func calculateBackoffDuration(attempt int, initial, max time.Duration, factor float64) time.Duration {
 	if attempt <= 0 {
 		return initial

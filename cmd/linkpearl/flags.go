@@ -35,10 +35,10 @@ import (
 	"strings"
 )
 
-// stringSliceFlag implements flag.Value for repeated string flags
+// stringSliceFlag implements flag.Value for repeated string flags.
 type stringSliceFlag []string
 
-// String returns the string representation of the flag value
+// String returns the string representation of the flag value.
 func (s *stringSliceFlag) String() string {
 	if s == nil || len(*s) == 0 {
 		return ""
@@ -46,7 +46,7 @@ func (s *stringSliceFlag) String() string {
 	return strings.Join(*s, ",")
 }
 
-// Set adds a value to the string slice
+// Set adds a value to the string slice.
 func (s *stringSliceFlag) Set(value string) error {
 	// Support comma-separated values
 	values := strings.Split(value, ",")
@@ -59,7 +59,7 @@ func (s *stringSliceFlag) Set(value string) error {
 	return nil
 }
 
-// Get returns the underlying string slice
+// Get returns the underlying string slice.
 func (s *stringSliceFlag) Get() []string {
 	if s == nil {
 		return nil
@@ -67,7 +67,7 @@ func (s *stringSliceFlag) Get() []string {
 	return []string(*s)
 }
 
-// validateAddress performs basic validation on network addresses
+// validateAddress performs basic validation on network addresses.
 func validateAddress(addr string) error {
 	if addr == "" {
 		return fmt.Errorf("empty address")

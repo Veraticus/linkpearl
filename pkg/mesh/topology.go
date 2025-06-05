@@ -135,8 +135,8 @@ func NewTopology(config *TopologyConfig) (Topology, error) {
 	return t, nil
 }
 
-// Start begins accepting connections and connecting to configured peers
-func (t *topology) Start(ctx context.Context) error {
+// Start begins accepting connections and connecting to configured peers.
+func (t *topology) Start(_ context.Context) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -170,7 +170,7 @@ func (t *topology) Start(ctx context.Context) error {
 	return nil
 }
 
-// Stop gracefully shuts down all connections
+// Stop gracefully shuts down all connections.
 func (t *topology) Stop() error {
 	t.mu.Lock()
 	if t.closed {
@@ -200,7 +200,7 @@ func (t *topology) Stop() error {
 	return nil
 }
 
-// AddJoinAddr adds an address to maintain a connection to
+// AddJoinAddr adds an address to maintain a connection to.
 func (t *topology) AddJoinAddr(addr string) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -227,7 +227,7 @@ func (t *topology) AddJoinAddr(addr string) error {
 	return nil
 }
 
-// RemoveJoinAddr removes an address from the join list
+// RemoveJoinAddr removes an address from the join list.
 func (t *topology) RemoveJoinAddr(addr string) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -248,7 +248,7 @@ func (t *topology) RemoveJoinAddr(addr string) error {
 	return nil
 }
 
-// GetPeer returns information about a connected peer
+// GetPeer returns information about a connected peer.
 func (t *topology) GetPeer(nodeID string) (*PeerInfo, error) {
 	p, err := t.peers.GetPeer(nodeID)
 	if err != nil {
@@ -257,7 +257,7 @@ func (t *topology) GetPeer(nodeID string) (*PeerInfo, error) {
 	return p.Info(), nil
 }
 
-// GetPeers returns information about all connected peers
+// GetPeers returns information about all connected peers.
 func (t *topology) GetPeers() map[string]*PeerInfo {
 	peers := t.peers.GetPeers()
 	result := make(map[string]*PeerInfo, len(peers))
@@ -267,12 +267,12 @@ func (t *topology) GetPeers() map[string]*PeerInfo {
 	return result
 }
 
-// PeerCount returns the number of connected peers
+// PeerCount returns the number of connected peers.
 func (t *topology) PeerCount() int {
 	return t.peers.ConnectedCount()
 }
 
-// SendToPeer sends a message to a specific peer
+// SendToPeer sends a message to a specific peer.
 func (t *topology) SendToPeer(nodeID string, msg interface{}) error {
 	// Message must be a type-safe MeshMessage
 	meshMsg, ok := msg.(MeshMessage)
@@ -295,7 +295,7 @@ func (t *topology) SendToPeer(nodeID string, msg interface{}) error {
 	return t.peers.SendToPeer(nodeID, wireMsg)
 }
 
-// Broadcast sends a message to all connected peers
+// Broadcast sends a message to all connected peers.
 func (t *topology) Broadcast(msg interface{}) error {
 	// Message must be a type-safe MeshMessage
 	meshMsg, ok := msg.(MeshMessage)
@@ -318,14 +318,14 @@ func (t *topology) Broadcast(msg interface{}) error {
 	return t.peers.Broadcast(wireMsg)
 }
 
-// Events returns a channel of topology events
+// Events returns a channel of topology events.
 func (t *topology) Events() <-chan TopologyEvent {
 	ch := make(chan TopologyEvent, 100)
 	t.events.Subscribe(ch)
 	return ch
 }
 
-// Messages returns a channel of incoming messages
+// Messages returns a channel of incoming messages.
 func (t *topology) Messages() <-chan Message {
 	return t.messages
 }
@@ -362,7 +362,7 @@ func (t *topology) acceptLoop() {
 	}
 }
 
-// handleIncomingConnection handles a new incoming connection
+// handleIncomingConnection handles a new incoming connection.
 func (t *topology) handleIncomingConnection(conn transport.Conn) {
 	defer t.wg.Done()
 
@@ -475,7 +475,7 @@ func (t *topology) maintainConnection(addr string) {
 	}
 }
 
-// handleConnection handles a peer connection
+// handleConnection handles a peer connection.
 func (t *topology) handleConnection(p *peer) {
 	// Send our peer list
 	t.sendPeerList(p)
@@ -511,7 +511,7 @@ func (t *topology) handleConnection(p *peer) {
 	p.disconnect()
 }
 
-// handlePeerConnected handles a peer connection event
+// handlePeerConnected handles a peer connection event.
 func (t *topology) handlePeerConnected(p *peer) {
 	t.events.Publish(TopologyEvent{
 		Type: PeerConnected,
@@ -520,7 +520,7 @@ func (t *topology) handlePeerConnected(p *peer) {
 	})
 }
 
-// handlePeerDisconnected handles a peer disconnection event
+// handlePeerDisconnected handles a peer disconnection event.
 func (t *topology) handlePeerDisconnected(p *peer) {
 	t.events.Publish(TopologyEvent{
 		Type: PeerDisconnected,
@@ -532,7 +532,7 @@ func (t *topology) handlePeerDisconnected(p *peer) {
 	_ = t.peers.RemovePeer(p.ID)
 }
 
-// sendPeerList sends the current peer list to a peer
+// sendPeerList sends the current peer list to a peer.
 func (t *topology) sendPeerList(p *peer) {
 	peers := t.peers.GetConnectedPeers()
 	nodes := make([]Node, 0, len(peers)+1)
@@ -569,7 +569,7 @@ func (t *topology) sendPeerList(p *peer) {
 	}
 }
 
-// registerMessageHandlers registers handlers for mesh messages
+// registerMessageHandlers registers handlers for mesh messages.
 func (t *topology) registerMessageHandlers() {
 	// Handle peer list messages
 	t.router.handler.Register(MessageTypePeerList, func(from string, payload json.RawMessage) error {
@@ -596,7 +596,7 @@ func (t *topology) registerMessageHandlers() {
 	})
 
 	// Handle pong messages
-	t.router.handler.Register(MessageTypePong, func(from string, payload json.RawMessage) error {
+	t.router.handler.Register(MessageTypePong, func(from string, _ json.RawMessage) error {
 		// Just log it for now
 		t.config.Logger.Debug("received pong", "from", from)
 		return nil

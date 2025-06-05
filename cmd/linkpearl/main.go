@@ -72,7 +72,7 @@ import (
 )
 
 var (
-	// Version information (set by build flags)
+	// Version information (set by build flags).
 	version = "dev"
 	commit  = "none"
 	date    = "unknown"
@@ -119,6 +119,7 @@ func main() {
 
 	// Show version if requested
 	if *showVersion {
+		//nolint:forbidigo // fmt.Printf is appropriate for CLI version output
 		fmt.Printf("linkpearl version %s (commit: %s, built: %s)\n", version, commit, date)
 		os.Exit(0)
 	}
@@ -284,7 +285,7 @@ func run(cfg *config.Config, log *logger) error {
 	return nil
 }
 
-// createClipboard creates the appropriate clipboard implementation
+// createClipboard creates the appropriate clipboard implementation.
 func createClipboard() (clipboard.Clipboard, error) {
 	// Use the platform clipboard factory
 	clip, err := clipboard.NewPlatformClipboard()
@@ -300,7 +301,7 @@ func createClipboard() (clipboard.Clipboard, error) {
 	return clip, nil
 }
 
-// createTransport creates the network transport
+// createTransport creates the network transport.
 func createTransport(cfg *config.Config, log *logger) (transport.Transport, error) {
 	// Create transport config
 	transportCfg := &transport.TransportConfig{
@@ -317,7 +318,7 @@ func createTransport(cfg *config.Config, log *logger) (transport.Transport, erro
 	return trans, nil
 }
 
-// createTopology creates the mesh topology
+// createTopology creates the mesh topology.
 func createTopology(cfg *config.Config, trans transport.Transport, log *logger) (mesh.Topology, error) {
 	// Create topology config
 	topoCfg := &mesh.TopologyConfig{
@@ -351,7 +352,7 @@ func createTopology(cfg *config.Config, trans transport.Transport, log *logger) 
 	return topo, nil
 }
 
-// createSyncEngine creates the sync engine
+// createSyncEngine creates the sync engine.
 func createSyncEngine(cfg *config.Config, clip clipboard.Clipboard, topo mesh.Topology, log *logger) (sync.Engine, error) {
 	// Create sync config
 	syncCfg := &sync.Config{
@@ -373,7 +374,7 @@ func createSyncEngine(cfg *config.Config, clip clipboard.Clipboard, topo mesh.To
 	return engine, nil
 }
 
-// init sets up logging format
+// init sets up logging format.
 func init() {
 	// Remove timestamp from standard logger as we add our own
 	log.SetFlags(0)

@@ -11,7 +11,7 @@ import (
 	"github.com/Veraticus/linkpearl/pkg/mesh"
 )
 
-// mockClipboard implements clipboard.Clipboard for testing
+// mockClipboard implements clipboard.Clipboard for testing.
 type mockClipboard struct {
 	mu             sync.Mutex
 	content        string
@@ -98,7 +98,7 @@ func (m *mockClipboard) GetState() clipboard.ClipboardState {
 	}
 }
 
-// mockTopology implements mesh.Topology for testing
+// mockTopology implements mesh.Topology for testing.
 type mockTopology struct {
 	mu         sync.Mutex
 	peers      map[string]*mesh.PeerInfo
@@ -124,11 +124,11 @@ func (m *mockTopology) Stop() error {
 	return nil
 }
 
-func (m *mockTopology) AddJoinAddr(addr string) error {
+func (m *mockTopology) AddJoinAddr(_ string) error {
 	return nil
 }
 
-func (m *mockTopology) RemoveJoinAddr(addr string) error {
+func (m *mockTopology) RemoveJoinAddr(_ string) error {
 	return nil
 }
 
@@ -159,7 +159,7 @@ func (m *mockTopology) PeerCount() int {
 	return len(m.peers)
 }
 
-func (m *mockTopology) SendToPeer(nodeID string, msg interface{}) error {
+func (m *mockTopology) SendToPeer(_ string, msg interface{}) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -211,7 +211,7 @@ func (m *mockTopology) GetBroadcasts() []interface{} {
 	return broadcasts
 }
 
-// testLogger implements Logger for testing
+// testLogger implements Logger for testing.
 type testLogger struct {
 	mu   sync.Mutex
 	logs []logEntry

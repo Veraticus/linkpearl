@@ -229,7 +229,7 @@ func TestAuthenticator(t *testing.T) {
 	})
 }
 
-// TestAuthMessageSerialization tests JSON serialization of auth messages
+// TestAuthMessageSerialization tests JSON serialization of auth messages.
 func TestAuthMessageSerialization(t *testing.T) {
 	msg := &AuthMessage{
 		Nonce:     "test-nonce",

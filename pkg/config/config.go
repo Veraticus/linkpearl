@@ -61,9 +61,9 @@ import (
 type NodeMode string
 
 const (
-	// ClientNode connects to other nodes but doesn't accept incoming connections
+	// ClientNode connects to other nodes but doesn't accept incoming connections..
 	ClientNode NodeMode = "client"
-	// FullNode accepts incoming connections and participates fully in the mesh
+	// FullNode accepts incoming connections and participates fully in the mesh..
 	FullNode NodeMode = "full"
 )
 

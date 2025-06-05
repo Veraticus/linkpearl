@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Test MeshMessage interface implementation
+// Test MeshMessage interface implementation.
 func TestMeshMessageTypes(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -82,7 +82,7 @@ func TestMeshMessageTypes(t *testing.T) {
 	}
 }
 
-// Test message creation functions
+// Test message creation functions.
 func TestMessageCreationFunctions(t *testing.T) {
 	t.Run("NewClipboardMessage", func(t *testing.T) {
 		data := json.RawMessage(`{"content":"clipboard data"}`)
@@ -98,7 +98,7 @@ func TestMessageCreationFunctions(t *testing.T) {
 		var wireMsg meshMessage
 		err = json.Unmarshal(marshaled, &wireMsg)
 		require.NoError(t, err)
-		assert.Equal(t, json.RawMessage(data), wireMsg.Payload)
+		assert.Equal(t, data, wireMsg.Payload)
 	})
 
 	t.Run("NewPeerListMessage", func(t *testing.T) {
@@ -169,7 +169,7 @@ func TestMessageCreationFunctions(t *testing.T) {
 	})
 }
 
-// Test message marshaling and unmarshaling
+// Test message marshaling and unmarshaling.
 func TestMeshMessageMarshalUnmarshal(t *testing.T) {
 	// Test with complex clipboard data
 	clipboardData := map[string]interface{}{
@@ -202,7 +202,7 @@ func TestMeshMessageMarshalUnmarshal(t *testing.T) {
 	assert.Equal(t, clipboardData["content"], decoded["content"])
 }
 
-// Test unmarshalMessage function
+// Test unmarshalMessage function.
 func TestUnmarshalMessage(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -256,7 +256,7 @@ func TestUnmarshalMessage(t *testing.T) {
 	}
 }
 
-// Test message handler
+// Test message handler.
 func TestMessageHandler(t *testing.T) {
 	h := newMessageHandler()
 
@@ -286,10 +286,10 @@ func TestMessageHandler(t *testing.T) {
 	assert.Contains(t, err.Error(), "no handler for message type")
 }
 
-// Test message router with type-safe messages
+// Test message router with type-safe messages.
 func TestMessageRouterTypeSafe(t *testing.T) {
 	var sentData []byte
-	sendFunc := func(nodeID string, data []byte) error {
+	sendFunc := func(_ string, data []byte) error {
 		sentData = data
 		return nil
 	}
@@ -346,7 +346,7 @@ func TestMessageRouterTypeSafe(t *testing.T) {
 	})
 }
 
-// Test message router broadcast
+// Test message router broadcast.
 func TestMessageRouterBroadcast(t *testing.T) {
 	var sentNodeID string
 	var sentData []byte
@@ -380,7 +380,7 @@ func TestMessageRouterBroadcast(t *testing.T) {
 	})
 }
 
-// Test process message
+// Test process message.
 func TestMessageRouterProcessMessage(t *testing.T) {
 	router := newMessageRouter("local-node", nil)
 
@@ -413,7 +413,7 @@ func TestMessageRouterProcessMessage(t *testing.T) {
 	assert.Equal(t, int64(12345), ping.Timestamp)
 }
 
-// Test edge cases
+// Test edge cases.
 func TestMeshMessageEdgeCases(t *testing.T) {
 	t.Run("Empty node ID", func(t *testing.T) {
 		msg := NewClipboardMessage("", json.RawMessage(`{}`))

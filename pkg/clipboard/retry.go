@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-// RetryConfig defines configuration for retry behavior
+// RetryConfig defines configuration for retry behavior.
 type RetryConfig struct {
 	MaxAttempts     int           // Maximum number of retry attempts (including initial attempt)
 	InitialDelay    time.Duration // Initial delay between retries
@@ -24,7 +24,7 @@ type RetryConfig struct {
 	RetryableErrors []error       // List of errors that should trigger a retry
 }
 
-// DefaultRetryConfig returns a sensible default retry configuration
+// DefaultRetryConfig returns a sensible default retry configuration.
 func DefaultRetryConfig() *RetryConfig {
 	return &RetryConfig{
 		MaxAttempts:   3,
@@ -39,7 +39,7 @@ func DefaultRetryConfig() *RetryConfig {
 	}
 }
 
-// isRetryableError checks if an error should trigger a retry
+// isRetryableError checks if an error should trigger a retry.
 func (rc *RetryConfig) isRetryableError(err error) bool {
 	if err == nil {
 		return false
@@ -73,7 +73,7 @@ func (rc *RetryConfig) isRetryableError(err error) bool {
 	return false
 }
 
-// calculateDelay calculates the next retry delay with exponential backoff and jitter
+// calculateDelay calculates the next retry delay with exponential backoff and jitter.
 func (rc *RetryConfig) calculateDelay(attempt int) time.Duration {
 	if attempt <= 0 {
 		return rc.InitialDelay
@@ -89,8 +89,9 @@ func (rc *RetryConfig) calculateDelay(attempt int) time.Duration {
 
 	// Add jitter
 	if rc.JitterFactor > 0 {
+		//nolint:gosec // math/rand is acceptable for retry jitter
 		jitter := delay * rc.JitterFactor * (2*rand.Float64() - 1) // -jitter to +jitter
-		delay = delay + jitter
+		delay += jitter
 		if delay < 0 {
 			delay = float64(rc.InitialDelay)
 		}
@@ -99,7 +100,7 @@ func (rc *RetryConfig) calculateDelay(attempt int) time.Duration {
 	return time.Duration(delay)
 }
 
-// RetryOperation executes an operation with retry logic
+// RetryOperation executes an operation with retry logic.
 func RetryOperation(ctx context.Context, config *RetryConfig, operation func() error) error {
 	if config == nil {
 		config = DefaultRetryConfig()
@@ -142,12 +143,12 @@ func RetryOperation(ctx context.Context, config *RetryConfig, operation func() e
 	return lastErr
 }
 
-// RetryWithBackoff is a convenience function for common retry scenarios
+// RetryWithBackoff is a convenience function for common retry scenarios.
 func RetryWithBackoff(ctx context.Context, operation func() error) error {
 	return RetryOperation(ctx, DefaultRetryConfig(), operation)
 }
 
-// contains is a helper function to check if a string contains a substring
+// contains is a helper function to check if a string contains a substring.
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsHelper(s, substr))
 }

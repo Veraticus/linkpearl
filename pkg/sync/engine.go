@@ -170,7 +170,7 @@ func (e *engine) Run(ctx context.Context) error {
 	}
 }
 
-// Stats returns current engine statistics
+// Stats returns current engine statistics.
 func (e *engine) Stats() *Stats {
 	e.mu.RLock()
 	lastLocalChange := e.lastLocalChange
@@ -194,7 +194,7 @@ func (e *engine) Stats() *Stats {
 	}
 }
 
-// initializeState reads current clipboard state
+// initializeState reads current clipboard state.
 func (e *engine) initializeState() error {
 	content, err := e.clipboard.Read()
 	if err != nil {
@@ -388,7 +388,7 @@ func (e *engine) handleIncomingMessage(msg mesh.Message) {
 	}
 }
 
-// isDuplicate checks if we've seen this message before
+// isDuplicate checks if we've seen this message before.
 func (e *engine) isDuplicate(msg *ClipboardMessage) bool {
 	if timestamp, exists := e.dedupe.Get(msg.Checksum); exists {
 		// If we've seen this checksum with a recent timestamp, it's a duplicate
@@ -438,7 +438,7 @@ func (e *engine) shouldApplyRemoteChange(msg *ClipboardMessage) bool {
 	return false
 }
 
-// applyRemoteChange updates local clipboard with remote content
+// applyRemoteChange updates local clipboard with remote content.
 func (e *engine) applyRemoteChange(msg *ClipboardMessage) {
 	e.mu.Lock()
 	wasNewer := msg.Timestamp > e.timestamp
@@ -500,7 +500,7 @@ func (e *engine) isSyncLoop() bool {
 	return false
 }
 
-// handleTopologyEvent processes topology changes
+// handleTopologyEvent processes topology changes.
 func (e *engine) handleTopologyEvent(event mesh.TopologyEvent) {
 	switch event.Type {
 	case mesh.PeerConnected:

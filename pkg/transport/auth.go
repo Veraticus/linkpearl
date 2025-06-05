@@ -210,7 +210,7 @@ func (a *defaultAuthenticator) verifyAuthMessage(msg *AuthMessage, secret string
 // The configuration enforces TLS 1.3 with strong cipher suites.
 //
 // For servers: No client certificate is required (already authenticated)
-// For clients: Server certificate verification is skipped (already authenticated)
+// For clients: Server certificate verification is skipped (already authenticated).
 func (a *defaultAuthenticator) GenerateTLSConfig(isServer bool) (*tls.Config, error) {
 	// Generate ephemeral certificate
 	cert, err := a.generateCertificate()

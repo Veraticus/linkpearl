@@ -46,7 +46,7 @@ import (
 type MessageType string
 
 const (
-	// MessageTypeClipboard is for clipboard synchronization
+	// MessageTypeClipboard is for clipboard synchronization.
 	MessageTypeClipboard MessageType = "clipboard"
 )
 
@@ -102,12 +102,12 @@ func computeChecksum(content string) string {
 	return hex.EncodeToString(hash[:])
 }
 
-// Marshal converts the message to JSON bytes
+// Marshal converts the message to JSON bytes.
 func (m *ClipboardMessage) Marshal() ([]byte, error) {
 	return json.Marshal(m)
 }
 
-// UnmarshalClipboardMessage decodes a clipboard message from JSON
+// UnmarshalClipboardMessage decodes a clipboard message from JSON.
 func UnmarshalClipboardMessage(data []byte) (*ClipboardMessage, error) {
 	var msg ClipboardMessage
 	if err := json.Unmarshal(data, &msg); err != nil {

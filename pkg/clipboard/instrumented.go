@@ -10,13 +10,13 @@ import (
 	"time"
 )
 
-// InstrumentedClipboard wraps a clipboard implementation with metrics collection
+// InstrumentedClipboard wraps a clipboard implementation with metrics collection.
 type InstrumentedClipboard struct {
 	clipboard Clipboard
 	metrics   MetricsCollector
 }
 
-// NewInstrumentedClipboard creates a new instrumented clipboard
+// NewInstrumentedClipboard creates a new instrumented clipboard.
 func NewInstrumentedClipboard(clipboard Clipboard, metrics MetricsCollector) *InstrumentedClipboard {
 	if metrics == nil {
 		metrics = &NoOpMetricsCollector{}
@@ -27,7 +27,7 @@ func NewInstrumentedClipboard(clipboard Clipboard, metrics MetricsCollector) *In
 	}
 }
 
-// Read returns the current clipboard contents with metrics
+// Read returns the current clipboard contents with metrics.
 func (ic *InstrumentedClipboard) Read() (string, error) {
 	start := time.Now()
 
@@ -48,7 +48,7 @@ func (ic *InstrumentedClipboard) Read() (string, error) {
 	return content, err
 }
 
-// Write sets the clipboard contents with metrics
+// Write sets the clipboard contents with metrics.
 func (ic *InstrumentedClipboard) Write(content string) error {
 	start := time.Now()
 
@@ -69,7 +69,7 @@ func (ic *InstrumentedClipboard) Write(content string) error {
 	return err
 }
 
-// Watch monitors clipboard changes with metrics
+// Watch monitors clipboard changes with metrics.
 func (ic *InstrumentedClipboard) Watch(ctx context.Context) <-chan struct{} {
 	// Create wrapped channel
 	wrappedCh := make(chan struct{}, 10)
@@ -113,24 +113,24 @@ func (ic *InstrumentedClipboard) Watch(ctx context.Context) <-chan struct{} {
 	return wrappedCh
 }
 
-// GetState returns current state information
+// GetState returns current state information.
 func (ic *InstrumentedClipboard) GetState() ClipboardState {
 	return ic.clipboard.GetState()
 }
 
-// GetMetrics returns the metrics collector for external access
+// GetMetrics returns the metrics collector for external access.
 func (ic *InstrumentedClipboard) GetMetrics() MetricsCollector {
 	return ic.metrics
 }
 
-// incrementWatcherCount increments the watcher count metric
+// incrementWatcherCount increments the watcher count metric.
 func (ic *InstrumentedClipboard) incrementWatcherCount() {
 	// This is a simplified implementation - in production you'd track actual count
 	// For now, just increment by 1
 	ic.metrics.RecordWatcherCount(1)
 }
 
-// decrementWatcherCount decrements the watcher count metric
+// decrementWatcherCount decrements the watcher count metric.
 func (ic *InstrumentedClipboard) decrementWatcherCount() {
 	// This is a simplified implementation - in production you'd track actual count
 	// For now, just set to 0

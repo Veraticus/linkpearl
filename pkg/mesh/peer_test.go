@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// mockConn implements transport.Conn for testing
+// mockConn implements transport.Conn for testing.
 type mockConn struct {
 	nodeID       string
 	mode         string
@@ -90,8 +90,7 @@ func (c *mockConn) Receive(msg interface{}) error {
 
 	select {
 	case received := <-c.messages:
-		switch v := msg.(type) {
-		case *interface{}:
+		if v, ok := msg.(*interface{}); ok {
 			*v = received
 		}
 		return nil
@@ -116,9 +115,9 @@ func (c *mockConn) Close() error {
 
 func (c *mockConn) LocalAddr() net.Addr                { return &net.TCPAddr{} }
 func (c *mockConn) RemoteAddr() net.Addr               { return &net.TCPAddr{} }
-func (c *mockConn) SetDeadline(t time.Time) error      { return nil }
-func (c *mockConn) SetReadDeadline(t time.Time) error  { return nil }
-func (c *mockConn) SetWriteDeadline(t time.Time) error { return nil }
+func (c *mockConn) SetDeadline(_ time.Time) error      { return nil }
+func (c *mockConn) SetReadDeadline(_ time.Time) error  { return nil }
+func (c *mockConn) SetWriteDeadline(_ time.Time) error { return nil }
 
 func (c *mockConn) setSendError(err error) {
 	c.mu.Lock()
@@ -132,7 +131,7 @@ func (c *mockConn) setBlockSend(block bool) {
 	c.mu.Unlock()
 }
 
-// Test peer creation
+// Test peer creation.
 func TestPeerCreation(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -147,6 +146,7 @@ func TestPeerCreation(t *testing.T) {
 				return newPeer(node, conn, "inbound")
 			},
 			validate: func(t *testing.T, p *peer) {
+				t.Helper()
 				assert.Equal(t, "node1", p.ID)
 				assert.Equal(t, "inbound", p.direction)
 				assert.True(t, p.IsConnected())
@@ -162,6 +162,7 @@ func TestPeerCreation(t *testing.T) {
 				return newOutboundPeer(node, "127.0.0.1:9090")
 			},
 			validate: func(t *testing.T, p *peer) {
+				t.Helper()
 				assert.Equal(t, "node2", p.ID)
 				assert.Equal(t, "outbound", p.direction)
 				assert.False(t, p.IsConnected())
@@ -181,7 +182,7 @@ func TestPeerCreation(t *testing.T) {
 	}
 }
 
-// Test peer connection management
+// Test peer connection management.
 func TestPeerConnectionManagement(t *testing.T) {
 	node := Node{ID: "node1", Mode: "full"}
 
@@ -227,7 +228,7 @@ func TestPeerConnectionManagement(t *testing.T) {
 		defer p.stop()
 
 		disconnectCount := 0
-		p.onDisconnect = func(peer *peer) {
+		p.onDisconnect = func(_ *peer) {
 			disconnectCount++
 		}
 
@@ -238,7 +239,7 @@ func TestPeerConnectionManagement(t *testing.T) {
 	})
 }
 
-// Test peer info and state tracking
+// Test peer info and state tracking.
 func TestPeerInfo(t *testing.T) {
 	node := Node{ID: "node1", Mode: "full", Addr: "127.0.0.1:8080"}
 	conn := newMockConn("node1", "full")
@@ -260,7 +261,7 @@ func TestPeerInfo(t *testing.T) {
 	assert.WithinDuration(t, time.Now(), info.ConnectedAt, time.Second)
 }
 
-// Test peer sending messages
+// Test peer sending messages.
 func TestPeerSend(t *testing.T) {
 	node := Node{ID: "node1", Mode: "full"}
 
@@ -301,7 +302,7 @@ func TestPeerSend(t *testing.T) {
 	})
 }
 
-// Test peer manager operations
+// Test peer manager operations.
 func TestPeerManager(t *testing.T) {
 	t.Run("add peer", func(t *testing.T) {
 		m := newPeerManager()
@@ -433,7 +434,7 @@ func TestPeerManager(t *testing.T) {
 	})
 }
 
-// Test broadcast functionality
+// Test broadcast functionality.
 func TestBroadcast(t *testing.T) {
 	m := newPeerManager()
 
@@ -474,7 +475,7 @@ func TestBroadcast(t *testing.T) {
 	p4.stop()
 }
 
-// Test concurrent operations
+// Test concurrent operations.
 func TestConcurrentOperations(t *testing.T) {
 	t.Run("concurrent sends", func(t *testing.T) {
 		node := Node{ID: "node1", Mode: "full"}
@@ -581,7 +582,7 @@ func TestConcurrentOperations(t *testing.T) {
 	})
 }
 
-// Test lifecycle management
+// Test lifecycle management.
 func TestLifecycleManagement(t *testing.T) {
 	t.Run("peer stop", func(t *testing.T) {
 		node := Node{ID: "node1", Mode: "full"}
@@ -666,7 +667,7 @@ func TestLifecycleManagement(t *testing.T) {
 	})
 }
 
-// Test edge cases
+// Test edge cases.
 func TestEdgeCases(t *testing.T) {
 	t.Run("send to specific peer", func(t *testing.T) {
 		m := newPeerManager()
@@ -774,7 +775,7 @@ func TestEdgeCases(t *testing.T) {
 	})
 }
 
-// Test blocking operations
+// Test blocking operations.
 func TestBlockingOperations(t *testing.T) {
 	t.Run("send blocks until connection closed", func(t *testing.T) {
 		node := Node{ID: "node1", Mode: "full"}

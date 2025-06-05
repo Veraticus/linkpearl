@@ -6,11 +6,11 @@ import (
 )
 
 const (
-	// MaxReasonableSize for normal text content (1MB)
+	// MaxReasonableSize for normal text content (1MB).
 	MaxReasonableSize = 1024 * 1024
 )
 
-// ValidateContent checks if clipboard content is within acceptable limits
+// ValidateContent checks if clipboard content is within acceptable limits.
 func ValidateContent(content []byte) error {
 	if len(content) > MaxClipboardSize {
 		return fmt.Errorf("%w: %d bytes (max: %d)",

@@ -94,7 +94,9 @@ func (c *lruCache) Add(key string, value interface{}) {
 	if elem, exists := c.items[key]; exists {
 		// Move to front and update value
 		c.evictList.MoveToFront(elem)
-		elem.Value.(*entry).value = value
+		if ent, ok := elem.Value.(*entry); ok {
+			ent.value = value
+		}
 		return
 	}
 
@@ -124,7 +126,10 @@ func (c *lruCache) Get(key string) (interface{}, bool) {
 	if elem, exists := c.items[key]; exists {
 		// Move to front (mark as recently used)
 		c.evictList.MoveToFront(elem)
-		return elem.Value.(*entry).value, true
+		if ent, ok := elem.Value.(*entry); ok {
+			return ent.value, true
+		}
+		return nil, false
 	}
 
 	return nil, false
@@ -143,7 +148,7 @@ func (c *lruCache) Contains(key string) bool {
 	return exists
 }
 
-// Remove removes a key from the cache
+// Remove removes a key from the cache.
 func (c *lruCache) Remove(key string) bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -156,7 +161,7 @@ func (c *lruCache) Remove(key string) bool {
 	return false
 }
 
-// Clear removes all entries from the cache
+// Clear removes all entries from the cache.
 func (c *lruCache) Clear() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -165,7 +170,7 @@ func (c *lruCache) Clear() {
 	c.evictList.Init()
 }
 
-// Len returns the number of items in the cache
+// Len returns the number of items in the cache.
 func (c *lruCache) Len() int {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -188,6 +193,7 @@ func (c *lruCache) removeOldest() {
 // It ensures the cache's internal data structures remain consistent.
 func (c *lruCache) removeElement(elem *list.Element) {
 	c.evictList.Remove(elem)
-	ent := elem.Value.(*entry)
-	delete(c.items, ent.key)
+	if ent, ok := elem.Value.(*entry); ok {
+		delete(c.items, ent.key)
+	}
 }

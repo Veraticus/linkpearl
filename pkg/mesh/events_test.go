@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestEventTypeString tests the String method of EventType
+// TestEventTypeString tests the String method of EventType.
 func TestEventTypeString(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -42,7 +42,7 @@ func TestEventTypeString(t *testing.T) {
 	}
 }
 
-// TestEventBufferCreation tests creating event buffers with various capacities
+// TestEventBufferCreation tests creating event buffers with various capacities.
 func TestEventBufferCreation(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -75,7 +75,7 @@ func TestEventBufferCreation(t *testing.T) {
 	}
 }
 
-// TestEventBufferPushPop tests basic push and pop operations
+// TestEventBufferPushPop tests basic push and pop operations.
 func TestEventBufferPushPop(t *testing.T) {
 	buf := newEventBuffer(10)
 
@@ -101,7 +101,7 @@ func TestEventBufferPushPop(t *testing.T) {
 	assert.Equal(t, 0, buf.Size(), "Size() after pop")
 }
 
-// TestEventBufferOverflow tests ring buffer overflow behavior
+// TestEventBufferOverflow tests ring buffer overflow behavior.
 func TestEventBufferOverflow(t *testing.T) {
 	capacity := 5
 	buf := newEventBuffer(capacity)
@@ -132,7 +132,7 @@ func TestEventBufferOverflow(t *testing.T) {
 	}
 }
 
-// TestEventBufferClear tests clearing the buffer
+// TestEventBufferClear tests clearing the buffer.
 func TestEventBufferClear(t *testing.T) {
 	buf := newEventBuffer(10)
 
@@ -153,7 +153,7 @@ func TestEventBufferClear(t *testing.T) {
 	assert.Nil(t, buf.ToSlice(), "ToSlice() after clear should return nil")
 }
 
-// TestEventBufferToSlice tests converting buffer to slice
+// TestEventBufferToSlice tests converting buffer to slice.
 func TestEventBufferToSlice(t *testing.T) {
 	buf := newEventBuffer(10)
 
@@ -180,7 +180,7 @@ func TestEventBufferToSlice(t *testing.T) {
 	}
 }
 
-// TestEventBufferConcurrentOperations tests thread safety
+// TestEventBufferConcurrentOperations tests thread safety.
 func TestEventBufferConcurrentOperations(t *testing.T) {
 	buf := newEventBuffer(100)
 	numGoroutines := 10
@@ -237,7 +237,7 @@ func TestEventBufferConcurrentOperations(t *testing.T) {
 	}
 }
 
-// TestEventPumpCreation tests creating event pumps
+// TestEventPumpCreation tests creating event pumps.
 func TestEventPumpCreation(t *testing.T) {
 	pump := newEventPump(100)
 	require.NotNil(t, pump.buffer, "Event pump buffer should not be nil")
@@ -245,7 +245,7 @@ func TestEventPumpCreation(t *testing.T) {
 	assert.Empty(t, pump.listeners, "New event pump should have no listeners")
 }
 
-// TestEventPumpSubscribeUnsubscribe tests subscription management
+// TestEventPumpSubscribeUnsubscribe tests subscription management.
 func TestEventPumpSubscribeUnsubscribe(t *testing.T) {
 	pump := newEventPump(100)
 	ch1 := make(chan TopologyEvent, 1)
@@ -272,7 +272,7 @@ func TestEventPumpSubscribeUnsubscribe(t *testing.T) {
 	assert.Empty(t, pump.listeners, "Expected 0 listeners after all unsubscribed")
 }
 
-// TestEventPumpPublish tests publishing events to subscribers
+// TestEventPumpPublish tests publishing events to subscribers.
 func TestEventPumpPublish(t *testing.T) {
 	pump := newEventPump(100)
 	ch1 := make(chan TopologyEvent, 10)
@@ -308,7 +308,7 @@ func TestEventPumpPublish(t *testing.T) {
 	assert.Equal(t, 1, pump.buffer.Size(), "Expected 1 event in buffer")
 }
 
-// TestEventPumpNonBlockingPublish tests that publish doesn't block on full channels
+// TestEventPumpNonBlockingPublish tests that publish doesn't block on full channels.
 func TestEventPumpNonBlockingPublish(t *testing.T) {
 	pump := newEventPump(100)
 
@@ -335,7 +335,7 @@ func TestEventPumpNonBlockingPublish(t *testing.T) {
 	}
 }
 
-// TestEventPumpClose tests closing the event pump
+// TestEventPumpClose tests closing the event pump.
 func TestEventPumpClose(t *testing.T) {
 	pump := newEventPump(100)
 	ch := make(chan TopologyEvent, 1)
@@ -370,7 +370,7 @@ func TestEventPumpClose(t *testing.T) {
 	assert.Empty(t, pump.listeners, "Subscribe after close should not add listener")
 }
 
-// TestEventPumpConcurrentOperations tests thread safety of event pump
+// TestEventPumpConcurrentOperations tests thread safety of event pump.
 func TestEventPumpConcurrentOperations(t *testing.T) {
 	pump := newEventPump(1000)
 	numPublishers := 10
@@ -389,7 +389,7 @@ func TestEventPumpConcurrentOperations(t *testing.T) {
 
 		// Start consumer
 		wg.Add(1)
-		go func(ch <-chan TopologyEvent, i int) {
+		go func(ch <-chan TopologyEvent, _ int) {
 			defer wg.Done()
 			timeout := time.After(200 * time.Millisecond)
 			for {
@@ -433,7 +433,7 @@ func TestEventPumpConcurrentOperations(t *testing.T) {
 	assert.NotZero(t, received.Load(), "No events were received")
 }
 
-// TestEventOrdering tests that events maintain order within a single publisher
+// TestEventOrdering tests that events maintain order within a single publisher.
 func TestEventOrdering(t *testing.T) {
 	pump := newEventPump(1000)
 	ch := make(chan TopologyEvent, 100)
@@ -469,7 +469,7 @@ func TestEventOrdering(t *testing.T) {
 	assert.Equal(t, numEvents, received, "Received events count")
 }
 
-// TestEventPumpWithMultipleCloseAndSubscribe tests edge cases
+// TestEventPumpWithMultipleCloseAndSubscribe tests edge cases.
 func TestEventPumpWithMultipleCloseAndSubscribe(t *testing.T) {
 	pump := newEventPump(100)
 
@@ -489,7 +489,7 @@ func TestEventPumpWithMultipleCloseAndSubscribe(t *testing.T) {
 	pump.Unsubscribe(ch2)
 }
 
-// TestRingBufferEdgeCases tests edge cases for the ring buffer
+// TestRingBufferEdgeCases tests edge cases for the ring buffer.
 func TestRingBufferEdgeCases(t *testing.T) {
 	// Test with capacity of 1
 	buf := newEventBuffer(1)
@@ -526,7 +526,7 @@ func TestRingBufferEdgeCases(t *testing.T) {
 	}
 }
 
-// BenchmarkEventBufferPush benchmarks push operations
+// BenchmarkEventBufferPush benchmarks push operations.
 func BenchmarkEventBufferPush(b *testing.B) {
 	buf := newEventBuffer(1000)
 	event := TopologyEvent{
@@ -541,7 +541,7 @@ func BenchmarkEventBufferPush(b *testing.B) {
 	}
 }
 
-// BenchmarkEventPumpPublish benchmarks publish operations
+// BenchmarkEventPumpPublish benchmarks publish operations.
 func BenchmarkEventPumpPublish(b *testing.B) {
 	pump := newEventPump(1000)
 

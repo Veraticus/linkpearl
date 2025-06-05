@@ -57,22 +57,22 @@ import (
 	"time"
 )
 
-// Common errors
+// Common errors.
 var (
-	// ErrAuthFailed indicates authentication failure
+	// ErrAuthFailed indicates authentication failure.
 	ErrAuthFailed = errors.New("authentication failed")
 
-	// ErrTimeout indicates a timeout occurred
+	// ErrTimeout indicates a timeout occurred.
 	ErrTimeout = errors.New("operation timed out")
 
-	// ErrClosed indicates the transport is closed
+	// ErrClosed indicates the transport is closed.
 	ErrClosed = errors.New("transport closed")
 
-	// ErrInvalidMessage indicates a malformed message
+	// ErrInvalidMessage indicates a malformed message.
 	ErrInvalidMessage = errors.New("invalid message format")
 )
 
-// Version is the current protocol version
+// Version is the current protocol version.
 const Version = "1.0.0"
 
 // Transport defines the interface for secure network communication.
@@ -145,13 +145,13 @@ type Message interface {
 	Type() string
 }
 
-// HandshakeTimeout is the maximum time allowed for authentication handshake
+// HandshakeTimeout is the maximum time allowed for authentication handshake.
 const HandshakeTimeout = 10 * time.Second
 
-// KeepAliveInterval is the interval between keepalive messages
+// KeepAliveInterval is the interval between keepalive messages.
 const KeepAliveInterval = 30 * time.Second
 
-// MaxMessageSize is the maximum allowed message size (1MB)
+// MaxMessageSize is the maximum allowed message size (1MB).
 const MaxMessageSize = 1024 * 1024
 
 // TransportConfig holds configuration for creating a transport instance.
@@ -184,14 +184,14 @@ type Logger interface {
 	Error(msg string, args ...interface{})
 }
 
-// noopLogger implements Logger with no-op methods
+// noopLogger implements Logger with no-op methods.
 type noopLogger struct{}
 
 func (noopLogger) Debug(msg string, args ...interface{}) {}
 func (noopLogger) Info(msg string, args ...interface{})  {}
 func (noopLogger) Error(msg string, args ...interface{}) {}
 
-// DefaultLogger returns a no-op logger
+// DefaultLogger returns a no-op logger.
 func DefaultLogger() Logger {
 	return noopLogger{}
 }

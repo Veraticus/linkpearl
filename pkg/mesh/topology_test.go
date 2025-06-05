@@ -16,10 +16,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Type alias to avoid shadowing in test functions
+// Type alias to avoid shadowing in test functions.
 type transportConn = transport.Conn
 
-// mockTopologyConn implements transport.Conn for testing
+// mockTopologyConn implements transport.Conn for testing.
 type mockTopologyConn struct {
 	nodeID      string
 	mode        string
@@ -135,7 +135,7 @@ func (c *mockTopologyConn) SetReceiveError(err error) {
 	c.mu.Unlock()
 }
 
-// Implement remaining Conn interface methods
+// Implement remaining Conn interface methods.
 func (c *mockTopologyConn) LocalAddr() net.Addr {
 	return &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 8080}
 }
@@ -156,7 +156,7 @@ func (c *mockTopologyConn) SetWriteDeadline(t time.Time) error {
 	return nil
 }
 
-// mockTopologyTransport implements transport.Transport for testing
+// mockTopologyTransport implements transport.Transport for testing.
 type mockTopologyTransport struct {
 	addr        string
 	listening   atomic.Bool
@@ -257,13 +257,14 @@ func (t *mockTopologyTransport) Addr() net.Addr {
 	return tcpAddr
 }
 
-// testLogger implements Logger for testing
+// testLogger implements Logger for testing.
 type testLogger struct {
 	t      *testing.T
 	prefix string
 }
 
 func newTestLogger(t *testing.T, prefix string) *testLogger {
+	t.Helper()
 	return &testLogger{t: t, prefix: prefix}
 }
 
@@ -294,7 +295,7 @@ func (l *testLogger) log(level, msg string, args ...interface{}) {
 	l.t.Logf("[%s] %s: %s %v", l.prefix, level, msg, kvPairs)
 }
 
-// Test topology creation
+// Test topology creation.
 func TestNewTopology(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -388,7 +389,8 @@ func TestNewTopology(t *testing.T) {
 				require.NotNil(t, topo)
 
 				// Verify internal state
-				impl := topo.(*topology)
+				impl, ok := topo.(*topology)
+				require.True(t, ok, "topo should be of type *topology")
 				assert.Equal(t, tt.config.Self, impl.self)
 				assert.Equal(t, tt.config.Transport, impl.transport)
 				assert.NotNil(t, impl.peers)
@@ -404,7 +406,7 @@ func TestNewTopology(t *testing.T) {
 	}
 }
 
-// Test start/stop lifecycle
+// Test start/stop lifecycle.
 func TestTopologyLifecycle(t *testing.T) {
 	t.Run("full node start and stop", func(t *testing.T) {
 		transport := newMockTopologyTransport()
@@ -513,7 +515,7 @@ func TestTopologyLifecycle(t *testing.T) {
 	})
 }
 
-// Test join address management
+// Test join address management.
 func TestJoinAddressManagement(t *testing.T) {
 	t.Run("add and remove join addresses", func(t *testing.T) {
 		config := &TopologyConfig{
@@ -527,7 +529,8 @@ func TestJoinAddressManagement(t *testing.T) {
 		require.NoError(t, err)
 		defer func() { _ = topo.Stop() }()
 
-		impl := topo.(*topology)
+		impl, ok := topo.(*topology)
+		require.True(t, ok, "topo should be of type *topology")
 
 		// Initial join addresses
 		assert.Len(t, impl.joinAddrs, 1)
@@ -558,7 +561,7 @@ func TestJoinAddressManagement(t *testing.T) {
 	t.Run("add join address after start", func(t *testing.T) {
 		connected := make(chan string, 1)
 		transport := newMockTopologyTransport()
-		transport.connectFunc = func(ctx context.Context, addr string) (transportConn, error) {
+		transport.connectFunc = func(_ context.Context, addr string) (transportConn, error) {
 			connected <- addr
 			return newMockTopologyConn("remote-node", "full"), nil
 		}
@@ -594,7 +597,7 @@ func TestJoinAddressManagement(t *testing.T) {
 	})
 }
 
-// Test incoming connections
+// Test incoming connections.
 func TestIncomingConnections(t *testing.T) {
 	t.Run("accept incoming connection", func(t *testing.T) {
 		transport := newMockTopologyTransport()
@@ -707,12 +710,12 @@ func TestIncomingConnections(t *testing.T) {
 	})
 }
 
-// Test outbound connections with backoff
+// Test outbound connections with backoff.
 func TestOutboundConnections(t *testing.T) {
 	t.Run("successful connection", func(t *testing.T) {
 		connected := make(chan bool, 1)
 		transport := newMockTopologyTransport()
-		transport.connectFunc = func(ctx context.Context, addr string) (transportConn, error) {
+		transport.connectFunc = func(_ context.Context, addr string) (transportConn, error) {
 			connected <- true
 			conn := newMockTopologyConn("remote-node", "full")
 			conn.version = "localhost:9090" // Remote listen address
@@ -832,7 +835,7 @@ func TestOutboundConnections(t *testing.T) {
 	})
 }
 
-// Test message routing and handling
+// Test message routing and handling.
 func TestMessageRouting(t *testing.T) {
 	t.Run("send to specific peer", func(t *testing.T) {
 		transport := newMockTopologyTransport()
@@ -1035,7 +1038,7 @@ func TestMessageRouting(t *testing.T) {
 	})
 }
 
-// Test peer list exchange
+// Test peer list exchange.
 func TestPeerListExchange(t *testing.T) {
 	transport := newMockTopologyTransport()
 	config := &TopologyConfig{
@@ -1105,7 +1108,7 @@ func TestPeerListExchange(t *testing.T) {
 	}
 }
 
-// Test concurrent operations
+// Test concurrent operations.
 func TestTopologyConcurrentOperations(t *testing.T) {
 	t.Run("concurrent sends", func(t *testing.T) {
 		transport := newMockTopologyTransport()
@@ -1255,7 +1258,8 @@ func TestTopologyConcurrentOperations(t *testing.T) {
 		wg.Wait()
 
 		// Verify state is consistent
-		impl := topo.(*topology)
+		impl, ok := topo.(*topology)
+		require.True(t, ok, "topo should be of type *topology")
 		impl.mu.RLock()
 		joinCount := len(impl.joinAddrs)
 		impl.mu.RUnlock()
@@ -1265,7 +1269,7 @@ func TestTopologyConcurrentOperations(t *testing.T) {
 	})
 }
 
-// Test error handling
+// Test error handling.
 func TestErrorHandling(t *testing.T) {
 	t.Run("peer connection errors", func(t *testing.T) {
 		transport := newMockTopologyTransport()
@@ -1380,7 +1384,7 @@ func TestErrorHandling(t *testing.T) {
 	})
 }
 
-// Test event system
+// Test event system.
 func TestEventSystem(t *testing.T) {
 	t.Run("multiple event subscribers", func(t *testing.T) {
 		transport := newMockTopologyTransport()
@@ -1479,7 +1483,7 @@ func TestEventSystem(t *testing.T) {
 	})
 }
 
-// Test reconnection behavior
+// Test reconnection behavior.
 func TestReconnectionBehavior(t *testing.T) {
 	t.Run("reconnect after disconnect", func(t *testing.T) {
 		connectCount := atomic.Int32{}
@@ -1616,7 +1620,7 @@ func TestReconnectionBehavior(t *testing.T) {
 	})
 }
 
-// Benchmark tests
+// Benchmark tests.
 func BenchmarkTopologyBroadcast(b *testing.B) {
 	transport := newMockTopologyTransport()
 	config := &TopologyConfig{

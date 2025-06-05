@@ -7,10 +7,10 @@ import (
 	"time"
 )
 
-// CommandTimeout is the maximum time allowed for clipboard operations
+// CommandTimeout is the maximum time allowed for clipboard operations.
 const CommandTimeout = 5 * time.Second
 
-// CommandConfig holds configuration for command execution
+// CommandConfig holds configuration for command execution.
 type CommandConfig struct {
 	// Timeout for command execution (default: CommandTimeout)
 	Timeout time.Duration
@@ -22,7 +22,7 @@ type CommandConfig struct {
 	Logger func(format string, args ...interface{})
 }
 
-// DefaultCommandConfig returns config with production-ready defaults
+// DefaultCommandConfig returns config with production-ready defaults.
 func DefaultCommandConfig() *CommandConfig {
 	return &CommandConfig{
 		Timeout:       CommandTimeout,
@@ -31,7 +31,7 @@ func DefaultCommandConfig() *CommandConfig {
 	}
 }
 
-// RunCommand executes a command with proper timeout and resource management
+// RunCommand executes a command with proper timeout and resource management.
 func RunCommand(name string, args []string, config *CommandConfig) ([]byte, error) {
 	if config == nil {
 		config = DefaultCommandConfig()
@@ -70,7 +70,7 @@ func RunCommand(name string, args []string, config *CommandConfig) ([]byte, erro
 	return output, nil
 }
 
-// RunCommandWithInput executes a command with stdin input
+// RunCommandWithInput executes a command with stdin input.
 func RunCommandWithInput(name string, args []string, input []byte, config *CommandConfig) error {
 	if config == nil {
 		config = DefaultCommandConfig()

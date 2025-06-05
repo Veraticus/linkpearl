@@ -7,12 +7,13 @@ package clipboard
 
 import (
 	"context"
+	"math"
 	"sync"
 	"sync/atomic"
 	"time"
 )
 
-// MetricsCollector defines the interface for collecting clipboard operation metrics
+// MetricsCollector defines the interface for collecting clipboard operation metrics.
 type MetricsCollector interface {
 	// Operation metrics
 	RecordOperation(op string, duration time.Duration, err error)
@@ -31,7 +32,7 @@ type MetricsCollector interface {
 	GetMetrics() MetricsSnapshot
 }
 
-// MetricsSnapshot represents a point-in-time view of metrics
+// MetricsSnapshot represents a point-in-time view of metrics.
 type MetricsSnapshot struct {
 	Operations      map[string]*OperationMetrics
 	Errors          map[string]uint64
@@ -43,7 +44,7 @@ type MetricsSnapshot struct {
 	CollectionEnd   time.Time
 }
 
-// OperationMetrics tracks metrics for a specific operation type
+// OperationMetrics tracks metrics for a specific operation type.
 type OperationMetrics struct {
 	Count      uint64
 	TotalTime  time.Duration
@@ -56,7 +57,7 @@ type OperationMetrics struct {
 	ErrorCount uint64
 }
 
-// DefaultMetricsCollector provides a basic in-memory metrics implementation
+// DefaultMetricsCollector provides a basic in-memory metrics implementation.
 type DefaultMetricsCollector struct {
 	mu              sync.RWMutex
 	operations      map[string]*operationStats
@@ -79,7 +80,7 @@ type operationStats struct {
 	errorCount atomic.Uint64
 }
 
-// NewDefaultMetricsCollector creates a new metrics collector
+// NewDefaultMetricsCollector creates a new metrics collector.
 func NewDefaultMetricsCollector() *DefaultMetricsCollector {
 	return &DefaultMetricsCollector{
 		operations:      make(map[string]*operationStats),
@@ -90,7 +91,7 @@ func NewDefaultMetricsCollector() *DefaultMetricsCollector {
 	}
 }
 
-// RecordOperation records metrics for a clipboard operation
+// RecordOperation records metrics for a clipboard operation.
 func (m *DefaultMetricsCollector) RecordOperation(op string, duration time.Duration, err error) {
 	m.mu.Lock()
 	stats, ok := m.operations[op]
@@ -130,42 +131,49 @@ func (m *DefaultMetricsCollector) RecordOperation(op string, duration time.Durat
 	}
 }
 
-// RecordSize records the size of data in a clipboard operation
+// RecordSize records the size of data in a clipboard operation.
 func (m *DefaultMetricsCollector) RecordSize(op string, size int) {
+	// Ensure size is non-negative before conversion
+	if size < 0 {
+		return
+	}
+
+	sizeUint64 := uint64(size)
+
 	m.mu.Lock()
 	stats, ok := m.operations[op]
 	if !ok {
 		stats = &operationStats{}
-		stats.minBytes.Store(uint64(size))
+		stats.minBytes.Store(sizeUint64)
 		m.operations[op] = stats
 	}
 	m.mu.Unlock()
 
-	stats.totalBytes.Add(uint64(size))
+	stats.totalBytes.Add(sizeUint64)
 
 	// Update min/max sizes
 	for {
 		min := stats.minBytes.Load()
-		if uint64(size) >= min && min != 0 {
+		if sizeUint64 >= min && min != 0 {
 			break
 		}
-		if stats.minBytes.CompareAndSwap(min, uint64(size)) {
+		if stats.minBytes.CompareAndSwap(min, sizeUint64) {
 			break
 		}
 	}
 
 	for {
 		max := stats.maxBytes.Load()
-		if uint64(size) <= max {
+		if sizeUint64 <= max {
 			break
 		}
-		if stats.maxBytes.CompareAndSwap(max, uint64(size)) {
+		if stats.maxBytes.CompareAndSwap(max, sizeUint64) {
 			break
 		}
 	}
 }
 
-// RecordError records an error occurrence
+// RecordError records an error occurrence.
 func (m *DefaultMetricsCollector) RecordError(op string, err error) {
 	if err == nil {
 		return
@@ -184,7 +192,7 @@ func (m *DefaultMetricsCollector) RecordError(op string, err error) {
 	counter.Add(1)
 }
 
-// RecordTimeout records a timeout occurrence
+// RecordTimeout records a timeout occurrence.
 func (m *DefaultMetricsCollector) RecordTimeout(op string) {
 	m.mu.Lock()
 	counter, ok := m.timeouts[op]
@@ -197,7 +205,7 @@ func (m *DefaultMetricsCollector) RecordTimeout(op string) {
 	counter.Add(1)
 }
 
-// RecordRateLimitHit records when rate limit is hit
+// RecordRateLimitHit records when rate limit is hit.
 func (m *DefaultMetricsCollector) RecordRateLimitHit(op string) {
 	m.mu.Lock()
 	counter, ok := m.rateLimitHits[op]
@@ -210,17 +218,26 @@ func (m *DefaultMetricsCollector) RecordRateLimitHit(op string) {
 	counter.Add(1)
 }
 
-// RecordWatcherCount records the current number of watchers
+// RecordWatcherCount records the current number of watchers.
 func (m *DefaultMetricsCollector) RecordWatcherCount(count int) {
-	m.watcherCount.Store(int32(count))
+	// Ensure count fits in int32 bounds
+	if count < math.MinInt32 || count > math.MaxInt32 {
+		// Clamp to int32 bounds
+		if count < math.MinInt32 {
+			count = math.MinInt32
+		} else if count > math.MaxInt32 {
+			count = math.MaxInt32
+		}
+	}
+	m.watcherCount.Store(int32(count)) //nolint:gosec // bounds already checked above
 }
 
-// RecordSequenceNumber records the current sequence number
+// RecordSequenceNumber records the current sequence number.
 func (m *DefaultMetricsCollector) RecordSequenceNumber(seq uint64) {
 	m.sequenceNumber.Store(seq)
 }
 
-// GetMetrics returns a snapshot of current metrics
+// GetMetrics returns a snapshot of current metrics.
 func (m *DefaultMetricsCollector) GetMetrics() MetricsSnapshot {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -244,7 +261,14 @@ func (m *DefaultMetricsCollector) GetMetrics() MetricsSnapshot {
 		}
 
 		totalTime := time.Duration(stats.totalTime.Load())
-		avgTime := totalTime / time.Duration(count)
+		// Safe division - count is guaranteed to be > 0 here, and we ensure it fits in int64
+		var avgTime time.Duration
+		if count <= math.MaxInt64 {
+			avgTime = totalTime / time.Duration(count)
+		} else {
+			// For extremely large counts, use floating point calculation
+			avgTime = time.Duration(float64(totalTime) / float64(count))
+		}
 
 		snapshot.Operations[op] = &OperationMetrics{
 			Count:      count,
@@ -277,7 +301,7 @@ func (m *DefaultMetricsCollector) GetMetrics() MetricsSnapshot {
 	return snapshot
 }
 
-// categorizeError categorizes errors for metrics grouping
+// categorizeError categorizes errors for metrics grouping.
 func categorizeError(err error) string {
 	switch err {
 	case nil:
@@ -308,14 +332,14 @@ func categorizeError(err error) string {
 	}
 }
 
-// NoOpMetricsCollector is a no-op implementation for when metrics are disabled
+// NoOpMetricsCollector is a no-op implementation for when metrics are disabled.
 type NoOpMetricsCollector struct{}
 
-func (n *NoOpMetricsCollector) RecordOperation(op string, duration time.Duration, err error) {}
-func (n *NoOpMetricsCollector) RecordSize(op string, size int)                               {}
-func (n *NoOpMetricsCollector) RecordError(op string, err error)                             {}
-func (n *NoOpMetricsCollector) RecordTimeout(op string)                                      {}
-func (n *NoOpMetricsCollector) RecordRateLimitHit(op string)                                 {}
-func (n *NoOpMetricsCollector) RecordWatcherCount(count int)                                 {}
-func (n *NoOpMetricsCollector) RecordSequenceNumber(seq uint64)                              {}
+func (n *NoOpMetricsCollector) RecordOperation(_ string, _ time.Duration, _ error) {}
+func (n *NoOpMetricsCollector) RecordSize(_ string, _ int)                               {}
+func (n *NoOpMetricsCollector) RecordError(_ string, _ error)                             {}
+func (n *NoOpMetricsCollector) RecordTimeout(_ string)                                      {}
+func (n *NoOpMetricsCollector) RecordRateLimitHit(_ string)                                 {}
+func (n *NoOpMetricsCollector) RecordWatcherCount(_ int)                                 {}
+func (n *NoOpMetricsCollector) RecordSequenceNumber(_ uint64)                              {}
 func (n *NoOpMetricsCollector) GetMetrics() MetricsSnapshot                                  { return MetricsSnapshot{} }

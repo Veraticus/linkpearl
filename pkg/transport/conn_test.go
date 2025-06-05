@@ -351,7 +351,7 @@ func TestNodeInfo(t *testing.T) {
 	})
 }
 
-// createTestConnPair creates a pair of secure connections for testing
+// createTestConnPair creates a pair of secure connections for testing.
 func createTestConnPair(t *testing.T) (*secureConn, *secureConn) {
 	// Create pipe
 	client, server := net.Pipe()
@@ -396,11 +396,11 @@ func createTestConnPair(t *testing.T) (*secureConn, *secureConn) {
 	return clientConn, serverConn
 }
 
-// testConnWrapper wraps a net.Conn to provide basic TLS conn functionality for tests
+// testConnWrapper wraps a net.Conn to provide basic TLS conn functionality for tests.
 type testConnWrapper struct {
 	net.Conn
 }
 
-// These methods make it compatible with what secureConn expects
+// These methods make it compatible with what secureConn expects.
 func (t *testConnWrapper) LocalAddr() net.Addr  { return t.Conn.LocalAddr() }
 func (t *testConnWrapper) RemoteAddr() net.Addr { return t.Conn.RemoteAddr() }

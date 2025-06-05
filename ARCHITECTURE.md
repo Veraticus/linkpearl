@@ -83,8 +83,17 @@ This architecture ensures:
 linkpearl/
 ├── cmd/
 │   └── linkpearl/
-│       └── main.go          # CLI entry point
+│       ├── main.go          # CLI entry point with cobra
+│       ├── run.go           # Server/daemon command
+│       ├── copy.go          # Copy command
+│       ├── paste.go         # Paste command
+│       └── status.go        # Status command
 ├── pkg/
+│   ├── api/                 # Local API server
+│   │   ├── server.go        # Unix socket server
+│   │   └── protocol.go      # Wire protocol definitions
+│   ├── client/              # Client library
+│   │   └── client.go        # Socket client implementation
 │   ├── clipboard/           # Platform clipboard access
 │   │   ├── interface.go     # Clipboard interface
 │   │   ├── darwin.go        # macOS implementation
@@ -97,8 +106,9 @@ linkpearl/
 │   │   └── transport.go     # TCP implementation
 │   ├── mesh/                # P2P topology management
 │   │   ├── topology.go      # Mesh network logic
+│   │   ├── messages.go      # Type-safe message system
 │   │   ├── events.go        # Topology events
-│   │   └── pool.go          # Connection pool
+│   │   └── peer.go          # Peer management
 │   ├── sync/                # Clipboard synchronization
 │   │   ├── engine.go        # Sync coordinator
 │   │   └── message.go       # Message types
@@ -116,6 +126,8 @@ Package Dependencies:
 - clipboard: No dependencies (standalone)
 - transport: No dependencies (standalone)
 - config: No dependencies (standalone)
+- client: No dependencies (standalone)
+- api: Requires clipboard, sync
 - mesh: Requires transport
 - sync: Requires clipboard, mesh, transport
 - cmd: Requires all packages
@@ -126,7 +138,9 @@ Implementation Order:
 3. transport (networking foundation)
 4. mesh (builds on transport)
 5. sync (integrates everything)
-6. cmd (final CLI assembly)
+6. client (socket client library)
+7. api (local API server)
+8. cmd (final CLI assembly with cobra)
 ```
 
 ### Test Commands
@@ -159,7 +173,8 @@ go test -run TestClipboardWatch ./pkg/clipboard
 # Initialize project
 go mod init github.com/yourusername/linkpearl
 
-# Add dependencies as needed
+# Add dependencies
+go get -u github.com/spf13/cobra
 go get -u golang.org/x/crypto/nacl/box
 
 # Format code
@@ -171,8 +186,17 @@ golangci-lint run
 # Build binary
 go build -o linkpearl ./cmd/linkpearl
 
-# Run locally
-./linkpearl --secret mysecret --listen :8080
+# Run daemon locally
+./linkpearl run --secret mysecret --listen :8080 --join peer:8080
+
+# Test client commands
+./linkpearl copy "test content"
+./linkpearl paste
+./linkpearl status
+
+# Run with custom socket
+./linkpearl --socket /tmp/test.sock run --secret test
+./linkpearl --socket /tmp/test.sock copy "test"
 ```
 
 
@@ -905,55 +929,287 @@ func TestSyncEngine(t *testing.T) {
 
 ---
 
-### Group 5: Configuration & CLI
-**Goal**: Simple, flexible configuration
+### Group 5: CLI Architecture and Local API
 
-#### Requirements
-- CLI flags for all options
-- Environment variable support
-- No configuration files (MVP)
-- Sensible defaults
+**Goal**: Clean command-line interface with client/server architecture for headless server integration
+
+#### Architecture Overview
+
+Linkpearl uses a subcommand-based CLI structure with a Unix socket API for local client/server communication. This enables seamless integration with tools like NeoVim on headless servers where traditional clipboard mechanisms don't work.
+
+```
+┌─────────────┐                    ┌─────────────┐
+│   NeoVim    │                    │  Terminal   │
+│             │                    │             │
+└──────┬──────┘                    └──────┬──────┘
+       │                                  │
+       │ linkpearl copy/paste             │ linkpearl copy/paste
+       │                                  │
+       ▼                                  ▼
+┌─────────────────────────────────────────────────┐
+│          Linkpearl Client (CLI mode)            │
+│                                                 │
+│  - Connects to daemon via Unix socket           │
+│  - Handles stdin/stdout for integration         │
+│  - Fails gracefully if daemon not running       │
+└────────────────────┬────────────────────────────┘
+                     │ Unix Socket
+                     │ /tmp/linkpearl.sock
+                     ▼
+┌─────────────────────────────────────────────────┐
+│          Linkpearl Daemon (Server mode)         │
+│                                                 │
+│  - Manages clipboard state                      │
+│  - Syncs with mesh network                      │
+│  - Provides local API for clients               │
+└─────────────────────────────────────────────────┘
+                     │
+                     │ Mesh Network
+                     ▼
+              Other Linkpearl Nodes
+```
+
+#### CLI Structure
+
+```bash
+# Server/daemon mode
+linkpearl run --secret <secret> --listen :8080 --join server:8080
+
+# Client commands
+linkpearl copy [text]              # Copy text or stdin to clipboard
+linkpearl paste                    # Output clipboard contents
+linkpearl status                   # Check daemon status
+linkpearl version                  # Show version information
+
+# Socket configuration
+linkpearl --socket /custom/path.sock copy "text"
+```
+
+#### Socket Protocol
+
+Simple text-based protocol over Unix domain sockets:
+
+```
+Client → Server:
+COPY <size>\n
+<content>
+
+PASTE\n
+
+STATUS\n
+
+Server → Client:
+OK <size>\n
+<content>
+
+ERROR <message>\n
+
+STATUS <json>\n
+```
 
 #### Implementation
 
 ```go
-// pkg/config/config.go
-type Config struct {
-    // Core settings
-    Secret    string   `env:"LINKPEARL_SECRET"`
-    NodeID    string   `env:"LINKPEARL_NODE_ID"`
+// pkg/api/server.go
+package api
+
+type LocalServer struct {
+    socketPath string
+    clipboard  clipboard.Clipboard
+    engine     sync.Engine
+    mu         sync.RWMutex
+}
+
+func (s *LocalServer) Start() error {
+    // Create socket directory with proper permissions
+    socketDir := filepath.Dir(s.socketPath)
+    if err := os.MkdirAll(socketDir, 0700); err != nil {
+        return fmt.Errorf("failed to create socket directory: %w", err)
+    }
     
-    // Network settings  
-    Listen    string   `env:"LINKPEARL_LISTEN"`
-    Join      []string `env:"LINKPEARL_JOIN"`
+    // Remove old socket if exists
+    os.Remove(s.socketPath)
     
-    // Behavior
-    PollInterval time.Duration `env:"LINKPEARL_POLL_INTERVAL"`
-    Verbose      bool          `env:"LINKPEARL_VERBOSE"`
+    // Listen on Unix domain socket
+    listener, err := net.Listen("unix", s.socketPath)
+    if err != nil {
+        return fmt.Errorf("failed to listen on socket: %w", err)
+    }
+    
+    // Set socket permissions (user read/write only)
+    if err := os.Chmod(s.socketPath, 0600); err != nil {
+        listener.Close()
+        return fmt.Errorf("failed to set socket permissions: %w", err)
+    }
+    
+    go s.acceptLoop(listener)
+    return nil
+}
+
+func (s *LocalServer) handleConnection(conn net.Conn) {
+    defer conn.Close()
+    
+    scanner := bufio.NewScanner(conn)
+    if !scanner.Scan() {
+        return
+    }
+    
+    command := scanner.Text()
+    parts := strings.Split(command, " ")
+    
+    switch parts[0] {
+    case "COPY":
+        s.handleCopy(conn, parts)
+    case "PASTE":
+        s.handlePaste(conn)
+    case "STATUS":
+        s.handleStatus(conn)
+    default:
+        fmt.Fprintf(conn, "ERROR Unknown command: %s\n", parts[0])
+    }
+}
+
+// pkg/client/client.go
+package client
+
+type Client struct {
+    socketPath string
+    timeout    time.Duration
+}
+
+func (c *Client) Copy(content string) error {
+    conn, err := net.DialTimeout("unix", c.socketPath, c.timeout)
+    if err != nil {
+        // Check if called from NeoVim
+        if os.Getenv("LINKPEARL_NEOVIM") == "1" {
+            // Fail silently for NeoVim integration
+            return nil
+        }
+        return fmt.Errorf("linkpearl daemon not running: %w", err)
+    }
+    defer conn.Close()
+    
+    // Send COPY command
+    fmt.Fprintf(conn, "COPY %d\n%s", len(content), content)
+    
+    // Read response
+    scanner := bufio.NewScanner(conn)
+    if !scanner.Scan() {
+        return fmt.Errorf("no response from daemon")
+    }
+    
+    response := scanner.Text()
+    if !strings.HasPrefix(response, "OK") {
+        return fmt.Errorf("copy failed: %s", response)
+    }
+    
+    return nil
 }
 
 // cmd/linkpearl/main.go
-func main() {
-    var cfg config.Config
-    
-    flag.StringVar(&cfg.Secret, "secret", "", "Shared secret for linkshell")
-    flag.StringVar(&cfg.Listen, "listen", "", "Listen address (e.g. :8080)")
-    flag.Var(&cfg.Join, "join", "Address to join (can be repeated)")
-    flag.BoolVar(&cfg.Verbose, "v", false, "Verbose logging")
-    
-    flag.Parse()
-    
-    // Validate
-    if cfg.Secret == "" {
-        log.Fatal("--secret is required")
+package main
+
+import (
+    "github.com/spf13/cobra"
+)
+
+var (
+    socketPath string
+    rootCmd = &cobra.Command{
+        Use:   "linkpearl",
+        Short: "Secure clipboard synchronization across machines",
     }
     
-    // Start
-    if err := run(cfg); err != nil {
-        log.Fatal(err)
+    runCmd = &cobra.Command{
+        Use:   "run",
+        Short: "Run linkpearl daemon",
+        RunE:  runDaemon,
     }
+    
+    copyCmd = &cobra.Command{
+        Use:   "copy [text]",
+        Short: "Copy text to clipboard",
+        RunE:  runCopy,
+    }
+    
+    pasteCmd = &cobra.Command{
+        Use:   "paste",
+        Short: "Paste clipboard contents",
+        RunE:  runPaste,
+    }
+)
+
+func init() {
+    rootCmd.PersistentFlags().StringVar(&socketPath, "socket", defaultSocketPath(), "Unix socket path")
+    
+    // Add subcommands
+    rootCmd.AddCommand(runCmd, copyCmd, pasteCmd, statusCmd, versionCmd)
+    
+    // Server flags
+    runCmd.Flags().String("secret", "", "Shared secret for linkshell")
+    runCmd.Flags().String("listen", "", "Listen address")
+    runCmd.Flags().StringSlice("join", []string{}, "Addresses to join")
+    runCmd.Flags().BoolP("verbose", "v", false, "Verbose logging")
+}
+
+func defaultSocketPath() string {
+    if xdg := os.Getenv("XDG_RUNTIME_DIR"); xdg != "" {
+        return filepath.Join(xdg, "linkpearl", "linkpearl.sock")
+    }
+    return filepath.Join(os.Getenv("HOME"), ".linkpearl", "linkpearl.sock")
 }
 ```
+
+#### NeoVim Integration
+
+NeoVim configuration for seamless clipboard integration:
+
+```vim
+" In init.vim or init.lua equivalent
+let $LINKPEARL_NEOVIM = 1
+
+let g:clipboard = {
+  \ 'name': 'linkpearl',
+  \ 'copy': {
+  \    '+': ['linkpearl', 'copy'],
+  \    '*': ['linkpearl', 'copy'],
+  \  },
+  \ 'paste': {
+  \    '+': ['linkpearl', 'paste'],
+  \    '*': ['linkpearl', 'paste'],
+  \ },
+  \ 'cache_enabled': 0,
+\}
+```
+
+This integration:
+- Works on headless servers without X11/Wayland
+- Fails gracefully when daemon isn't running
+- Supports both system (`+`) and selection (`*`) registers
+- Handles stdin/stdout properly for NeoVim's expectations
+
+#### Design Decisions
+
+1. **Unix Sockets over HTTP**: 
+   - Better security (filesystem permissions)
+   - Lower overhead for local communication
+   - No need for authentication tokens
+   - Natural single-user model
+
+2. **Text Protocol over Binary**:
+   - Simple to debug and implement
+   - Human-readable for troubleshooting
+   - Sufficient for clipboard use case
+
+3. **Graceful Degradation**:
+   - Client commands exit cleanly if daemon not running
+   - NeoVim integration fails silently (via environment variable)
+   - No error spam in editor usage
+
+4. **XDG Compliance**:
+   - Respects `XDG_RUNTIME_DIR` for socket location
+   - Falls back to `~/.linkpearl/` if not set
+   - Proper directory permissions (0700)
 
 ---
 

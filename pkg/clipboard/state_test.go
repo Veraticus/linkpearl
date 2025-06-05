@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// TestClipboardStateTracking tests the state tracking functionality
+// TestClipboardStateTracking tests the state tracking functionality.
 func TestClipboardStateTracking(t *testing.T) {
 	t.Run("MockClipboard state tracking", func(t *testing.T) {
 		mock := NewMockClipboard()
@@ -75,7 +75,7 @@ func TestClipboardStateTracking(t *testing.T) {
 	})
 }
 
-// TestStatBasedNotifications tests the notification-only Watch behavior
+// TestStatBasedNotifications tests the notification-only Watch behavior.
 func TestStateBasedNotifications(t *testing.T) {
 	t.Run("Watch returns notifications only", func(t *testing.T) {
 		mock := NewMockClipboard()
@@ -163,7 +163,7 @@ func TestStateBasedNotifications(t *testing.T) {
 	})
 }
 
-// TestSequenceNumberMonotonic tests that sequence numbers always increase
+// TestSequenceNumberMonotonic tests that sequence numbers always increase.
 func TestSequenceNumberMonotonic(t *testing.T) {
 	mock := NewMockClipboard()
 
@@ -199,7 +199,7 @@ func TestSequenceNumberMonotonic(t *testing.T) {
 	}
 }
 
-// TestPullBasedSynchronization demonstrates the pull-based pattern
+// TestPullBasedSynchronization demonstrates the pull-based pattern.
 func TestPullBasedSynchronization(t *testing.T) {
 	mock := NewMockClipboard()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -260,7 +260,7 @@ loop:
 	}
 }
 
-// TestStateConsistency verifies state remains consistent
+// TestStateConsistency verifies state remains consistent.
 func TestStateConsistency(t *testing.T) {
 	mock := NewMockClipboard()
 

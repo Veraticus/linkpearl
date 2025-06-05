@@ -83,7 +83,7 @@ type LinuxClipboard struct {
 	cmdConfig      *CommandConfig // Configuration for command execution
 }
 
-// clipboardTool represents a clipboard utility and its command-line arguments
+// clipboardTool represents a clipboard utility and its command-line arguments.
 type clipboardTool struct {
 	name      string   // Command name (e.g., "xsel", "wl-paste")
 	readArgs  []string // Arguments for reading clipboard
@@ -371,7 +371,7 @@ func (c *LinuxClipboard) hashContent(content string) string {
 	return hex.EncodeToString(h[:])
 }
 
-// GetState returns current state information
+// GetState returns current state information.
 func (c *LinuxClipboard) GetState() ClipboardState {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
