@@ -75,12 +75,12 @@ import (
 // It automatically detects and uses the appropriate clipboard utility based
 // on what's available on the system (Wayland or X11).
 type LinuxClipboard struct {
-	mu             sync.RWMutex
-	lastHash       string        // SHA-256 hash of last known clipboard content
-	tool           clipboardTool // The selected clipboard tool for this instance
-	sequenceNumber atomic.Uint64
 	lastModified   time.Time
-	cmdConfig      *CommandConfig // Configuration for command execution
+	cmdConfig      *CommandConfig
+	lastHash       string
+	tool           clipboardTool
+	sequenceNumber atomic.Uint64
+	mu             sync.RWMutex
 }
 
 // clipboardTool represents a clipboard utility and its command-line arguments.
@@ -116,7 +116,7 @@ var clipboardTools = []clipboardTool{
 // It automatically detects available clipboard tools and selects the most
 // appropriate one based on the system configuration. Returns an error if
 // no supported clipboard tool is found.
-func newPlatformClipboard() (Clipboard, error) {
+func newPlatformClipboard() (*LinuxClipboard, error) {
 	c := &LinuxClipboard{}
 
 	// Find the first available clipboard tool
@@ -208,7 +208,7 @@ func (c *LinuxClipboard) Write(content string) error {
 //   - Uses clipnotify for efficient event-based monitoring if available
 //   - Falls back to smart polling with adaptive intervals otherwise
 //
-// The returned channel is closed when the context is cancelled.
+// The returned channel is closed when the context is canceled.
 func (c *LinuxClipboard) Watch(ctx context.Context) <-chan struct{} {
 	// Use buffered channel to prevent blocking the watcher goroutine
 	// Buffer size of 10 allows for burst of changes without blocking

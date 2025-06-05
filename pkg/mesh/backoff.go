@@ -30,15 +30,14 @@ import (
 // value. Jitter is added to prevent multiple nodes from synchronizing their
 // reconnection attempts, which could cause thundering herd problems.
 type ExponentialBackoff struct {
-	initial time.Duration
-	max     time.Duration
-	factor  float64
-	jitter  float64
-
-	mu        sync.Mutex
+	resetTime time.Time
+	initial   time.Duration
+	max       time.Duration
+	factor    float64
+	jitter    float64
 	current   time.Duration
 	attempts  int
-	resetTime time.Time
+	mu        sync.Mutex
 }
 
 // NewExponentialBackoff creates a new exponential backoff..
@@ -187,8 +186,8 @@ func (m *backoffManager) Get(key string) *ExponentialBackoff {
 	defer m.mu.Unlock()
 
 	// Double-check after acquiring write lock
-	if backoff, exists := m.backoffs[key]; exists {
-		return backoff
+	if b, exists := m.backoffs[key]; exists {
+		return b
 	}
 
 	backoff = m.factory()

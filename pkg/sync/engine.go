@@ -46,28 +46,20 @@ import (
 //  3. eventCh: Receives topology change notifications
 //
 // These channels are processed in a select loop that runs until the context
-// is cancelled, ensuring graceful shutdown and resource cleanup.
+// is canceled, ensuring graceful shutdown and resource cleanup.
 type engine struct {
-	config    *Config
-	clipboard clipboard.Clipboard
-	topology  mesh.Topology
-	logger    Logger
-
-	// Deduplication
-	dedupe *lruCache
-
-	// Current state
-	mu        sync.RWMutex
-	current   string
-	checksum  string
-	timestamp int64
-
-	// Statistics
-	stats Stats
-
-	// Sync loop detection
 	lastLocalChange  time.Time
 	lastRemoteChange time.Time
+	clipboard        clipboard.Clipboard
+	topology         mesh.Topology
+	logger           Logger
+	config           *Config
+	dedupe           *lruCache
+	current          string
+	checksum         string
+	stats            Stats
+	timestamp        int64
+	mu               sync.RWMutex
 }
 
 // NewEngine creates a new sync engine with the provided configuration.
@@ -102,7 +94,7 @@ func NewEngine(config *Config) (Engine, error) {
 	}, nil
 }
 
-// Run starts the sync engine main loop and blocks until the context is cancelled.
+// Run starts the sync engine main loop and blocks until the context is canceled.
 // This method orchestrates all synchronization activities:
 //
 //  1. Initializes the engine with current clipboard state
@@ -111,7 +103,7 @@ func NewEngine(config *Config) (Engine, error) {
 //  4. Monitors topology changes
 //  5. Processes all events in a coordinated manner
 //
-// The engine will run continuously until the context is cancelled or an
+// The engine will run continuously until the context is canceled or an
 // unrecoverable error occurs. It handles temporary failures gracefully and
 // attempts to maintain synchronization even during network disruptions.
 //

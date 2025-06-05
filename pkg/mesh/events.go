@@ -46,9 +46,9 @@ func (e EventType) String() string {
 
 // TopologyEvent represents an event in the topology.
 type TopologyEvent struct {
-	Type EventType
-	Peer Node
 	Time time.Time
+	Peer Node
+	Type EventType
 }
 
 // eventBuffer implements a ring buffer for topology events.

@@ -14,18 +14,18 @@ import (
 
 // mockConn implements transport.Conn for testing.
 type mockConn struct {
+	sendErr      error
+	receiveErr   error
+	messages     chan any
+	closeChan    chan struct{}
 	nodeID       string
 	mode         string
 	version      string
-	messages     chan interface{}
-	closed       atomic.Bool
-	closeChan    chan struct{}
-	sendErr      error
-	receiveErr   error
+	mu           sync.RWMutex
 	closeMutex   sync.Mutex
+	closed       atomic.Bool
 	blockSend    bool
 	blockReceive bool
-	mu           sync.RWMutex
 }
 
 func newMockConn(nodeID, mode string) *mockConn {
@@ -33,7 +33,7 @@ func newMockConn(nodeID, mode string) *mockConn {
 		nodeID:    nodeID,
 		mode:      mode,
 		version:   "1.0.0",
-		messages:  make(chan interface{}, 100),
+		messages:  make(chan any, 100),
 		closeChan: make(chan struct{}),
 	}
 }
@@ -42,7 +42,7 @@ func (c *mockConn) NodeID() string  { return c.nodeID }
 func (c *mockConn) Mode() string    { return c.mode }
 func (c *mockConn) Version() string { return c.version }
 
-func (c *mockConn) Send(msg interface{}) error {
+func (c *mockConn) Send(msg any) error {
 	if c.closed.Load() {
 		return transport.ErrClosed
 	}
@@ -70,7 +70,7 @@ func (c *mockConn) Send(msg interface{}) error {
 	}
 }
 
-func (c *mockConn) Receive(msg interface{}) error {
+func (c *mockConn) Receive(msg any) error {
 	if c.closed.Load() {
 		return transport.ErrClosed
 	}
@@ -90,7 +90,7 @@ func (c *mockConn) Receive(msg interface{}) error {
 
 	select {
 	case received := <-c.messages:
-		if v, ok := msg.(*interface{}); ok {
+		if v, ok := msg.(*any); ok {
 			*v = received
 		}
 		return nil
@@ -134,9 +134,9 @@ func (c *mockConn) setBlockSend(block bool) {
 // Test peer creation.
 func TestPeerCreation(t *testing.T) {
 	tests := []struct {
-		name      string
 		setupFunc func() *peer
 		validate  func(t *testing.T, p *peer)
+		name      string
 	}{
 		{
 			name: "regular peer with connection",

@@ -14,11 +14,11 @@ import (
 // ResilientClipboard wraps a platform clipboard with additional hardening features.
 type ResilientClipboard struct {
 	clipboard    Clipboard
+	lastError    error
 	retryConfig  *RetryConfig
 	rateLimiter  *RateLimiter
-	mu           sync.RWMutex
-	lastError    error
 	errorCount   int
+	mu           sync.RWMutex
 	fallbackMode bool
 }
 

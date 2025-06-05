@@ -31,34 +31,29 @@ const (
 // Request represents a client request with command-specific data.
 type Request struct {
 	Command Command
-	Size    int    // For COPY command - size of content in bytes
-	Content []byte // For COPY command - actual content
+	Content []byte
+	Size    int
 }
 
 // StatusResponse contains information about the daemon's current state.
 type StatusResponse struct {
-	// Basic daemon information
-	NodeID  string    `json:"node_id"`
-	Mode    string    `json:"mode"`
-	Version string    `json:"version"`
-	Uptime  time.Time `json:"uptime"`
-
-	// Network status
-	ListenAddr     string   `json:"listen_addr,omitempty"`
-	ConnectedPeers []string `json:"connected_peers"`
-	JoinAddresses  []string `json:"join_addresses"`
-
-	// Sync statistics
-	Stats SyncStats `json:"sync_stats"`
+	Uptime         time.Time `json:"uptime"`
+	NodeID         string    `json:"node_id"`
+	Mode           string    `json:"mode"`
+	Version        string    `json:"version"`
+	ListenAddr     string    `json:"listen_addr,omitempty"`
+	ConnectedPeers []string  `json:"connected_peers"`
+	JoinAddresses  []string  `json:"join_addresses"`
+	Stats          SyncStats `json:"sync_stats"`
 }
 
 // SyncStats contains synchronization statistics.
 type SyncStats struct {
+	LastSyncTime     string `json:"last_sync_time,omitempty"`
 	MessagesSent     uint64 `json:"messages_sent"`
 	MessagesReceived uint64 `json:"messages_received"`
 	LocalChanges     uint64 `json:"local_changes"`
 	RemoteChanges    uint64 `json:"remote_changes"`
-	LastSyncTime     string `json:"last_sync_time,omitempty"`
 }
 
 // ParseRequest parses a command line into a Request.
@@ -91,7 +86,7 @@ func ParseRequest(line string) (*Request, error) {
 }
 
 // FormatResponse formats a response for transmission.
-func FormatResponse(resp Response, data interface{}) ([]byte, error) {
+func FormatResponse(resp Response, data any) ([]byte, error) {
 	switch resp {
 	case ResponseOK:
 		switch v := data.(type) {

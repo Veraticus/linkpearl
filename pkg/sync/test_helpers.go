@@ -13,16 +13,16 @@ import (
 
 // mockClipboard implements clipboard.Clipboard for testing.
 type mockClipboard struct {
-	mu             sync.Mutex
-	content        string
-	changeCh       chan struct{}
-	writeCh        chan string // To observe writes
+	lastModified   time.Time
 	readErr        error
 	writeErr       error
 	watchErr       error
-	sequenceNumber atomic.Uint64
-	lastModified   time.Time
+	changeCh       chan struct{}
+	writeCh        chan string
+	content        string
 	contentHash    string
+	sequenceNumber atomic.Uint64
+	mu             sync.Mutex
 }
 
 func newMockClipboard() *mockClipboard {
@@ -100,12 +100,12 @@ func (m *mockClipboard) GetState() clipboard.State {
 
 // mockTopology implements mesh.Topology for testing.
 type mockTopology struct {
-	mu         sync.Mutex
+	sendErr    error
 	peers      map[string]*mesh.PeerInfo
 	eventCh    chan mesh.TopologyEvent
 	messageCh  chan mesh.Message
-	broadcasts []interface{}
-	sendErr    error
+	broadcasts []any
+	mu         sync.Mutex
 }
 
 func newMockTopology() *mockTopology {
@@ -159,7 +159,7 @@ func (m *mockTopology) PeerCount() int {
 	return len(m.peers)
 }
 
-func (m *mockTopology) SendToPeer(_ string, _ interface{}) error {
+func (m *mockTopology) SendToPeer(_ string, _ any) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -169,7 +169,7 @@ func (m *mockTopology) SendToPeer(_ string, _ interface{}) error {
 	return nil
 }
 
-func (m *mockTopology) Broadcast(msg interface{}) error {
+func (m *mockTopology) Broadcast(msg any) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -189,7 +189,7 @@ func (m *mockTopology) Messages() <-chan mesh.Message {
 	return m.messageCh
 }
 
-func (m *mockTopology) EmitMessage(from string, msgType string, payload interface{}) {
+func (m *mockTopology) EmitMessage(from string, msgType string, payload any) {
 	msg := mesh.Message{
 		From:    from,
 		Type:    msgType,
@@ -202,44 +202,44 @@ func (m *mockTopology) EmitMessage(from string, msgType string, payload interfac
 	}
 }
 
-func (m *mockTopology) GetBroadcasts() []interface{} {
+func (m *mockTopology) GetBroadcasts() []any {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	broadcasts := make([]interface{}, len(m.broadcasts))
+	broadcasts := make([]any, len(m.broadcasts))
 	copy(broadcasts, m.broadcasts)
 	return broadcasts
 }
 
 // testLogger implements Logger for testing.
 type testLogger struct {
-	mu   sync.Mutex
 	logs []logEntry
+	mu   sync.Mutex
 }
 
 type logEntry struct {
 	level string
 	msg   string
-	kv    []interface{}
+	kv    []any
 }
 
 func newTestLogger() *testLogger {
 	return &testLogger{}
 }
 
-func (l *testLogger) Debug(msg string, keysAndValues ...interface{}) {
+func (l *testLogger) Debug(msg string, keysAndValues ...any) {
 	l.log("DEBUG", msg, keysAndValues...)
 }
 
-func (l *testLogger) Info(msg string, keysAndValues ...interface{}) {
+func (l *testLogger) Info(msg string, keysAndValues ...any) {
 	l.log("INFO", msg, keysAndValues...)
 }
 
-func (l *testLogger) Error(msg string, keysAndValues ...interface{}) {
+func (l *testLogger) Error(msg string, keysAndValues ...any) {
 	l.log("ERROR", msg, keysAndValues...)
 }
 
-func (l *testLogger) log(level, msg string, keysAndValues ...interface{}) {
+func (l *testLogger) log(level, msg string, keysAndValues ...any) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
@@ -261,7 +261,7 @@ func (l *testLogger) GetLogs() []logEntry {
 
 // Helper functions
 
-func mustMarshal(v interface{}) []byte {
+func mustMarshal(v any) []byte {
 	data, err := json.Marshal(v)
 	if err != nil {
 		panic(err)

@@ -22,27 +22,19 @@ import (
 // peers, it tracks reconnection information to support automatic reconnection
 // on disconnect.
 type peer struct {
-	Node
-	conn      transport.Conn
-	direction string // "inbound" or "outbound"
-
-	// For outbound connections that we should reconnect
-	addr      string
-	reconnect bool
-
-	// State
-	mu          sync.RWMutex
-	connected   bool
-	connectedAt time.Time
-	reconnects  int
-
-	// Lifecycle
-	ctx    context.Context
-	cancel context.CancelFunc
-	wg     sync.WaitGroup
-
-	// Callbacks
+	connectedAt  time.Time
+	conn         transport.Conn
+	ctx          context.Context
 	onDisconnect func(*peer)
+	cancel       context.CancelFunc
+	Node
+	addr       string
+	direction  string
+	wg         sync.WaitGroup
+	reconnects int
+	mu         sync.RWMutex
+	connected  bool
+	reconnect  bool
 }
 
 // newPeer creates a new peer.
@@ -93,7 +85,7 @@ func (p *peer) IsConnected() bool {
 }
 
 // Send sends a message to the peer.
-func (p *peer) Send(msg interface{}) error {
+func (p *peer) Send(msg any) error {
 	p.mu.RLock()
 	if !p.connected || p.conn == nil {
 		p.mu.RUnlock()
@@ -106,7 +98,7 @@ func (p *peer) Send(msg interface{}) error {
 }
 
 // Receive receives a message from the peer.
-func (p *peer) Receive(msg interface{}) error {
+func (p *peer) Receive(msg any) error {
 	p.mu.RLock()
 	if !p.connected || p.conn == nil {
 		p.mu.RUnlock()
@@ -165,12 +157,10 @@ func (p *peer) stop() {
 // preventing duplicate connections. It also provides callbacks for peer lifecycle
 // events, allowing the topology to react to connections and disconnections.
 type peerManager struct {
-	peers map[string]*peer
-	mu    sync.RWMutex
-
-	// Callbacks
+	peers              map[string]*peer
 	onPeerConnected    func(*peer)
 	onPeerDisconnected func(*peer)
+	mu                 sync.RWMutex
 }
 
 // newPeerManager creates a new peer manager.
@@ -285,7 +275,7 @@ func (m *peerManager) ConnectedCount() int {
 }
 
 // SendToPeer sends a message to a specific peer.
-func (m *peerManager) SendToPeer(nodeID string, msg interface{}) error {
+func (m *peerManager) SendToPeer(nodeID string, msg any) error {
 	p, err := m.GetPeer(nodeID)
 	if err != nil {
 		return err
@@ -295,7 +285,7 @@ func (m *peerManager) SendToPeer(nodeID string, msg interface{}) error {
 }
 
 // Broadcast sends a message to all connected peers.
-func (m *peerManager) Broadcast(msg interface{}) error {
+func (m *peerManager) Broadcast(msg any) error {
 	peers := m.GetConnectedPeers()
 
 	var firstErr error

@@ -24,29 +24,21 @@ import (
 // unicast and broadcast messaging capabilities, along with an event system for
 // monitoring topology changes.
 type topology struct {
-	self      Node
 	transport transport.Transport
+	ctx       context.Context
+	messages  chan Message
 	config    *TopologyConfig
-
-	// State
-	mu        sync.RWMutex
-	started   bool
-	closed    bool
+	cancel    context.CancelFunc
+	router    *messageRouter
+	peers     *peerManager
+	backoffs  *backoffManager
+	events    *eventPump
+	self      Node
 	joinAddrs []string
-
-	// Peer management
-	peers    *peerManager
-	backoffs *backoffManager
-
-	// Event and message handling
-	events   *eventPump
-	messages chan Message
-	router   *messageRouter
-
-	// Lifecycle
-	ctx    context.Context
-	cancel context.CancelFunc
-	wg     sync.WaitGroup
+	wg        sync.WaitGroup
+	mu        sync.RWMutex
+	closed    bool
+	started   bool
 }
 
 // NewTopology creates a new topology instance with the provided configuration.
@@ -273,7 +265,7 @@ func (t *topology) PeerCount() int {
 }
 
 // SendToPeer sends a message to a specific peer.
-func (t *topology) SendToPeer(nodeID string, msg interface{}) error {
+func (t *topology) SendToPeer(nodeID string, msg any) error {
 	// Message must be a type-safe MeshMessage
 	meshMsg, ok := msg.(MeshMessage)
 	if !ok {
@@ -296,7 +288,7 @@ func (t *topology) SendToPeer(nodeID string, msg interface{}) error {
 }
 
 // Broadcast sends a message to all connected peers.
-func (t *topology) Broadcast(msg interface{}) error {
+func (t *topology) Broadcast(msg any) error {
 	// Message must be a type-safe MeshMessage
 	meshMsg, ok := msg.(MeshMessage)
 	if !ok {

@@ -56,8 +56,8 @@ import (
 
 // logger provides structured logging for the application.
 type logger struct {
-	verbose bool
 	prefix  string
+	verbose bool
 }
 
 // newLogger creates a new logger.
@@ -77,7 +77,7 @@ func (l *logger) withPrefix(prefix string) *logger {
 }
 
 // formatMessage formats a log message with key-value pairs.
-func (l *logger) formatMessage(level, msg string, keysAndValues ...interface{}) string {
+func (l *logger) formatMessage(level, msg string, keysAndValues ...any) string {
 	var sb strings.Builder
 
 	// Timestamp
@@ -107,7 +107,7 @@ func (l *logger) formatMessage(level, msg string, keysAndValues ...interface{}) 
 			}
 
 			key := fmt.Sprintf("%v", keysAndValues[i])
-			var value interface{}
+			var value any
 			if i+1 < len(keysAndValues) {
 				value = keysAndValues[i+1]
 			}
@@ -122,24 +122,24 @@ func (l *logger) formatMessage(level, msg string, keysAndValues ...interface{}) 
 }
 
 // Debug logs a debug message (only in verbose mode).
-func (l *logger) Debug(msg string, keysAndValues ...interface{}) {
+func (l *logger) Debug(msg string, keysAndValues ...any) {
 	if l.verbose {
 		log.Println(l.formatMessage("DEBUG", msg, keysAndValues...))
 	}
 }
 
 // Info logs an info message.
-func (l *logger) Info(msg string, keysAndValues ...interface{}) {
+func (l *logger) Info(msg string, keysAndValues ...any) {
 	log.Println(l.formatMessage("INFO", msg, keysAndValues...))
 }
 
 // Error logs an error message.
-func (l *logger) Error(msg string, keysAndValues ...interface{}) {
+func (l *logger) Error(msg string, keysAndValues ...any) {
 	log.Println(l.formatMessage("ERROR", msg, keysAndValues...))
 }
 
 // Fatal logs a fatal message and exits.
-func (l *logger) Fatal(msg string, keysAndValues ...interface{}) {
+func (l *logger) Fatal(msg string, keysAndValues ...any) {
 	log.Println(l.formatMessage("FATAL", msg, keysAndValues...))
 	os.Exit(1)
 }
@@ -151,7 +151,7 @@ type meshLogger struct {
 	*logger
 }
 
-func (m meshLogger) Warn(msg string, keysAndValues ...interface{}) {
+func (m meshLogger) Warn(msg string, keysAndValues ...any) {
 	m.Info(msg, keysAndValues...)
 }
 
@@ -160,14 +160,14 @@ type transportLogger struct {
 	*logger
 }
 
-func (t transportLogger) Debugf(format string, args ...interface{}) {
+func (t transportLogger) Debugf(format string, args ...any) {
 	t.Debug(fmt.Sprintf(format, args...))
 }
 
-func (t transportLogger) Infof(format string, args ...interface{}) {
+func (t transportLogger) Infof(format string, args ...any) {
 	t.Info(fmt.Sprintf(format, args...))
 }
 
-func (t transportLogger) Errorf(format string, args ...interface{}) {
+func (t transportLogger) Errorf(format string, args ...any) {
 	t.Error(fmt.Sprintf(format, args...))
 }

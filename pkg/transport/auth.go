@@ -49,16 +49,16 @@ import (
 // and an HMAC proving knowledge of the shared secret.
 type AuthMessage struct {
 	Nonce     string `json:"nonce"`
-	Timestamp int64  `json:"timestamp"`
 	HMAC      string `json:"hmac"`
+	Timestamp int64  `json:"timestamp"`
 }
 
 // AuthResult contains the result of authentication.
 // Success indicates whether authentication passed,
 // and Error provides details if authentication failed.
 type AuthResult struct {
-	Success bool
 	Error   error
+	Success bool
 }
 
 // Authenticator handles the authentication handshake and TLS setup.

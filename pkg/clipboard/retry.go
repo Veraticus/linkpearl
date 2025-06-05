@@ -15,12 +15,12 @@ import (
 
 // RetryConfig defines configuration for retry behavior.
 type RetryConfig struct {
-	MaxAttempts     int           // Maximum number of retry attempts (including initial attempt)
-	InitialDelay    time.Duration // Initial delay between retries
-	MaxDelay        time.Duration // Maximum delay between retries
-	BackoffFactor   float64       // Exponential backoff multiplier
-	JitterFactor    float64       // Jitter factor (0.0 to 1.0) to randomize delays
-	RetryableErrors []error       // List of errors that should trigger a retry
+	RetryableErrors []error
+	MaxAttempts     int
+	InitialDelay    time.Duration
+	MaxDelay        time.Duration
+	BackoffFactor   float64
+	JitterFactor    float64
 }
 
 // DefaultRetryConfig returns a sensible default retry configuration.
@@ -131,7 +131,7 @@ func RetryOperation(ctx context.Context, config *RetryConfig, operation func() e
 		case <-time.After(delay):
 			// Continue to next attempt
 		case <-ctx.Done():
-			return fmt.Errorf("retry cancelled: %w", ctx.Err())
+			return fmt.Errorf("retry canceled: %w", ctx.Err())
 		}
 	}
 
@@ -149,7 +149,7 @@ func RetryWithBackoff(ctx context.Context, operation func() error) error {
 
 // contains is a helper function to check if a string contains a substring.
 func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsHelper(s, substr))
+	return len(s) >= len(substr) && (s == substr || s != "" && containsHelper(s, substr))
 }
 
 func containsHelper(s, substr string) bool {

@@ -44,9 +44,9 @@ import (
 // It maintains a fixed-size cache of recently seen items, automatically
 // evicting the least recently used entries when capacity is reached.
 type lruCache struct {
-	size      int
 	evictList *list.List
 	items     map[string]*list.Element
+	size      int
 	mu        sync.Mutex
 }
 
@@ -54,8 +54,8 @@ type lruCache struct {
 // The key is stored redundantly to enable O(1) removal when evicting
 // entries from the tail of the LRU list.
 type entry struct {
+	value any
 	key   string
-	value interface{}
 }
 
 // newLRUCache creates a new LRU cache with the given size.
@@ -86,7 +86,7 @@ func newLRUCache(size int) (*lruCache, error) {
 // automatically evicted to make room for the new entry.
 //
 // This method is safe for concurrent use.
-func (c *lruCache) Add(key string, value interface{}) {
+func (c *lruCache) Add(key string, value any) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -119,7 +119,7 @@ func (c *lruCache) Add(key string, value interface{}) {
 //   - exists: true if the key was found, false otherwise
 //
 // This method is safe for concurrent use.
-func (c *lruCache) Get(key string) (interface{}, bool) {
+func (c *lruCache) Get(key string) (any, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 

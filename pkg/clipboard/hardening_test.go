@@ -129,7 +129,7 @@ func TestRetryLogic(t *testing.T) {
 		if err == nil {
 			t.Error("Expected error from context cancellation")
 		}
-		if !strings.Contains(err.Error(), "retry cancelled") {
+		if !strings.Contains(err.Error(), "retry canceled") {
 			t.Errorf("Expected cancellation error, got: %v", err)
 		}
 		// Should stop early due to cancellation
@@ -399,9 +399,9 @@ func TestHardenedClipboard(t *testing.T) {
 
 // failingClipboard is a mock that fails operations until a certain count.
 type failingClipboard struct {
+	MockClipboard
 	failUntil int
 	failCount int
-	MockClipboard
 }
 
 func (f *failingClipboard) Read() (string, error) {

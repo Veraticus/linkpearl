@@ -29,22 +29,15 @@ import (
 // It wraps a TLS connection with node metadata and JSON encoding/decoding
 // capabilities. All operations are thread-safe through mutex protection.
 type secureConn struct {
-	// Connection metadata
-	nodeID  string
-	mode    string
-	version string
-
-	// Underlying connection (interface to allow testing)
-	conn net.Conn
-
-	// JSON encoder/decoder for message serialization
-	encoder *json.Encoder
-	decoder *json.Decoder
-
-	// Synchronization
+	conn       net.Conn
+	encoder    *json.Encoder
+	decoder    *json.Decoder
+	closedChan chan struct{}
+	nodeID     string
+	mode       string
+	version    string
 	mu         sync.Mutex
 	closed     bool
-	closedChan chan struct{}
 }
 
 // newSecureConn creates a new secure connection from an established TLS connection.
@@ -95,7 +88,7 @@ func (c *secureConn) Version() string {
 //   - Sets a 30-second write deadline for the operation
 //   - Encodes the message as JSON and transmits it
 //   - Returns appropriate errors for timeouts or encoding failures
-func (c *secureConn) Send(msg interface{}) error {
+func (c *secureConn) Send(msg any) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -127,7 +120,7 @@ func (c *secureConn) Send(msg interface{}) error {
 //   - Decodes JSON data into the provided message structure
 //   - Enforces the MaxMessageSize limit to prevent DoS attacks
 //   - Returns appropriate errors for EOF, timeouts, or size violations
-func (c *secureConn) Receive(msg interface{}) error {
+func (c *secureConn) Receive(msg any) error {
 	c.mu.Lock()
 	if c.closed {
 		c.mu.Unlock()

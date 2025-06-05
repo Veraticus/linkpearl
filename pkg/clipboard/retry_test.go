@@ -12,8 +12,8 @@ func TestRetryConfig_isRetryableError(t *testing.T) {
 	config := DefaultRetryConfig()
 
 	tests := []struct {
-		name      string
 		err       error
+		name      string
 		retryable bool
 	}{
 		{

@@ -81,8 +81,8 @@ func (c *Client) Copy(content string) error {
 	defer func() { _ = conn.Close() }()
 
 	// Send COPY command with size
-	if _, err := fmt.Fprintf(conn, "COPY %d\n%s", len(content), content); err != nil {
-		return fmt.Errorf("failed to send copy command: %w", err)
+	if _, writeErr := fmt.Fprintf(conn, "COPY %d\n%s", len(content), content); writeErr != nil {
+		return fmt.Errorf("failed to send copy command: %w", writeErr)
 	}
 
 	// Read response
@@ -107,8 +107,8 @@ func (c *Client) Paste() (string, error) {
 	defer func() { _ = conn.Close() }()
 
 	// Send PASTE command
-	if _, err := fmt.Fprintln(conn, "PASTE"); err != nil {
-		return "", fmt.Errorf("failed to send paste command: %w", err)
+	if _, writeErr := fmt.Fprintln(conn, "PASTE"); writeErr != nil {
+		return "", fmt.Errorf("failed to send paste command: %w", writeErr)
 	}
 
 	// Use a buffered reader to avoid buffering issues
@@ -153,8 +153,8 @@ func (c *Client) Status() (*api.StatusResponse, error) {
 	defer func() { _ = conn.Close() }()
 
 	// Send STATUS command
-	if _, err := fmt.Fprintln(conn, "STATUS"); err != nil {
-		return nil, fmt.Errorf("failed to send status command: %w", err)
+	if _, writeErr := fmt.Fprintln(conn, "STATUS"); writeErr != nil {
+		return nil, fmt.Errorf("failed to send status command: %w", writeErr)
 	}
 
 	// Read response

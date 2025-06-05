@@ -8,9 +8,9 @@ import (
 func TestValidateContent(t *testing.T) {
 	tests := []struct {
 		name    string
+		errMsg  string
 		content []byte
 		wantErr bool
-		errMsg  string
 	}{
 		{
 			name:    "valid small content",

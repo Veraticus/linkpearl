@@ -14,8 +14,8 @@ import (
 func TestEventTypeString(t *testing.T) {
 	tests := []struct {
 		name     string
-		event    EventType
 		expected string
+		event    EventType
 	}{
 		{
 			name:     "peer connected",

@@ -18,9 +18,9 @@ import (
 
 // mockServer creates a simple Unix socket server for testing.
 type mockServer struct {
-	socketPath string
 	listener   net.Listener
 	handler    func(conn net.Conn)
+	socketPath string
 }
 
 func newMockServer(socketPath string, handler func(conn net.Conn)) (*mockServer, error) {
@@ -178,8 +178,8 @@ func TestCopy(t *testing.T) {
 		name        string
 		content     string
 		serverResp  string
-		wantErr     bool
 		errContains string
+		wantErr     bool
 	}{
 		{
 			name:       "successful copy",
@@ -277,8 +277,8 @@ func TestPaste(t *testing.T) {
 		name        string
 		serverResp  string
 		want        string
-		wantErr     bool
 		errContains string
+		wantErr     bool
 	}{
 		{
 			name:       "successful paste",
@@ -392,11 +392,11 @@ func TestStatus(t *testing.T) {
 	validJSON, _ := json.Marshal(validStatus)
 
 	tests := []struct {
+		checkResp   func(*api.StatusResponse) error
 		name        string
 		serverResp  string
-		wantErr     bool
 		errContains string
-		checkResp   func(*api.StatusResponse) error
+		wantErr     bool
 	}{
 		{
 			name:       "successful status",
@@ -520,11 +520,11 @@ func TestHandleDialError(t *testing.T) {
 	defer func() { _ = os.Setenv("LINKPEARL_NEOVIM", origNeoVim) }()
 
 	tests := []struct {
-		name       string
-		neoVimMode bool
 		dialErr    error
-		wantNil    bool
+		name       string
 		wantMsg    string
+		neoVimMode bool
+		wantNil    bool
 	}{
 		{
 			name:       "neovim mode returns nil",

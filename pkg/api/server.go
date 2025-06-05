@@ -21,22 +21,18 @@ import (
 // It provides a simple text-based protocol for clients to interact
 // with the running daemon.
 type Server struct {
-	socketPath string
+	uptime     time.Time
 	clipboard  clipboard.Clipboard
 	engine     linksync.Engine
 	listener   net.Listener
-
-	// Server state
-	nodeID  string
-	mode    string
-	version string
-	uptime  time.Time
-
-	// Lifecycle management
-	mu     sync.RWMutex
-	ctx    context.Context
-	cancel context.CancelFunc
-	wg     sync.WaitGroup
+	ctx        context.Context
+	cancel     context.CancelFunc
+	socketPath string
+	nodeID     string
+	mode       string
+	version    string
+	wg         sync.WaitGroup
+	mu         sync.RWMutex
 }
 
 // ServerConfig contains configuration for the API server.
@@ -304,7 +300,7 @@ func (s *Server) handleStatus(conn net.Conn) {
 }
 
 // sendOK sends an OK response with optional data.
-func (s *Server) sendOK(conn net.Conn, data interface{}) {
+func (s *Server) sendOK(conn net.Conn, data any) {
 	resp, err := FormatResponse(ResponseOK, data)
 	if err != nil {
 		s.sendError(conn, err.Error())

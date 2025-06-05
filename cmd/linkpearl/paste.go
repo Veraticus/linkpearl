@@ -38,10 +38,6 @@ func runPaste(_ *cobra.Command, _ []string) error {
 	// Get clipboard content
 	content, err := c.Paste()
 	if err != nil {
-		// Check if this is a NeoVim integration error that should be silent
-		if err == nil {
-			return nil
-		}
 		return err
 	}
 

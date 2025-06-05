@@ -218,6 +218,21 @@ func TestTCPTransport(t *testing.T) {
 		}
 
 		// Create multiple clients
+		clientTransports := make([]Transport, 0, connections)
+		clientConns := make([]Conn, 0, connections)
+		defer func() {
+			for _, conn := range clientConns {
+				if conn != nil {
+					_ = conn.Close()
+				}
+			}
+			for _, trans := range clientTransports {
+				if trans != nil {
+					_ = trans.Close()
+				}
+			}
+		}()
+
 		for i := 0; i < connections; i++ {
 			clientConfig := &Config{
 				NodeID: fmt.Sprintf("client-%d", i),
@@ -226,7 +241,7 @@ func TestTCPTransport(t *testing.T) {
 				Logger: DefaultLogger(),
 			}
 			clientTransport := NewTCPTransport(clientConfig)
-			defer func() { _ = clientTransport.Close() }()
+			clientTransports = append(clientTransports, clientTransport)
 
 			ctx := context.Background()
 			conn, err := clientTransport.Connect(ctx, serverAddr)
@@ -234,7 +249,7 @@ func TestTCPTransport(t *testing.T) {
 				t.Errorf("Connect() #%d error = %v", i, err)
 				continue
 			}
-			defer func() { _ = conn.Close() }()
+			clientConns = append(clientConns, conn)
 		}
 
 		// Wait for all accepts
@@ -375,7 +390,7 @@ func TestIntegration(t *testing.T) {
 
 		// Exchange multiple messages to verify connection stability
 		for i := 0; i < 10; i++ {
-			msg := map[string]interface{}{
+			msg := map[string]any{
 				"type":  "test",
 				"index": i,
 				"data":  fmt.Sprintf("message-%d", i),
@@ -386,7 +401,7 @@ func TestIntegration(t *testing.T) {
 				if err := clientConn.Send(msg); err != nil {
 					t.Errorf("client Send() #%d error = %v", i, err)
 				}
-				var received map[string]interface{}
+				var received map[string]any
 				if err := serverConn.Receive(&received); err != nil {
 					t.Errorf("server Receive() #%d error = %v", i, err)
 				}
@@ -394,7 +409,7 @@ func TestIntegration(t *testing.T) {
 				if err := serverConn.Send(msg); err != nil {
 					t.Errorf("server Send() #%d error = %v", i, err)
 				}
-				var received map[string]interface{}
+				var received map[string]any
 				if err := clientConn.Receive(&received); err != nil {
 					t.Errorf("client Receive() #%d error = %v", i, err)
 				}

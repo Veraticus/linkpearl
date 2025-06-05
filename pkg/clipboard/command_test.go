@@ -9,12 +9,12 @@ import (
 
 func TestRunCommand(t *testing.T) {
 	tests := []struct {
+		config      *CommandConfig
 		name        string
 		cmd         string
-		args        []string
-		config      *CommandConfig
-		wantErr     bool
 		errContains string
+		args        []string
+		wantErr     bool
 	}{
 		{
 			name:    "successful command",
@@ -83,13 +83,13 @@ func TestRunCommandWithInput(t *testing.T) {
 	}
 
 	tests := []struct {
+		config      *CommandConfig
 		name        string
 		cmd         string
+		errContains string
 		args        []string
 		input       []byte
-		config      *CommandConfig
 		wantErr     bool
-		errContains string
 	}{
 		{
 			name:    "successful command with input",

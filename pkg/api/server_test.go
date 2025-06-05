@@ -18,9 +18,9 @@ import (
 
 // mockClipboard implements clipboard.Clipboard for testing.
 type mockClipboard struct {
+	err     error
 	content string
 	state   clipboard.State
-	err     error
 }
 
 func (m *mockClipboard) Read() (string, error) {
@@ -53,8 +53,8 @@ func (m *mockClipboard) GetState() clipboard.State {
 
 // mockEngine implements linksync.Engine for testing.
 type mockEngine struct {
-	stats    linksync.Stats
 	topology linksync.MockTopology
+	stats    linksync.Stats
 }
 
 func (m *mockEngine) Run(ctx context.Context) error {
@@ -75,10 +75,10 @@ func TestNewServer(t *testing.T) {
 	engine := &mockEngine{}
 
 	tests := []struct {
-		name    string
 		cfg     *ServerConfig
-		wantErr bool
+		name    string
 		errMsg  string
+		wantErr bool
 	}{
 		{
 			name: "valid config",
@@ -161,13 +161,13 @@ func TestServerStartStop(t *testing.T) {
 	}
 
 	// Start server
-	if err := server.Start(); err != nil {
-		t.Fatalf("Failed to start server: %v", err)
+	if startErr := server.Start(); startErr != nil {
+		t.Fatalf("Failed to start server: %v", startErr)
 	}
 
 	// Verify socket exists
-	if _, err := os.Stat(socketPath); err != nil {
-		t.Errorf("Socket file not created: %v", err)
+	if _, statErr := os.Stat(socketPath); statErr != nil {
+		t.Errorf("Socket file not created: %v", statErr)
 	}
 
 	// Verify we can connect
@@ -304,8 +304,8 @@ func TestServerCommands(t *testing.T) {
 			}
 
 			// Start server
-			if err := server.Start(); err != nil {
-				t.Fatalf("Failed to start server: %v", err)
+			if startErr := server.Start(); startErr != nil {
+				t.Fatalf("Failed to start server: %v", startErr)
 			}
 			defer func() { _ = server.Stop() }()
 
@@ -317,13 +317,13 @@ func TestServerCommands(t *testing.T) {
 			defer func() { _ = conn.Close() }()
 
 			// Set deadline
-			if err := conn.SetDeadline(time.Now().Add(2 * time.Second)); err != nil {
-				t.Fatalf("Failed to set deadline: %v", err)
+			if deadlineErr := conn.SetDeadline(time.Now().Add(2 * time.Second)); deadlineErr != nil {
+				t.Fatalf("Failed to set deadline: %v", deadlineErr)
 			}
 
 			// Send command
-			if _, err := conn.Write([]byte(tt.command)); err != nil {
-				t.Fatalf("Failed to send command: %v", err)
+			if _, writeErr := conn.Write([]byte(tt.command)); writeErr != nil {
+				t.Fatalf("Failed to send command: %v", writeErr)
 			}
 
 			// Read response using buffered reader to avoid buffering issues
@@ -459,8 +459,8 @@ func TestServerSocketPermissions(t *testing.T) {
 	}
 
 	// Start server
-	if err := server.Start(); err != nil {
-		t.Fatalf("Failed to start server: %v", err)
+	if startErr := server.Start(); startErr != nil {
+		t.Fatalf("Failed to start server: %v", startErr)
 	}
 	defer func() { _ = server.Stop() }()
 
@@ -498,8 +498,8 @@ func TestServerContentSizeLimit(t *testing.T) {
 	}
 
 	// Start server
-	if err := server.Start(); err != nil {
-		t.Fatalf("Failed to start server: %v", err)
+	if startErr := server.Start(); startErr != nil {
+		t.Fatalf("Failed to start server: %v", startErr)
 	}
 	defer func() { _ = server.Stop() }()
 
@@ -511,14 +511,14 @@ func TestServerContentSizeLimit(t *testing.T) {
 	defer func() { _ = conn.Close() }()
 
 	// Set a deadline for this test
-	if err := conn.SetDeadline(time.Now().Add(2 * time.Second)); err != nil {
-		t.Fatalf("Failed to set deadline: %v", err)
+	if deadlineErr := conn.SetDeadline(time.Now().Add(2 * time.Second)); deadlineErr != nil {
+		t.Fatalf("Failed to set deadline: %v", deadlineErr)
 	}
 
 	// Try to send content larger than limit
 	largeSize := 10*1024*1024 + 1
-	if _, err := fmt.Fprintf(conn, "COPY %d\n", largeSize); err != nil {
-		t.Fatalf("Failed to send command: %v", err)
+	if _, writeErr := fmt.Fprintf(conn, "COPY %d\n", largeSize); writeErr != nil {
+		t.Fatalf("Failed to send command: %v", writeErr)
 	}
 
 	// The server will try to read largeSize bytes, but we'll send the real content it expects

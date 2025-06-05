@@ -13,10 +13,10 @@ import (
 func TestStringSliceFlag(t *testing.T) {
 	tests := []struct {
 		name     string
+		wantStr  string
 		initial  []string
 		setValue []string
 		want     []string
-		wantStr  string
 	}{
 		{
 			name:     "empty flag",
@@ -176,8 +176,8 @@ func TestStringSliceFlagWithFlagPackage(t *testing.T) {
 func TestValidateAddress(t *testing.T) {
 	tests := []struct {
 		addr    string
-		wantErr bool
 		errMsg  string
+		wantErr bool
 	}{
 		// Valid addresses
 		{
@@ -341,10 +341,10 @@ func TestFlagUsage(t *testing.T) {
 // TestFlagPrecedence tests that flags take precedence over defaults.
 func TestFlagPrecedence(t *testing.T) {
 	tests := []struct {
-		name        string
-		args        []string
 		defaults    map[string]string
 		checkValues map[string]string
+		name        string
+		args        []string
 	}{
 		{
 			name: "flags override defaults",

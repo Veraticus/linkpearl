@@ -33,14 +33,14 @@ type MetricsCollector interface {
 
 // MetricsSnapshot represents a point-in-time view of metrics.
 type MetricsSnapshot struct {
+	CollectionStart time.Time
+	CollectionEnd   time.Time
 	Operations      map[string]*OperationMetrics
 	Errors          map[string]uint64
 	Timeouts        map[string]uint64
 	RateLimitHits   map[string]uint64
 	WatcherCount    int
 	SequenceNumber  uint64
-	CollectionStart time.Time
-	CollectionEnd   time.Time
 }
 
 // OperationMetrics tracks metrics for a specific operation type.
@@ -58,14 +58,14 @@ type OperationMetrics struct {
 
 // DefaultMetricsCollector provides a basic in-memory metrics implementation.
 type DefaultMetricsCollector struct {
-	mu              sync.RWMutex
+	collectionStart time.Time
 	operations      map[string]*operationStats
 	errors          map[string]*atomic.Uint64
 	timeouts        map[string]*atomic.Uint64
 	rateLimitHits   map[string]*atomic.Uint64
-	watcherCount    atomic.Int32
 	sequenceNumber  atomic.Uint64
-	collectionStart time.Time
+	mu              sync.RWMutex
+	watcherCount    atomic.Int32
 }
 
 type operationStats struct {
@@ -312,7 +312,7 @@ func categorizeError(err error) string {
 	case context.DeadlineExceeded:
 		return "timeout"
 	case context.Canceled:
-		return "cancelled"
+		return "canceled"
 	default:
 		// Generic categorization based on error message
 		errStr := err.Error()

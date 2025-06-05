@@ -80,10 +80,6 @@ func runCopy(_ *cobra.Command, args []string) error {
 
 	// Copy to clipboard
 	if err := c.Copy(content); err != nil {
-		// Check if this is a NeoVim integration error that should be silent
-		if err == nil {
-			return nil
-		}
 		return err
 	}
 

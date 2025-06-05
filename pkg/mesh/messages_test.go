@@ -172,7 +172,7 @@ func TestMessageCreationFunctions(t *testing.T) {
 // Test message marshaling and unmarshaling.
 func TestMeshMessageMarshalUnmarshal(t *testing.T) {
 	// Test with complex clipboard data
-	clipboardData := map[string]interface{}{
+	clipboardData := map[string]any{
 		"content":   "Test clipboard content with special chars: 你好世界 🌍",
 		"timestamp": time.Now().Unix(),
 		"checksum":  "abc123def456",
@@ -196,7 +196,7 @@ func TestMeshMessageMarshalUnmarshal(t *testing.T) {
 	assert.Equal(t, "test-node", wireMsg.From)
 
 	// Verify payload integrity
-	var decoded map[string]interface{}
+	var decoded map[string]any
 	err = json.Unmarshal(wireMsg.Payload, &decoded)
 	require.NoError(t, err)
 	assert.Equal(t, clipboardData["content"], decoded["content"])
@@ -435,7 +435,7 @@ func TestMeshMessageEdgeCases(t *testing.T) {
 			largeContent[i] = byte(i % 256)
 		}
 
-		payload := map[string]interface{}{
+		payload := map[string]any{
 			"content": string(largeContent),
 			"size":    len(largeContent),
 		}
@@ -452,7 +452,7 @@ func TestMeshMessageEdgeCases(t *testing.T) {
 		err = json.Unmarshal(marshaled, &wireMsg)
 		require.NoError(t, err)
 
-		var decoded map[string]interface{}
+		var decoded map[string]any
 		err = json.Unmarshal(wireMsg.Payload, &decoded)
 		require.NoError(t, err)
 		assert.Equal(t, float64(len(largeContent)), decoded["size"])

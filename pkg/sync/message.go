@@ -65,10 +65,10 @@ const (
 // for conflict resolution and integrity verification.
 type ClipboardMessage struct {
 	NodeID    string `json:"node_id"`
-	Timestamp int64  `json:"timestamp"` // UnixNano for precision
-	Checksum  string `json:"checksum"`  // SHA256 of content
+	Checksum  string `json:"checksum"`
 	Content   string `json:"content"`
-	Version   string `json:"version"` // For future compatibility
+	Version   string `json:"version"`
+	Timestamp int64  `json:"timestamp"`
 }
 
 // NewClipboardMessage creates a new clipboard message with current timestamp.

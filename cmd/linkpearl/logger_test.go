@@ -13,9 +13,9 @@ import (
 // TestNewLogger tests logger creation.
 func TestNewLogger(t *testing.T) {
 	tests := []struct {
+		want    *logger
 		name    string
 		verbose bool
-		want    *logger
 	}{
 		{
 			name:    "verbose logger",
@@ -45,10 +45,10 @@ func TestNewLogger(t *testing.T) {
 // TestWithPrefix tests prefix creation.
 func TestWithPrefix(t *testing.T) {
 	tests := []struct {
-		name       string
 		baseLogger *logger
-		prefix     string
 		want       *logger
+		name       string
+		prefix     string
 	}{
 		{
 			name:       "add prefix to base logger",
@@ -92,13 +92,13 @@ func TestFormatMessage(t *testing.T) {
 	// Note: We can't mock time.Now in tests, so we'll check for timestamp format instead
 
 	tests := []struct {
-		name          string
 		logger        *logger
+		name          string
 		level         string
 		msg           string
-		keysAndValues []interface{}
-		wantContains  []string
 		wantPattern   string
+		keysAndValues []any
+		wantContains  []string
 	}{
 		{
 			name:   "basic message without key-values",
@@ -115,7 +115,7 @@ func TestFormatMessage(t *testing.T) {
 			logger: &logger{},
 			level:  "ERROR",
 			msg:    "connection failed",
-			keysAndValues: []interface{}{
+			keysAndValues: []any{
 				"host", "localhost",
 				"port", 8080,
 				"error", "timeout",
@@ -133,7 +133,7 @@ func TestFormatMessage(t *testing.T) {
 			logger: &logger{prefix: "transport"},
 			level:  "DEBUG",
 			msg:    "sending message",
-			keysAndValues: []interface{}{
+			keysAndValues: []any{
 				"to", "node-123",
 				"size", 1024,
 			},
@@ -150,7 +150,7 @@ func TestFormatMessage(t *testing.T) {
 			logger: &logger{},
 			level:  "WARN",
 			msg:    "odd pairs",
-			keysAndValues: []interface{}{
+			keysAndValues: []any{
 				"key1", "value1",
 				"key2", "value2",
 				"key3", // missing value
@@ -177,7 +177,7 @@ func TestFormatMessage(t *testing.T) {
 			logger: &logger{},
 			level:  "INFO",
 			msg:    "nil test",
-			keysAndValues: []interface{}{
+			keysAndValues: []any{
 				"nil_value", nil,
 				"string", "not nil",
 			},
@@ -191,7 +191,7 @@ func TestFormatMessage(t *testing.T) {
 			logger: &logger{},
 			level:  "INFO",
 			msg:    "special chars",
-			keysAndValues: []interface{}{
+			keysAndValues: []any{
 				"path", "/home/user/file with spaces.txt",
 				"error", "failed: \"permission denied\"",
 			},
@@ -300,7 +300,7 @@ func TestLoggerMethods(t *testing.T) {
 			}
 
 			output := buf.String()
-			hasOutput := len(output) > 0
+			hasOutput := output != ""
 
 			if hasOutput != tt.wantLog {
 				t.Errorf("%s() logged = %v, want %v\nOutput: %q", tt.method, hasOutput, tt.wantLog, output)
@@ -524,7 +524,7 @@ func BenchmarkFormatMessage(b *testing.B) {
 	benchmarks := []struct {
 		name          string
 		prefix        string
-		keysAndValues []interface{}
+		keysAndValues []any
 	}{
 		{
 			name:   "no-keys",
@@ -533,17 +533,17 @@ func BenchmarkFormatMessage(b *testing.B) {
 		{
 			name:          "with-keys",
 			prefix:        "",
-			keysAndValues: []interface{}{"key1", "value1", "key2", 123, "key3", true},
+			keysAndValues: []any{"key1", "value1", "key2", 123, "key3", true},
 		},
 		{
 			name:          "with-prefix-and-keys",
 			prefix:        "component",
-			keysAndValues: []interface{}{"key1", "value1", "key2", 123, "key3", true},
+			keysAndValues: []any{"key1", "value1", "key2", 123, "key3", true},
 		},
 		{
 			name:   "many-keys",
 			prefix: "component",
-			keysAndValues: []interface{}{
+			keysAndValues: []any{
 				"k1", "v1", "k2", "v2", "k3", "v3", "k4", "v4", "k5", "v5",
 				"k6", "v6", "k7", "v7", "k8", "v8", "k9", "v9", "k10", "v10",
 			},

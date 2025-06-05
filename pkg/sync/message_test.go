@@ -52,9 +52,9 @@ func TestClipboardMessageMarshalUnmarshal(t *testing.T) {
 
 func TestClipboardMessageValidate(t *testing.T) {
 	tests := []struct {
-		name    string
-		msg     *ClipboardMessage
 		wantErr error
+		msg     *ClipboardMessage
+		name    string
 	}{
 		{
 			name: "valid message",

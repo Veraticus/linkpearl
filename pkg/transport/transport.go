@@ -30,14 +30,13 @@ import (
 // It manages both server and client operations, maintaining a registry
 // of active connections and ensuring proper cleanup on shutdown.
 type tcpTransport struct {
-	config   *Config
 	auth     Authenticator
 	listener net.Listener
 	logger   Logger
-
-	mu     sync.RWMutex
-	closed bool
-	conns  map[string]*secureConn
+	config   *Config
+	conns    map[string]*secureConn
+	mu       sync.RWMutex
+	closed   bool
 }
 
 // NewTCPTransport creates a new TCP transport instance.
@@ -143,9 +142,9 @@ func (t *tcpTransport) Accept() (Conn, error) {
 
 	// Upgrade to TLS
 	tlsConn := tls.Server(tcpConn, tlsConfig)
-	if err := tlsConn.Handshake(); err != nil {
+	if handshakeErr := tlsConn.Handshake(); handshakeErr != nil {
 		_ = tlsConn.Close()
-		return nil, fmt.Errorf("TLS handshake failed: %w", err)
+		return nil, fmt.Errorf("TLS handshake failed: %w", handshakeErr)
 	}
 
 	// Exchange node information
@@ -220,9 +219,9 @@ func (t *tcpTransport) Connect(ctx context.Context, addr string) (Conn, error) {
 
 	// Upgrade to TLS
 	tlsConn := tls.Client(tcpConn, tlsConfig)
-	if err := tlsConn.HandshakeContext(ctx); err != nil {
+	if handshakeErr := tlsConn.HandshakeContext(ctx); handshakeErr != nil {
 		_ = tlsConn.Close()
-		return nil, fmt.Errorf("TLS handshake failed: %w", err)
+		return nil, fmt.Errorf("TLS handshake failed: %w", handshakeErr)
 	}
 
 	// Exchange node information

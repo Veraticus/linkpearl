@@ -171,14 +171,14 @@ func TestSequenceNumberMonotonic(t *testing.T) {
 
 	// Mix of Write and EmitChange operations
 	operations := []struct {
+		fn      func(string) error
 		name    string
 		content string
-		fn      func(string) error
 	}{
-		{"Write", "Content 1", func(c string) error { return mock.Write(c) }},
-		{"EmitChange", "Content 2", func(c string) error { mock.EmitChange(c); return nil }},
-		{"Write", "Content 3", func(c string) error { return mock.Write(c) }},
-		{"EmitChange", "Content 4", func(c string) error { mock.EmitChange(c); return nil }},
+		{name: "Write", content: "Content 1", fn: func(c string) error { return mock.Write(c) }},
+		{name: "EmitChange", content: "Content 2", fn: func(c string) error { mock.EmitChange(c); return nil }},
+		{name: "Write", content: "Content 3", fn: func(c string) error { return mock.Write(c) }},
+		{name: "EmitChange", content: "Content 4", fn: func(c string) error { mock.EmitChange(c); return nil }},
 	}
 
 	for _, op := range operations {

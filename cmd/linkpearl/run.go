@@ -124,8 +124,8 @@ func runDaemonWithConfig(cfg *config.Config, log *logger) error {
 		return fmt.Errorf("failed to create transport: %w", err)
 	}
 	defer func() {
-		if err := trans.Close(); err != nil {
-			log.Error("failed to close transport", "error", err)
+		if closeErr := trans.Close(); closeErr != nil {
+			log.Error("failed to close transport", "error", closeErr)
 		}
 	}()
 
@@ -136,20 +136,20 @@ func runDaemonWithConfig(cfg *config.Config, log *logger) error {
 		return fmt.Errorf("failed to create topology: %w", err)
 	}
 	defer func() {
-		if err := topo.Stop(); err != nil {
-			log.Error("failed to stop topology", "error", err)
+		if stopErr := topo.Stop(); stopErr != nil {
+			log.Error("failed to stop topology", "error", stopErr)
 		}
 	}()
 
 	// Start topology
-	if err := topo.Start(ctx); err != nil {
-		return fmt.Errorf("failed to start topology: %w", err)
+	if startErr := topo.Start(ctx); startErr != nil {
+		return fmt.Errorf("failed to start topology: %w", startErr)
 	}
 
 	// Add join addresses
 	for _, addr := range cfg.Join {
-		if err := topo.AddJoinAddr(addr); err != nil {
-			log.Error("failed to add join address", "addr", addr, "error", err)
+		if addErr := topo.AddJoinAddr(addr); addErr != nil {
+			log.Error("failed to add join address", "addr", addr, "error", addErr)
 		} else {
 			log.Info("added join address", "addr", addr)
 		}

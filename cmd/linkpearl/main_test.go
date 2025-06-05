@@ -27,11 +27,11 @@ func TestMain(t *testing.T) {
 	t.Skip("Skipping main() subprocess tests")
 
 	tests := []struct {
+		env          map[string]string
 		name         string
 		args         []string
-		env          map[string]string
-		wantExitCode int
 		wantContains []string
+		wantExitCode int
 		wantErr      bool
 	}{
 		{
@@ -111,12 +111,12 @@ func TestMain(t *testing.T) {
 // TestRun tests the main run function with mocked components.
 func TestRun(t *testing.T) {
 	tests := []struct {
-		name        string
 		cfg         *config.Config
 		setupMocks  func(*mockComponents)
-		wantErr     bool
-		wantErrMsg  string
 		checkResult func(*testing.T, *mockComponents)
+		name        string
+		wantErrMsg  string
+		wantErr     bool
 	}{
 		{
 			name: "successful startup and shutdown",
@@ -321,8 +321,8 @@ func TestRun(t *testing.T) {
 					cancel()
 
 				case <-ctx.Done():
-					// Context cancelled externally
-					log.Info("context cancelled, shutting down")
+					// Context canceled externally
+					log.Info("context canceled, shutting down")
 					cancel()
 
 				case err := <-engineDone:
@@ -500,10 +500,10 @@ func TestComponentCreators(t *testing.T) {
 // TestFlagParsing tests command-line flag parsing.
 func TestFlagParsing(t *testing.T) {
 	tests := []struct {
-		name  string
-		args  []string
 		env   map[string]string
 		check func(*testing.T, *config.Config, *stringSliceFlag)
+		name  string
+		args  []string
 	}{
 		{
 			name: "basic flags",
@@ -608,12 +608,17 @@ func TestFlagParsing(t *testing.T) {
 			flag.DurationVar(&cfg.ReconnectBackoff, "reconnect-backoff", cfg.ReconnectBackoff, "Reconnection backoff")
 			flag.BoolVar(&cfg.Verbose, "v", false, "Enable verbose logging")
 
-			// Set environment
+			// Set environment and restore after test
+			originalEnv := make(map[string]string)
 			for k, v := range tt.env {
-				oldVal := os.Getenv(k)
+				originalEnv[k] = os.Getenv(k)
 				_ = os.Setenv(k, v)
-				defer func() { _ = os.Setenv(k, oldVal) }()
 			}
+			defer func() {
+				for k, v := range originalEnv {
+					_ = os.Setenv(k, v)
+				}
+			}()
 
 			// Parse flags
 			if err := flag.CommandLine.Parse(tt.args); err != nil {
@@ -644,8 +649,8 @@ func TestFlagParsing(t *testing.T) {
 // Mock components for testing
 
 type mockExpectation struct {
-	args         []interface{}
-	returnValues []interface{}
+	args         []any
+	returnValues []any
 }
 
 type mockComponents struct {
@@ -672,12 +677,12 @@ func newMockComponents() *mockComponents {
 // Mock implementations
 
 type mockClipboard struct {
-	mu           gosync.Mutex
-	content      string
 	readErr      error
 	writeErr     error
-	calls        []string
 	expectations map[string]mockExpectation
+	content      string
+	calls        []string
+	mu           gosync.Mutex
 }
 
 func newMockClipboard() *mockClipboard {
@@ -716,14 +721,14 @@ func (m *mockClipboard) Write(content string) error {
 	return m.writeErr
 }
 
-func (m *mockClipboard) On(method string, args ...interface{}) *mockClipboard {
+func (m *mockClipboard) On(method string, args ...any) *mockClipboard {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.expectations[method] = mockExpectation{args: args}
 	return m
 }
 
-func (m *mockClipboard) Return(values ...interface{}) *mockClipboard {
+func (m *mockClipboard) Return(values ...any) *mockClipboard {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	// Find the last expectation
@@ -751,10 +756,10 @@ func (m *mockClipboard) AssertExpectations(_ *testing.T) {
 }
 
 type mockTransport struct {
-	nodeID       string
 	addr         net.Addr
-	calls        []string
 	expectations map[string]mockExpectation
+	nodeID       string
+	calls        []string
 	mu           gosync.Mutex
 }
 
@@ -783,14 +788,14 @@ func (m *mockTransport) Close() error {
 	return nil
 }
 
-func (m *mockTransport) On(method string, args ...interface{}) *mockTransport {
+func (m *mockTransport) On(method string, args ...any) *mockTransport {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.expectations[method] = mockExpectation{args: args}
 	return m
 }
 
-func (m *mockTransport) Return(values ...interface{}) *mockTransport {
+func (m *mockTransport) Return(values ...any) *mockTransport {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	for method, exp := range m.expectations {
@@ -806,8 +811,8 @@ func (m *mockTransport) Return(values ...interface{}) *mockTransport {
 func (m *mockTransport) AssertExpectations(_ *testing.T) {}
 
 type mockTopology struct {
-	calls        []string
 	expectations map[string]mockExpectation
+	calls        []string
 	mu           gosync.Mutex
 }
 
@@ -869,25 +874,25 @@ func (m *mockTopology) PeerCount() int {
 	return 0
 }
 
-func (m *mockTopology) SendToPeer(_ string, _ interface{}) error {
+func (m *mockTopology) SendToPeer(_ string, _ any) error {
 	return nil
 }
 
-func (m *mockTopology) Broadcast(_ interface{}) error {
+func (m *mockTopology) Broadcast(_ any) error {
 	return nil
 }
 
 func (m *mockTopology) Events() <-chan mesh.TopologyEvent { return nil }
 func (m *mockTopology) Messages() <-chan mesh.Message     { return nil }
 
-func (m *mockTopology) On(method string, args ...interface{}) *mockTopology {
+func (m *mockTopology) On(method string, args ...any) *mockTopology {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.expectations[method] = mockExpectation{args: args}
 	return m
 }
 
-func (m *mockTopology) Return(values ...interface{}) *mockTopology {
+func (m *mockTopology) Return(values ...any) *mockTopology {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	for method, exp := range m.expectations {
@@ -903,11 +908,11 @@ func (m *mockTopology) Return(values ...interface{}) *mockTopology {
 func (m *mockTopology) AssertExpectations(_ *testing.T) {}
 
 type mockEngine struct {
-	calls        []string
 	stats        *sync.Stats
 	expectations map[string]mockExpectation
-	mu           gosync.Mutex
 	runFunc      func(context.Context) error
+	calls        []string
+	mu           gosync.Mutex
 }
 
 func newMockEngine() *mockEngine {
@@ -953,14 +958,14 @@ func (m *mockEngine) Stats() *sync.Stats {
 	return m.stats
 }
 
-func (m *mockEngine) On(method string, args ...interface{}) *mockEngine {
+func (m *mockEngine) On(method string, args ...any) *mockEngine {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.expectations[method] = mockExpectation{args: args}
 	return m
 }
 
-func (m *mockEngine) Return(values ...interface{}) *mockEngine {
+func (m *mockEngine) Return(values ...any) *mockEngine {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	for method, exp := range m.expectations {
@@ -987,9 +992,9 @@ func (m *mockEngine) RunFunc(fn func(Arguments)) *mockEngine {
 func (m *mockEngine) AssertExpectations(_ *testing.T) {}
 
 // Arguments helper.
-type Arguments []interface{}
+type Arguments []any
 
-func (args Arguments) Get(index int) interface{} {
+func (args Arguments) Get(index int) any {
 	if index < len(args) {
 		return args[index]
 	}

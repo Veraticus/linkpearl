@@ -213,22 +213,22 @@ func (h *messageHandler) Handle(msgType MessageType, from string, payload json.R
 }
 
 // NewClipboardMessage creates a new clipboard sync message.
-func NewClipboardMessage(from string, data json.RawMessage) MeshMessage {
+func NewClipboardMessage(from string, data json.RawMessage) ClipboardSyncMessage {
 	return ClipboardSyncMessage{FromNode: from, MessageData: data}
 }
 
 // NewPeerListMessage creates a new peer list message.
-func NewPeerListMessage(from string, peers []Node) MeshMessage {
+func NewPeerListMessage(from string, peers []Node) PeerListSyncMessage {
 	return PeerListSyncMessage{FromNode: from, Peers: peers}
 }
 
 // NewPingMessage creates a new ping message.
-func NewPingMessage(from string, timestamp int64) MeshMessage {
+func NewPingMessage(from string, timestamp int64) PingSyncMessage {
 	return PingSyncMessage{FromNode: from, Timestamp: timestamp}
 }
 
 // NewPongMessage creates a new pong message.
-func NewPongMessage(from string, timestamp int64) MeshMessage {
+func NewPongMessage(from string, timestamp int64) PongSyncMessage {
 	return PongSyncMessage{FromNode: from, Timestamp: timestamp}
 }
 
@@ -241,9 +241,9 @@ func NewPongMessage(from string, timestamp int64) MeshMessage {
 // patterns, automatically handling message serialization and adding the
 // sender information to outgoing messages.
 type messageRouter struct {
-	localNode string
 	handler   *messageHandler
 	sendFunc  func(nodeID string, data []byte) error
+	localNode string
 }
 
 // newMessageRouter creates a new message router.
@@ -256,7 +256,7 @@ func newMessageRouter(localNode string, sendFunc func(nodeID string, data []byte
 }
 
 // SendToPeer sends a message to a specific peer.
-func (r *messageRouter) SendToPeer(nodeID string, msgType MessageType, payload interface{}) error {
+func (r *messageRouter) SendToPeer(nodeID string, msgType MessageType, payload any) error {
 	// Create appropriate message type
 	var msg MeshMessage
 	switch msgType {
@@ -292,7 +292,7 @@ func (r *messageRouter) SendToPeer(nodeID string, msgType MessageType, payload i
 }
 
 // Broadcast sends a message to all peers.
-func (r *messageRouter) Broadcast(msgType MessageType, payload interface{}) error {
+func (r *messageRouter) Broadcast(msgType MessageType, payload any) error {
 	// Create appropriate message type
 	var msg MeshMessage
 	switch msgType {

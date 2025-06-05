@@ -22,8 +22,8 @@ func TestMockClipboard(t *testing.T) {
 
 		// Write and read back
 		testContent := "Hello, clipboard!"
-		if err := mock.Write(testContent); err != nil {
-			t.Fatalf("Write() error = %v", err)
+		if writeErr := mock.Write(testContent); writeErr != nil {
+			t.Fatalf("Write() error = %v", writeErr)
 		}
 
 		content, err = mock.Read()

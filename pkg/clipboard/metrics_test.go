@@ -209,7 +209,7 @@ func TestCategorizeError(t *testing.T) {
 		{ErrNotSupported, "not_supported"},
 		{ErrContentTooLarge, "content_too_large"},
 		{context.DeadlineExceeded, "timeout"},
-		{context.Canceled, "cancelled"},
+		{context.Canceled, "canceled"},
 		{errors.New("operation timeout"), "timeout"},
 		{errors.New("permission denied"), "permission"},
 		{errors.New("file not found"), "not_found"},

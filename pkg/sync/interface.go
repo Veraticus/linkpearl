@@ -90,49 +90,39 @@ type Engine interface {
 
 // Stats contains sync engine statistics.
 type Stats struct {
-	// Messages
+	LastLocalChange   time.Time
+	StartTime         time.Time
+	LastSyncTime      time.Time
+	LastRemoteChange  time.Time
+	LocalChanges      uint64
+	ConflictsWon      uint64
+	ConflictsLost     uint64
+	SendErrors        uint64
+	ReceiveErrors     uint64
+	RemoteChanges     uint64
 	MessagesSent      uint64
-	MessagesReceived  uint64
 	MessagesDuplicate uint64
-
-	// Clipboard
-	LocalChanges  uint64
-	RemoteChanges uint64
-	ConflictsWon  uint64
-	ConflictsLost uint64
-
-	// Errors
-	SendErrors    uint64
-	ReceiveErrors uint64
-
-	// Timing
-	LastLocalChange  time.Time
-	LastRemoteChange time.Time
-	LastSyncTime     time.Time
-	StartTime        time.Time
+	MessagesReceived  uint64
 }
 
 // Config holds sync engine configuration.
 type Config struct {
-	// Required
-	NodeID    string
-	Clipboard clipboard.Clipboard
-	Topology  mesh.Topology
-
-	// Optional
-	DedupeSize        int           // LRU cache size for deduplication (default: 1000)
-	SyncLoopWindow    time.Duration // Time window for sync loop detection (default: 500ms)
-	MinChangeInterval time.Duration // Minimum time between processing changes (default: 100ms)
-	CommandTimeout    time.Duration // Timeout for clipboard operations (default: 5s)
-	MaxClipboardSize  int           // Maximum clipboard content size in bytes (default: 10MB)
-	Logger            Logger        // Logger interface (default: no-op)
+	Clipboard         clipboard.Clipboard
+	Topology          mesh.Topology
+	Logger            Logger
+	NodeID            string
+	DedupeSize        int
+	SyncLoopWindow    time.Duration
+	MinChangeInterval time.Duration
+	CommandTimeout    time.Duration
+	MaxClipboardSize  int
 }
 
 // Logger interface for sync engine logging.
 type Logger interface {
-	Debug(msg string, keysAndValues ...interface{})
-	Info(msg string, keysAndValues ...interface{})
-	Error(msg string, keysAndValues ...interface{})
+	Debug(msg string, keysAndValues ...any)
+	Info(msg string, keysAndValues ...any)
+	Error(msg string, keysAndValues ...any)
 }
 
 // Validate checks if config is valid.
@@ -173,9 +163,9 @@ func (c *Config) Validate() error {
 // noopLogger implements Logger with no operations.
 type noopLogger struct{}
 
-func (n *noopLogger) Debug(_ string, _ ...interface{}) {}
-func (n *noopLogger) Info(_ string, _ ...interface{})  {}
-func (n *noopLogger) Error(_ string, _ ...interface{}) {}
+func (n *noopLogger) Debug(_ string, _ ...any) {}
+func (n *noopLogger) Info(_ string, _ ...any)  {}
+func (n *noopLogger) Error(_ string, _ ...any) {}
 
 // Topology provides information about the mesh network topology.
 // This is a simplified interface for querying topology state.

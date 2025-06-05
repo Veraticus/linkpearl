@@ -123,7 +123,7 @@ type Clipboard interface {
 	// Actual content must be retrieved using Read().
 	// Channel has buffer size of 10 to handle bursts without blocking.
 	// Multiple rapid changes may result in a single notification.
-	// The channel is closed when the context is cancelled.
+	// The channel is closed when the context is canceled.
 	Watch(ctx context.Context) <-chan struct{}
 
 	// GetState returns current state information
@@ -132,9 +132,9 @@ type Clipboard interface {
 
 // State provides metadata about clipboard state.
 type State struct {
-	SequenceNumber uint64    // Monotonically increasing counter
-	LastModified   time.Time // When clipboard was last changed
-	ContentHash    string    // SHA256 hash of current content
+	LastModified   time.Time
+	ContentHash    string
+	SequenceNumber uint64
 }
 
 // NewPlatformClipboard returns a clipboard implementation for the current platform.
@@ -144,23 +144,12 @@ func NewPlatformClipboard() (Clipboard, error) {
 
 // Options configures the hardened clipboard.
 type Options struct {
-	// Enable retry logic with exponential backoff
-	EnableRetry bool
-
-	// Custom retry configuration (nil uses defaults)
-	RetryConfig *RetryConfig
-
-	// Enable rate limiting
-	EnableRateLimit bool
-
-	// Rate limit configuration (operations per minute)
+	MetricsCollector      MetricsCollector
+	RetryConfig           *RetryConfig
 	RateLimitOpsPerMinute int
-
-	// Enable metrics collection
-	EnableMetrics bool
-
-	// Custom metrics collector (nil uses default in-memory collector)
-	MetricsCollector MetricsCollector
+	EnableRetry           bool
+	EnableRateLimit       bool
+	EnableMetrics         bool
 }
 
 // DefaultOptions returns sensible default options.

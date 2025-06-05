@@ -194,7 +194,7 @@ type Topology interface {
 	// peer is not connected or if serialization fails.
 	//
 	// This method is non-blocking; the message is queued for delivery.
-	SendToPeer(nodeID string, msg interface{}) error
+	SendToPeer(nodeID string, msg any) error
 
 	// Broadcast sends a message to all connected peers.
 	// The message is serialized to JSON before sending. Returns an error if
@@ -202,7 +202,7 @@ type Topology interface {
 	// but delivery is still attempted to all peers.
 	//
 	// This method is non-blocking; messages are queued for delivery.
-	Broadcast(msg interface{}) error
+	Broadcast(msg any) error
 
 	// Events returns a channel of topology events.
 	// The channel is buffered and receives events for peer connections and disconnections.
@@ -255,36 +255,21 @@ type PeerInfo struct {
 
 // Message represents a message received from a peer.
 type Message struct {
-	From    string      // Node ID of sender
-	Type    string      // Message type
-	Payload interface{} // Message payload
+	Payload any
+	From    string
+	Type    string
 }
 
 // TopologyConfig holds configuration for creating a topology.
 type TopologyConfig struct {
-	// Self is this node's information
-	Self Node
-
-	// Transport is the underlying transport to use
-	Transport transport.Transport
-
-	// JoinAddrs are the initial addresses to connect to
-	JoinAddrs []string
-
-	// ReconnectInterval is the initial reconnection interval
-	ReconnectInterval time.Duration
-
-	// MaxReconnectInterval is the maximum reconnection interval
+	Transport            transport.Transport
+	Logger               Logger
+	Self                 Node
+	JoinAddrs            []string
+	ReconnectInterval    time.Duration
 	MaxReconnectInterval time.Duration
-
-	// EventBufferSize is the size of the event buffer
-	EventBufferSize int
-
-	// MessageBufferSize is the size of the message buffer
-	MessageBufferSize int
-
-	// Logger provides optional logging
-	Logger Logger
+	EventBufferSize      int
+	MessageBufferSize    int
 }
 
 // DefaultTopologyConfig returns a topology config with sensible defaults.
@@ -300,21 +285,28 @@ func DefaultTopologyConfig() *TopologyConfig {
 
 // Logger interface for topology logging.
 type Logger interface {
-	Debug(msg string, args ...interface{})
-	Info(msg string, args ...interface{})
-	Warn(msg string, args ...interface{})
-	Error(msg string, args ...interface{})
+	Debug(msg string, args ...any)
+	Info(msg string, args ...any)
+	Warn(msg string, args ...any)
+	Error(msg string, args ...any)
 }
 
-// noopLogger implements Logger with no-op methods.
-type noopLogger struct{}
+// NoopLogger implements Logger with no-op methods.
+type NoopLogger struct{}
 
-func (noopLogger) Debug(_ string, _ ...interface{}) {}
-func (noopLogger) Info(_ string, _ ...interface{})  {}
-func (noopLogger) Warn(_ string, _ ...interface{})  {}
-func (noopLogger) Error(_ string, _ ...interface{}) {}
+// Debug implements Logger.Debug.
+func (NoopLogger) Debug(_ string, _ ...any) {}
+
+// Info implements Logger.Info.
+func (NoopLogger) Info(_ string, _ ...any) {}
+
+// Warn implements Logger.Warn.
+func (NoopLogger) Warn(_ string, _ ...any) {}
+
+// Error implements Logger.Error.
+func (NoopLogger) Error(_ string, _ ...any) {}
 
 // DefaultLogger returns a no-op logger.
-func DefaultLogger() Logger {
-	return noopLogger{}
+func DefaultLogger() NoopLogger {
+	return NoopLogger{}
 }

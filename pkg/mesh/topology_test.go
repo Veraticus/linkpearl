@@ -21,23 +21,23 @@ type transportConn = transport.Conn
 
 // mockTopologyConn implements transport.Conn for testing.
 type mockTopologyConn struct {
+	sendErr     error
+	receiveErr  error
+	sendChan    chan any
+	receiveChan chan any
 	nodeID      string
 	mode        string
 	version     string
-	sendChan    chan interface{}
-	receiveChan chan interface{}
-	closed      atomic.Bool
-	sendErr     error
-	receiveErr  error
 	mu          sync.Mutex
+	closed      atomic.Bool
 }
 
 func newMockTopologyConn(nodeID, mode string) *mockTopologyConn {
 	return &mockTopologyConn{
 		nodeID:      nodeID,
 		mode:        mode,
-		sendChan:    make(chan interface{}, 100),
-		receiveChan: make(chan interface{}, 100),
+		sendChan:    make(chan any, 100),
+		receiveChan: make(chan any, 100),
 	}
 }
 
@@ -45,7 +45,7 @@ func (c *mockTopologyConn) NodeID() string  { return c.nodeID }
 func (c *mockTopologyConn) Mode() string    { return c.mode }
 func (c *mockTopologyConn) Version() string { return c.version }
 
-func (c *mockTopologyConn) Send(msg interface{}) error {
+func (c *mockTopologyConn) Send(msg any) error {
 	if c.closed.Load() {
 		return errors.New("connection closed")
 	}
@@ -70,7 +70,7 @@ func (c *mockTopologyConn) Send(msg interface{}) error {
 	}
 }
 
-func (c *mockTopologyConn) Receive(msg interface{}) error {
+func (c *mockTopologyConn) Receive(msg any) error {
 	if c.closed.Load() {
 		return errors.New("connection closed")
 	}
@@ -158,14 +158,14 @@ func (c *mockTopologyConn) SetWriteDeadline(_ time.Time) error {
 
 // mockTopologyTransport implements transport.Transport for testing.
 type mockTopologyTransport struct {
-	addr        string
-	listening   atomic.Bool
+	acceptErr   error
+	listenErr   error
 	acceptChan  chan transport.Conn
 	connectFunc func(ctx context.Context, addr string) (transportConn, error)
 	connections map[string]*mockTopologyConn
+	addr        string
 	mu          sync.RWMutex
-	acceptErr   error
-	listenErr   error
+	listening   atomic.Bool
 	closed      atomic.Bool
 }
 
@@ -268,23 +268,23 @@ func newTestLogger(t *testing.T, prefix string) *testLogger {
 	return &testLogger{t: t, prefix: prefix}
 }
 
-func (l *testLogger) Debug(msg string, args ...interface{}) {
+func (l *testLogger) Debug(msg string, args ...any) {
 	l.log("DEBUG", msg, args...)
 }
 
-func (l *testLogger) Info(msg string, args ...interface{}) {
+func (l *testLogger) Info(msg string, args ...any) {
 	l.log("INFO", msg, args...)
 }
 
-func (l *testLogger) Warn(msg string, args ...interface{}) {
+func (l *testLogger) Warn(msg string, args ...any) {
 	l.log("WARN", msg, args...)
 }
 
-func (l *testLogger) Error(msg string, args ...interface{}) {
+func (l *testLogger) Error(msg string, args ...any) {
 	l.log("ERROR", msg, args...)
 }
 
-func (l *testLogger) log(level, msg string, args ...interface{}) {
+func (l *testLogger) log(level, msg string, args ...any) {
 	// Format args as key=value pairs
 	var kvPairs []string
 	for i := 0; i < len(args); i += 2 {
@@ -298,10 +298,10 @@ func (l *testLogger) log(level, msg string, args ...interface{}) {
 // Test topology creation.
 func TestNewTopology(t *testing.T) {
 	tests := []struct {
-		name    string
 		config  *TopologyConfig
-		wantErr bool
+		name    string
 		errMsg  string
+		wantErr bool
 	}{
 		{
 			name:    "nil config",
@@ -388,16 +388,16 @@ func TestNewTopology(t *testing.T) {
 				require.NoError(t, err)
 				require.NotNil(t, topo)
 
-				// Verify internal state
-				impl, ok := topo.(*topology)
-				require.True(t, ok, "topo should be of type *topology")
-				assert.Equal(t, tt.config.Self, impl.self)
-				assert.Equal(t, tt.config.Transport, impl.transport)
-				assert.NotNil(t, impl.peers)
-				assert.NotNil(t, impl.backoffs)
-				assert.NotNil(t, impl.events)
-				assert.NotNil(t, impl.messages)
-				assert.NotNil(t, impl.router)
+				// Verify internal state through type assertion
+				topoImpl, ok := topo.(*topology)
+				require.True(t, ok, "Expected *topology implementation")
+				assert.Equal(t, tt.config.Self, topoImpl.self)
+				assert.Equal(t, tt.config.Transport, topoImpl.transport)
+				assert.NotNil(t, topoImpl.peers)
+				assert.NotNil(t, topoImpl.backoffs)
+				assert.NotNil(t, topoImpl.events)
+				assert.NotNil(t, topoImpl.messages)
+				assert.NotNil(t, topoImpl.router)
 
 				// Clean up
 				_ = topo.Stop()
@@ -529,29 +529,28 @@ func TestJoinAddressManagement(t *testing.T) {
 		require.NoError(t, err)
 		defer func() { _ = topo.Stop() }()
 
-		impl, ok := topo.(*topology)
-		require.True(t, ok, "topo should be of type *topology")
-
 		// Initial join addresses
-		assert.Len(t, impl.joinAddrs, 1)
-		assert.Contains(t, impl.joinAddrs, "localhost:8081")
+		topoImpl, ok := topo.(*topology)
+		require.True(t, ok, "Expected *topology implementation")
+		assert.Len(t, topoImpl.joinAddrs, 1)
+		assert.Contains(t, topoImpl.joinAddrs, "localhost:8081")
 
 		// Add new address
 		err = topo.AddJoinAddr("localhost:8082")
 		require.NoError(t, err)
-		assert.Len(t, impl.joinAddrs, 2)
-		assert.Contains(t, impl.joinAddrs, "localhost:8082")
+		assert.Len(t, topoImpl.joinAddrs, 2)
+		assert.Contains(t, topoImpl.joinAddrs, "localhost:8082")
 
 		// Add duplicate - should be idempotent
 		err = topo.AddJoinAddr("localhost:8082")
 		require.NoError(t, err)
-		assert.Len(t, impl.joinAddrs, 2)
+		assert.Len(t, topoImpl.joinAddrs, 2)
 
 		// Remove address
 		err = topo.RemoveJoinAddr("localhost:8081")
 		require.NoError(t, err)
-		assert.Len(t, impl.joinAddrs, 1)
-		assert.NotContains(t, impl.joinAddrs, "localhost:8081")
+		assert.Len(t, topoImpl.joinAddrs, 1)
+		assert.NotContains(t, topoImpl.joinAddrs, "localhost:8081")
 
 		// Remove non-existent - should be idempotent
 		err = topo.RemoveJoinAddr("localhost:8083")
@@ -1258,11 +1257,11 @@ func TestTopologyConcurrentOperations(t *testing.T) {
 		wg.Wait()
 
 		// Verify state is consistent
-		impl, ok := topo.(*topology)
-		require.True(t, ok, "topo should be of type *topology")
-		impl.mu.RLock()
-		joinCount := len(impl.joinAddrs)
-		impl.mu.RUnlock()
+		topoImpl, ok := topo.(*topology)
+		require.True(t, ok, "Expected *topology implementation")
+		topoImpl.mu.RLock()
+		joinCount := len(topoImpl.joinAddrs)
+		topoImpl.mu.RUnlock()
 
 		// Should have 5 addresses (odd numbers)
 		assert.Equal(t, 5, joinCount)
@@ -1626,7 +1625,7 @@ func BenchmarkTopologyBroadcast(b *testing.B) {
 	config := &TopologyConfig{
 		Self:      Node{ID: "node1", Mode: "full", Addr: "localhost:8080"},
 		Transport: transport,
-		Logger:    noopLogger{},
+		Logger:    NoopLogger{},
 	}
 
 	topo, err := NewTopology(config)
@@ -1656,7 +1655,7 @@ func BenchmarkTopologyConcurrentSends(b *testing.B) {
 	config := &TopologyConfig{
 		Self:      Node{ID: "node1", Mode: "full", Addr: "localhost:8080"},
 		Transport: transport,
-		Logger:    noopLogger{},
+		Logger:    NoopLogger{},
 	}
 
 	topo, err := NewTopology(config)

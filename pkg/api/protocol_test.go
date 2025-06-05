@@ -9,11 +9,11 @@ import (
 
 func TestParseRequest(t *testing.T) {
 	tests := []struct {
+		want    *Request
 		name    string
 		input   string
-		want    *Request
-		wantErr bool
 		errMsg  string
+		wantErr bool
 	}{
 		{
 			name:  "copy command with size",
@@ -118,7 +118,7 @@ func TestFormatResponse(t *testing.T) {
 	tests := []struct {
 		name    string
 		resp    Response
-		data    interface{}
+		data    any
 		want    string
 		wantErr bool
 	}{
@@ -230,9 +230,9 @@ func TestFormatResponse(t *testing.T) {
 func TestValidateContent(t *testing.T) {
 	tests := []struct {
 		name    string
+		errMsg  string
 		content []byte
 		wantErr bool
-		errMsg  string
 	}{
 		{
 			name:    "valid small content",

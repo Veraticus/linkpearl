@@ -12,14 +12,9 @@ const CommandTimeout = 5 * time.Second
 
 // CommandConfig holds configuration for command execution.
 type CommandConfig struct {
-	// Timeout for command execution (default: CommandTimeout)
-	Timeout time.Duration
-
-	// MaxOutputSize limits the amount of data read (default: MaxClipboardSize)
+	Logger        func(format string, args ...any)
+	Timeout       time.Duration
 	MaxOutputSize int
-
-	// Logger for debugging command execution
-	Logger func(format string, args ...interface{})
 }
 
 // DefaultCommandConfig returns config with production-ready defaults.
@@ -27,7 +22,7 @@ func DefaultCommandConfig() *CommandConfig {
 	return &CommandConfig{
 		Timeout:       CommandTimeout,
 		MaxOutputSize: MaxClipboardSize,
-		Logger:        func(string, ...interface{}) {}, // no-op by default
+		Logger:        func(string, ...any) {}, // no-op by default
 	}
 }
 

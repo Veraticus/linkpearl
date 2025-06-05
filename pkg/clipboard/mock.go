@@ -70,13 +70,13 @@ import (
 // It stores clipboard content in memory and provides mechanisms
 // to simulate clipboard changes for testing Watch functionality.
 type MockClipboard struct {
-	mu             sync.RWMutex      // Protects content and state
-	content        string            // Current clipboard content
-	watchers       []chan<- struct{} // Active watcher channels
-	watcherMu      sync.Mutex        // Protects watchers slice
-	sequenceNumber atomic.Uint64
 	lastModified   time.Time
+	content        string
 	contentHash    string
+	watchers       []chan<- struct{}
+	sequenceNumber atomic.Uint64
+	mu             sync.RWMutex
+	watcherMu      sync.Mutex
 }
 
 // NewMockClipboard creates a new mock clipboard instance.
@@ -125,7 +125,7 @@ func (m *MockClipboard) Write(content string) error {
 // Channel has buffer size of 10 to handle bursts without blocking.
 //
 // The channel is automatically closed and the watcher is removed
-// when the provided context is cancelled.
+// when the provided context is canceled.
 //
 // Multiple watchers can be active simultaneously, and each will
 // receive notifications of clipboard changes.
@@ -137,7 +137,7 @@ func (m *MockClipboard) Watch(ctx context.Context) <-chan struct{} {
 	m.watchers = append(m.watchers, ch)
 	m.watcherMu.Unlock()
 
-	// Clean up when context is cancelled
+	// Clean up when context is canceled
 	go func() {
 		<-ctx.Done()
 		m.watcherMu.Lock()
@@ -198,7 +198,7 @@ func (m *MockClipboard) notifyWatchers() {
 // GetWatcherCount returns the number of active watchers.
 // This is a test helper method to verify that watchers are properly
 // registered and cleaned up. It's particularly useful for testing
-// that watchers are removed when their contexts are cancelled.
+// that watchers are removed when their contexts are canceled.
 func (m *MockClipboard) GetWatcherCount() int {
 	m.watcherMu.Lock()
 	defer m.watcherMu.Unlock()

@@ -48,188 +48,96 @@ linters:
     - usestdlibvars # Use stdlib constants instead of magic strings
     - forbidigo     # Forbid specific patterns (like interface{})
 
-linters-settings:
-  gocritic:
-    # Use default stable checks, plus specific ones we want
-    disable-all: false
-    enabled-checks:
-      # Add checks that catch common issues
-      - emptyStringTest    # Detects len(s) == 0 (use s == "")
-      - sloppyReassign     # Detects suspicious reassignments
-      - weakCond           # Detects non-exhaustive conditions
-      - exitAfterDefer     # Detects os.Exit after defer
-      - appendCombine      # Suggests combining append calls
-      - commentedOutCode   # Finds commented-out code
-      - deferInLoop        # Detects problematic defer in loops
-      - dupArg             # Detects duplicated function arguments
-      - dupBranchBody      # Detects duplicated if/else branches
-      - evalOrder          # Detects undefined evaluation order
-      - flagDeref          # Detects immediate flag dereferencing
-      - nilValReturn       # Detects return statements that return nil
-      - offBy1             # Detects off-by-one errors
-      - sloppyLen          # Detects unnecessary len() calls
-      - truncateCmp        # Detects problematic int comparisons
-      - unnecessaryDefer   # Detects unnecessary defer calls
-      
-  revive:
-    severity: error
-    enable-all-rules: false
-    rules:
-      # Essential rules for code quality
-      - name: blank-imports
-      - name: context-as-argument
-      - name: context-keys-type
-      - name: dot-imports
-      - name: error-return
-      - name: error-strings
-      - name: error-naming
-      - name: exported
-        arguments:
-          - check-private-receivers: false  # Don't be too strict
-      - name: if-return
-      - name: increment-decrement
-      - name: var-naming
-        arguments:
-          - ["ID", "URL", "HTTP", "API"]  # Common initialisms
-          - []  # No deny list
-      - name: var-declaration
-      - name: package-comments
-      - name: range
-      - name: receiver-naming
-      - name: time-naming
-      - name: unexported-return
-      - name: indent-error-flow
-      - name: errorf
-      - name: empty-block
-      - name: superfluous-else
-      - name: unused-parameter
-      - name: unreachable-code
-      - name: redefines-builtin-id
-      - name: waitgroup-by-value
-      - name: use-any         # Prefer 'any' over 'interface{}'
-      - name: useless-break
-      - name: unnecessary-stmt
-      
-  gosec:
-    # We need exec.Command for clipboard operations (xclip, pbcopy, etc.)
-    excludes:
-      - G204  # Audit use of command execution
-    
-    severity: medium
-    confidence: medium
-    
-  iface:
-    enable:
-      - identical  # No identical interfaces
-      - unused     # No unused interfaces
-      - opaque     # Warn about single-implementation interfaces
-      
-  godot:
-    scope: comments  # Only check comments, not all strings
-    
-  nakedret:
-    max-func-lines: 30  # Only enforce in longer functions
-    
-  misspell:
-    locale: US
-    
-  govet:
-    enable-all: true
-    
-  forbidigo:
-    # Override default patterns
-    forbid:
-      # First, let's keep some useful defaults but modify them
-      - pattern: '^(fmt\.Print(|f|ln)|print|println)$'
-        msg: "Use Logger interface instead of print statements"
-      # Now add our custom patterns
-      - pattern: 'interface\{\}'
-        msg: "Don't use interface{}, use a specific type or 'any'"
-      - pattern: '\bpanic\('
-        msg: "Don't use panic, return an error instead"
-      - pattern: 'exec\.Command\('
-        msg: "Use RunCommand() or RunCommandWithInput() from command.go instead of exec.Command directly"
-    # Try matching literal source code
-    analyze-types: false
+  settings:
+    gocritic:
+      # Use default stable checks, plus specific ones we want
+      disable-all: false
+      enabled-checks:
+        # Add checks that catch common issues
+        - emptyStringTest    # Detects len(s) == 0 (use s == "")
+        - sloppyReassign     # Detects suspicious reassignments
+        - weakCond           # Detects non-exhaustive conditions
+        - appendCombine      # Suggests combining append calls
+        - commentedOutCode   # Finds commented-out code
+        - deferInLoop        # Detects problematic defer in loops
+        - evalOrder          # Detects undefined evaluation order
+        - nilValReturn       # Detects return statements that return nil
+        - truncateCmp        # Detects problematic int comparisons
+        - unnecessaryDefer   # Detects unnecessary defer calls
         
-issues:
-  # Exclude some linters from test files
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - errcheck  # It's OK to not check errors in test helpers
+    revive:
+      severity: error
+      enable-all-rules: false
+      rules:
+        # Essential rules for code quality
+        - name: blank-imports
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: dot-imports
+        - name: error-return
+        - name: error-strings
+        - name: error-naming
+        - name: exported
+        - name: if-return
+        - name: increment-decrement
+        - name: var-naming
+          arguments:
+            - ["ID", "URL", "HTTP", "API"]  # Common initialisms
+            - []  # No deny list
+        - name: var-declaration
+        - name: package-comments
+        - name: range
+        - name: receiver-naming
+        - name: time-naming
+        - name: unexported-return
+        - name: indent-error-flow
+        - name: errorf
+        - name: empty-block
+        - name: superfluous-else
+        - name: unused-parameter
+        - name: unreachable-code
+        - name: redefines-builtin-id
+        - name: waitgroup-by-value
+        - name: use-any         # Prefer 'any' over 'interface{}'
+        - name: useless-break
+        - name: unnecessary-stmt
         
-    # Allow subprocess with os.Args in tests
-    - path: _test\.go
-      linters:
-        - gosec
-      text: "G204"
+    gosec:
+      # We need exec.Command for clipboard operations (xclip, pbcopy, etc.)
+      excludes:
+        - G204  # Audit use of command execution
+      
+      severity: medium
+      confidence: medium
+      
+    iface:
+      enable:
+        - identical  # No identical interfaces
+        - unused     # No unused interfaces
+        # - opaque   # Disabled: We intentionally return interfaces for decoration patterns
         
-    # Allow fmt.Print* in cmd packages for CLI output
-    - path: "^cmd/"
-      linters:
-        - forbidigo
+    nakedret:
+      max-func-lines: 30  # Only enforce in longer functions
       
-    # Don't enforce comments on exported types in main packages
-    - path: cmd/
-      linters:
-        - revive
-      text: "exported .* should have comment"
+    misspell:
+      locale: US
       
-    # Allow exec.Command in command.go - it's the central command execution module
-    - path: pkg/clipboard/command\.go
-      linters:
-        - forbidigo
-      text: "exec\\.Command"
+    govet:
+      enable-all: true
       
-    # Allow empty blocks in test files for channel draining
-    - path: _test\.go
-      linters:
-        - revive
-      text: "empty-block"
-      
-    # Allow MeshMessage name - can't rename due to existing Message struct
-    - path: pkg/mesh/messages\.go
-      linters:
-        - revive
-      text: "type name will be used as mesh.MeshMessage"
-      
-    # Allow fmt.Print in test files for debugging
-    - path: tests/
-      linters:
-        - forbidigo
-      text: "fmt\\.Print"
-      
-     
-  # Don't be too strict about TODO comments
-  exclude:
-    - "TODO"
-    - "FIXME"
-    
-  # Maximum count of issues with the same text
-  max-same-issues: 3
-  
-  # Show all issues from a linter
-  max-issues-per-linter: 0
-  
-  # Enable use of nolint directives
-  exclude-use-default: false
-  
-  # Don't ignore issues with nolint directives without specific linter
-  nolint-require-explanation: false
-  nolint-require-specific: true
+    forbidigo:
+      # Override default patterns
+      forbid:
+        # First, let's keep some useful defaults but modify them
+        - pattern: '^(fmt\.Print(|f|ln)|print|println)$'
+          msg: "Use Logger interface instead of print statements"
+        # Now add our custom patterns
+        - pattern: 'interface\{\}'
+          msg: "Don't use interface{}, use a specific type or 'any'"
+        - pattern: '\bpanic\('
+          msg: "Don't use panic, return an error instead"
+        - pattern: 'exec\.Command\('
+          msg: "Use RunCommand() or RunCommandWithInput() from command.go instead of exec.Command directly"
+      # Try matching literal source code
+      analyze-types: false
 
-run:
-  # Timeout for analysis
-  timeout: 5m
-  
-  # Include test files
-  tests: true
-  
-  # Skip vendor and .git directories
-  skip-dirs:
-    - vendor
-    - .git
-  
-  # Skip files matching .gitignore patterns
-  skip-dirs-use-default: true

@@ -113,10 +113,10 @@ type Conn interface {
 	Version() string
 
 	// Send sends a message to the remote node
-	Send(msg interface{}) error
+	Send(msg any) error
 
 	// Receive receives a message from the remote node
-	Receive(msg interface{}) error
+	Receive(msg any) error
 
 	// Close closes the connection
 	Close() error
@@ -140,10 +140,6 @@ type Conn interface {
 // Message is a generic message type for transport communication.
 // All messages exchanged between nodes should implement this interface
 // to ensure proper type identification and routing.
-type Message interface {
-	// Type returns the message type identifier
-	Type() string
-}
 
 // HandshakeTimeout is the maximum time allowed for authentication handshake.
 const HandshakeTimeout = 10 * time.Second
@@ -158,40 +154,35 @@ const MaxMessageSize = 1024 * 1024
 // This configuration defines the node's identity, operational mode,
 // authentication credentials, and optional TLS settings.
 type Config struct {
-	// NodeID is this node's unique identifier
-	NodeID string
-
-	// Mode is this node's operational mode
-	Mode string
-
-	// Secret is the shared secret for authentication
-	Secret string
-
-	// TLSConfig provides optional TLS configuration
-	// If nil, ephemeral certificates will be generated
-	TLSConfig interface{}
-
-	// Logger provides optional logging interface
-	Logger Logger
+	TLSConfig any
+	Logger    Logger
+	NodeID    string
+	Mode      string
+	Secret    string
 }
 
 // Logger interface for transport logging.
 // Implementations should provide structured logging with support
 // for different log levels (Debug, Info, Error) and key-value pairs.
 type Logger interface {
-	Debug(msg string, args ...interface{})
-	Info(msg string, args ...interface{})
-	Error(msg string, args ...interface{})
+	Debug(msg string, args ...any)
+	Info(msg string, args ...any)
+	Error(msg string, args ...any)
 }
 
-// noopLogger implements Logger with no-op methods.
-type noopLogger struct{}
+// NoopLogger implements Logger with no-op methods.
+type NoopLogger struct{}
 
-func (noopLogger) Debug(_ string, _ ...interface{}) {}
-func (noopLogger) Info(_ string, _ ...interface{})  {}
-func (noopLogger) Error(_ string, _ ...interface{}) {}
+// Debug implements Logger.Debug.
+func (NoopLogger) Debug(_ string, _ ...any) {}
+
+// Info implements Logger.Info.
+func (NoopLogger) Info(_ string, _ ...any) {}
+
+// Error implements Logger.Error.
+func (NoopLogger) Error(_ string, _ ...any) {}
 
 // DefaultLogger returns a no-op logger.
-func DefaultLogger() Logger {
-	return noopLogger{}
+func DefaultLogger() NoopLogger {
+	return NoopLogger{}
 }
