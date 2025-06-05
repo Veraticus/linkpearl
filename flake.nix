@@ -7,6 +7,249 @@
   };
 
   outputs = { self, nixpkgs, flake-utils }:
+    let
+      # Define modules outside of eachDefaultSystem since they're system-agnostic
+      nixosModule = { config, lib, pkgs, ... }:
+        with lib;
+        let
+          cfg = config.services.linkpearl;
+        in
+        {
+          options.services.linkpearl = {
+            enable = mkEnableOption (lib.mdDoc "Linkpearl clipboard synchronization service");
+            
+            secret = mkOption {
+              type = types.nullOr types.str;
+              default = null;
+              description = lib.mdDoc "Shared secret for authentication (required if secretFile is not set)";
+            };
+            
+            secretFile = mkOption {
+              type = types.nullOr types.path;
+              default = null;
+              description = lib.mdDoc "Path to file containing the shared secret (required if secret is not set)";
+            };
+            
+            listen = mkOption {
+              type = types.nullOr types.str;
+              default = null;
+              example = ":9437";
+              description = lib.mdDoc "Address to listen on";
+            };
+            
+            join = mkOption {
+              type = types.listOf types.str;
+              default = [];
+              example = [ "desktop.local:9437" "server:9437" ];
+              description = lib.mdDoc "Addresses to connect to";
+            };
+            
+            nodeId = mkOption {
+              type = types.nullOr types.str;
+              default = null;
+              description = lib.mdDoc "Unique node identifier";
+            };
+            
+            pollInterval = mkOption {
+              type = types.str;
+              default = "500ms";
+              description = lib.mdDoc "Clipboard check interval";
+            };
+            
+            verbose = mkOption {
+              type = types.bool;
+              default = false;
+              description = lib.mdDoc "Enable verbose logging";
+            };
+            
+            package = mkOption {
+              type = types.package;
+              default = self.packages.${pkgs.system}.default;
+              defaultText = literalExpression "pkgs.linkpearl";
+              description = lib.mdDoc "The linkpearl package to use";
+            };
+          };
+          
+          config = mkIf cfg.enable {
+            assertions = [
+              {
+                assertion = (cfg.secret != null) || (cfg.secretFile != null);
+                message = "linkpearl: either 'secret' or 'secretFile' must be set";
+              }
+              {
+                assertion = !((cfg.secret != null) && (cfg.secretFile != null));
+                message = "linkpearl: 'secret' and 'secretFile' are mutually exclusive";
+              }
+              {
+                assertion = (cfg.secretFile == null) || (builtins.pathExists cfg.secretFile);
+                message = "linkpearl: secretFile '${toString cfg.secretFile}' does not exist";
+              }
+            ];
+            
+            systemd.user.services.linkpearl = {
+              description = "Linkpearl clipboard synchronization";
+              after = [ "network.target" ];
+              wantedBy = [ "default.target" ];
+              
+              environment = {
+              } // (optionalAttrs (cfg.secret != null) {
+                LINKPEARL_SECRET = cfg.secret;
+              }) // (optionalAttrs (cfg.secretFile != null) {
+                LINKPEARL_SECRET_FILE = toString cfg.secretFile;
+              }) // (optionalAttrs (cfg.listen != null) {
+                LINKPEARL_LISTEN = cfg.listen;
+              }) // (optionalAttrs (cfg.join != []) {
+                LINKPEARL_JOIN = concatStringsSep "," cfg.join;
+              }) // (optionalAttrs (cfg.nodeId != null) {
+                LINKPEARL_NODE_ID = cfg.nodeId;
+              }) // (optionalAttrs cfg.verbose {
+                LINKPEARL_VERBOSE = "true";
+              });
+              
+              serviceConfig = {
+                ExecStart = "${cfg.package}/bin/linkpearl --poll-interval ${cfg.pollInterval}";
+                Restart = "on-failure";
+                RestartSec = 5;
+                
+                # Hardening
+                DynamicUser = true;
+                PrivateTmp = true;
+                ProtectSystem = "strict";
+                ProtectHome = "read-only";
+                ProtectKernelTunables = true;
+                ProtectKernelModules = true;
+                ProtectControlGroups = true;
+                RestrictAddressFamilies = [ "AF_UNIX" "AF_INET" "AF_INET6" ];
+                RestrictNamespaces = true;
+                RestrictRealtime = true;
+                RestrictSUIDSGID = true;
+                MemoryDenyWriteExecute = true;
+                LockPersonality = true;
+                NoNewPrivileges = true;
+                ProtectProc = "invisible";
+                ProcSubset = "pid";
+                ProtectHostname = true;
+                ProtectClock = true;
+                ProtectKernelLogs = true;
+                SystemCallArchitectures = "native";
+                SystemCallFilter = [ "@system-service" "~@privileged" "~@resources" ];
+                
+                # Needed for secret file access
+                ReadOnlyPaths = lib.optional (cfg.secretFile != null) (toString cfg.secretFile);
+                
+                # Allow access to X11/Wayland for clipboard
+                SupplementaryGroups = [ "video" ];
+                
+                # Ensure clipboard access works
+                PassEnvironment = [ "DISPLAY" "WAYLAND_DISPLAY" "XDG_RUNTIME_DIR" ];
+              };
+            };
+          };
+        };
+
+      homeManagerModule = { config, lib, pkgs, ... }:
+        with lib;
+        let
+          cfg = config.services.linkpearl;
+        in
+        {
+          options.services.linkpearl = {
+            enable = mkEnableOption (lib.mdDoc "Linkpearl clipboard synchronization service");
+            
+            secret = mkOption {
+              type = types.nullOr types.str;
+              default = null;
+              description = lib.mdDoc "Shared secret for authentication (required if secretFile is not set)";
+            };
+            
+            secretFile = mkOption {
+              type = types.nullOr types.path;
+              default = null;
+              description = lib.mdDoc "Path to file containing the shared secret (required if secret is not set)";
+            };
+            
+            join = mkOption {
+              type = types.listOf types.str;
+              default = [];
+              example = [ "desktop.local:9437" "server:9437" ];
+              description = lib.mdDoc "Addresses to connect to (required for client mode)";
+            };
+            
+            nodeId = mkOption {
+              type = types.nullOr types.str;
+              default = null;
+              description = lib.mdDoc "Unique node identifier";
+            };
+            
+            pollInterval = mkOption {
+              type = types.str;
+              default = "500ms";
+              description = lib.mdDoc "Clipboard check interval";
+            };
+            
+            verbose = mkOption {
+              type = types.bool;
+              default = false;
+              description = lib.mdDoc "Enable verbose logging";
+            };
+            
+            package = mkOption {
+              type = types.package;
+              default = self.packages.${pkgs.system}.default;
+              defaultText = literalExpression "pkgs.linkpearl";
+              description = lib.mdDoc "The linkpearl package to use";
+            };
+          };
+          
+          config = mkIf cfg.enable {
+            assertions = [
+              {
+                assertion = (cfg.secret != null) || (cfg.secretFile != null);
+                message = "linkpearl: either 'secret' or 'secretFile' must be set";
+              }
+              {
+                assertion = !((cfg.secret != null) && (cfg.secretFile != null));
+                message = "linkpearl: 'secret' and 'secretFile' are mutually exclusive";
+              }
+              {
+                assertion = (cfg.secretFile == null) || (builtins.pathExists cfg.secretFile);
+                message = "linkpearl: secretFile '${toString cfg.secretFile}' does not exist";
+              }
+              {
+                assertion = cfg.join != [];
+                message = "linkpearl: 'join' must be set for client mode in home-manager";
+              }
+            ];
+            
+            systemd.user.services.linkpearl = {
+              Unit = {
+                Description = "Linkpearl clipboard synchronization";
+                After = [ "graphical-session.target" ];
+              };
+              
+              Service = {
+                Environment = lib.mkMerge [
+                  (mkIf (cfg.secret != null) [ "LINKPEARL_SECRET=${cfg.secret}" ])
+                  (mkIf (cfg.secretFile != null) [ "LINKPEARL_SECRET_FILE=${toString cfg.secretFile}" ])
+                  (mkIf (cfg.join != []) [ "LINKPEARL_JOIN=${concatStringsSep "," cfg.join}" ])
+                  (mkIf (cfg.nodeId != null) [ "LINKPEARL_NODE_ID=${cfg.nodeId}" ])
+                  (mkIf cfg.verbose [ "LINKPEARL_VERBOSE=true" ])
+                ];
+                
+                ExecStart = "${cfg.package}/bin/linkpearl --poll-interval ${cfg.pollInterval}";
+                Restart = "on-failure";
+                RestartSec = 5;
+              };
+              
+              Install = {
+                WantedBy = [ "default.target" ];
+              };
+            };
+            
+            home.packages = [ cfg.package ];
+          };
+        };
+    in
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
@@ -35,8 +278,10 @@
         };
       in
       {
-        packages.default = linkpearl;
-        packages.linkpearl = linkpearl;
+        packages = {
+          default = linkpearl;
+          linkpearl = linkpearl;
+        };
         
         apps.default = flake-utils.lib.mkApp {
           drv = linkpearl;
@@ -61,208 +306,22 @@
             echo "Run 'make test' to run tests"
           '';
         };
-        
-        # Home-manager module for running as a user service
-        homeManagerModules.default = { config, lib, pkgs, ... }:
-          with lib;
-          let
-            cfg = config.services.linkpearl;
-          in
-          {
-            options.services.linkpearl = {
-              enable = mkEnableOption "Linkpearl clipboard synchronization service";
-              
-              secret = mkOption {
-                type = types.nullOr types.str;
-                default = null;
-                description = "Shared secret for authentication (required if secretFile is not set)";
-              };
-              
-              secretFile = mkOption {
-                type = types.nullOr types.path;
-                default = null;
-                description = "Path to file containing the shared secret (required if secret is not set)";
-              };
-              
-              join = mkOption {
-                type = types.listOf types.str;
-                default = [];
-                example = [ "desktop.local:9437" "server:9437" ];
-                description = "Addresses to connect to (required for client mode)";
-              };
-              
-              nodeId = mkOption {
-                type = types.nullOr types.str;
-                default = null;
-                description = "Unique node identifier";
-              };
-              
-              pollInterval = mkOption {
-                type = types.str;
-                default = "500ms";
-                description = "Clipboard check interval";
-              };
-              
-              verbose = mkOption {
-                type = types.bool;
-                default = false;
-                description = "Enable verbose logging";
-              };
-              
-              package = mkOption {
-                type = types.package;
-                default = self.packages.${pkgs.system}.linkpearl;
-                defaultText = literalExpression "pkgs.linkpearl";
-                description = "The linkpearl package to use";
-              };
-            };
-            
-            config = mkIf cfg.enable {
-              assertions = [
-                {
-                  assertion = (cfg.secret != null) || (cfg.secretFile != null);
-                  message = "linkpearl: either 'secret' or 'secretFile' must be set";
-                }
-                {
-                  assertion = !((cfg.secret != null) && (cfg.secretFile != null));
-                  message = "linkpearl: 'secret' and 'secretFile' are mutually exclusive";
-                }
-                {
-                  assertion = cfg.join != [];
-                  message = "linkpearl: 'join' must be set for client mode in home-manager";
-                }
-              ];
-              
-              systemd.user.services.linkpearl = {
-                Unit = {
-                  Description = "Linkpearl clipboard synchronization";
-                  After = [ "graphical-session.target" ];
-                };
-                
-                Service = {
-                  Environment = lib.mkMerge [
-                    (mkIf (cfg.secret != null) [ "LINKPEARL_SECRET=${cfg.secret}" ])
-                    (mkIf (cfg.secretFile != null) [ "LINKPEARL_SECRET_FILE=${toString cfg.secretFile}" ])
-                    (mkIf (cfg.join != []) [ "LINKPEARL_JOIN=${concatStringsSep "," cfg.join}" ])
-                    (mkIf (cfg.nodeId != null) [ "LINKPEARL_NODE_ID=${cfg.nodeId}" ])
-                    (mkIf cfg.verbose [ "LINKPEARL_VERBOSE=true" ])
-                  ];
-                  
-                  ExecStart = "${cfg.package}/bin/linkpearl --poll-interval ${cfg.pollInterval}";
-                  Restart = "on-failure";
-                  RestartSec = 5;
-                };
-                
-                Install = {
-                  WantedBy = [ "default.target" ];
-                };
-              };
-              
-              home.packages = [ cfg.package ];
-            };
-          };
-        
-        # NixOS module for running as a systemd service
-        nixosModules.default = { config, lib, pkgs, ... }:
-          with lib;
-          let
-            cfg = config.services.linkpearl;
-          in
-          {
-            options.services.linkpearl = {
-              enable = mkEnableOption "Linkpearl clipboard synchronization service";
-              
-              secret = mkOption {
-                type = types.nullOr types.str;
-                default = null;
-                description = "Shared secret for authentication (required if secretFile is not set)";
-              };
-              
-              secretFile = mkOption {
-                type = types.nullOr types.path;
-                default = null;
-                description = "Path to file containing the shared secret (required if secret is not set)";
-              };
-              
-              listen = mkOption {
-                type = types.nullOr types.str;
-                default = null;
-                example = ":8080";
-                description = "Address to listen on";
-              };
-              
-              join = mkOption {
-                type = types.listOf types.str;
-                default = [];
-                example = [ "desktop.local:8080" "server:8080" ];
-                description = "Addresses to connect to";
-              };
-              
-              nodeId = mkOption {
-                type = types.nullOr types.str;
-                default = null;
-                description = "Unique node identifier";
-              };
-              
-              pollInterval = mkOption {
-                type = types.str;
-                default = "500ms";
-                description = "Clipboard check interval";
-              };
-              
-              verbose = mkOption {
-                type = types.bool;
-                default = false;
-                description = "Enable verbose logging";
-              };
-              
-              package = mkOption {
-                type = types.package;
-                default = self.packages.${pkgs.system}.linkpearl;
-                defaultText = literalExpression "pkgs.linkpearl";
-                description = "The linkpearl package to use";
-              };
-            };
-            
-            config = mkIf cfg.enable {
-              assertions = [
-                {
-                  assertion = (cfg.secret != null) || (cfg.secretFile != null);
-                  message = "linkpearl: either 'secret' or 'secretFile' must be set";
-                }
-                {
-                  assertion = !((cfg.secret != null) && (cfg.secretFile != null));
-                  message = "linkpearl: 'secret' and 'secretFile' are mutually exclusive";
-                }
-              ];
-              
-              systemd.user.services.linkpearl = {
-                description = "Linkpearl clipboard synchronization";
-                after = [ "network.target" ];
-                wantedBy = [ "default.target" ];
-                
-                environment = {
-                } // (optionalAttrs (cfg.secret != null) {
-                  LINKPEARL_SECRET = cfg.secret;
-                }) // (optionalAttrs (cfg.secretFile != null) {
-                  LINKPEARL_SECRET_FILE = toString cfg.secretFile;
-                }) // (optionalAttrs (cfg.listen != null) {
-                  LINKPEARL_LISTEN = cfg.listen;
-                }) // (optionalAttrs (cfg.join != []) {
-                  LINKPEARL_JOIN = concatStringsSep "," cfg.join;
-                }) // (optionalAttrs (cfg.nodeId != null) {
-                  LINKPEARL_NODE_ID = cfg.nodeId;
-                }) // (optionalAttrs cfg.verbose {
-                  LINKPEARL_VERBOSE = "true";
-                });
-                
-                serviceConfig = {
-                  ExecStart = "${cfg.package}/bin/linkpearl --poll-interval ${cfg.pollInterval}";
-                  Restart = "on-failure";
-                  RestartSec = 5;
-                };
-              };
-            };
-          };
-      });
+      }
+    ) // {
+      # System-agnostic outputs go here, outside eachDefaultSystem
+      nixosModules = {
+        default = nixosModule;
+        linkpearl = nixosModule; # For backwards compatibility
+      };
+
+      homeManagerModules = {
+        default = homeManagerModule;
+        linkpearl = homeManagerModule; # For backwards compatibility
+      };
+
+      # Overlay for easier integration
+      overlays.default = final: prev: {
+        linkpearl = self.packages.${final.system}.default;
+      };
+    };
 }
