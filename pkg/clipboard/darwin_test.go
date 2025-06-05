@@ -85,9 +85,8 @@ func TestDarwinClipboardBasic(t *testing.T) {
 
 // TestDarwinClipboardChangeCount tests the change count mechanism
 func TestDarwinClipboardChangeCount(t *testing.T) {
-	clip, ok := (&DarwinClipboard{}).(*DarwinClipboard)
-	if !ok {
-		t.Skip("Not a Darwin clipboard")
+	clip := &DarwinClipboard{
+		cmdConfig: DefaultCommandConfig(),
 	}
 
 	// Get initial change count

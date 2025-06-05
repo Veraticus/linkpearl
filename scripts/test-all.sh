@@ -85,7 +85,7 @@ go test -cover ./... | grep -E "ok|FAIL" | awk '{
 }'
 echo
 
-# 8. Cross-platform builds
+# 8. Cross-platform builds and test compilation
 echo "=== Testing Cross-Platform Builds ==="
 platforms=(
     "darwin/amd64"
@@ -95,9 +95,11 @@ platforms=(
     "linux/386"
 )
 
+# Test binary builds
+echo "Testing binary builds..."
 for platform in "${platforms[@]}"; do
     IFS='/' read -r os arch <<< "$platform"
-    echo -n "Building for $os/$arch... "
+    echo -n "  Building binary for $os/$arch... "
     if GOOS=$os GOARCH=$arch go build -o /dev/null ./cmd/linkpearl 2>/dev/null; then
         echo -e "${GREEN}✓${NC}"
     else
@@ -107,7 +109,25 @@ for platform in "${platforms[@]}"; do
         exit 1
     fi
 done
-print_status 0 "All cross-platform builds succeeded"
+
+# Test compilation for platform-specific code
+echo "Testing platform-specific test compilation..."
+for platform in "${platforms[@]}"; do
+    IFS='/' read -r os arch <<< "$platform"
+    echo -n "  Compiling tests for $os/$arch... "
+    if GOOS=$os GOARCH=$arch go test -c ./pkg/... 2>/dev/null; then
+        echo -e "${GREEN}✓${NC}"
+        # Clean up test binaries
+        rm -f *.test
+    else
+        echo -e "${RED}✗${NC}"
+        echo -e "${RED}Test compilation failed for $os/$arch${NC}"
+        GOOS=$os GOARCH=$arch go test -c ./pkg/clipboard/...
+        exit 1
+    fi
+done
+
+print_status 0 "All cross-platform builds and test compilations succeeded"
 echo
 
 # 9. Check for common issues

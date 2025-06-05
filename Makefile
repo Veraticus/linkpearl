@@ -128,12 +128,19 @@ check: fmt vet test
 # Test cross-platform builds
 test-builds:
 	@echo "Testing cross-platform builds..."
+	@echo "=== Testing binary builds ==="
 	@echo "Building for darwin/amd64..." && GOOS=darwin GOARCH=amd64 $(GO) build -o /dev/null $(MAIN_PACKAGE)
 	@echo "Building for darwin/arm64..." && GOOS=darwin GOARCH=arm64 $(GO) build -o /dev/null $(MAIN_PACKAGE)
 	@echo "Building for linux/amd64..." && GOOS=linux GOARCH=amd64 $(GO) build -o /dev/null $(MAIN_PACKAGE)
 	@echo "Building for linux/arm64..." && GOOS=linux GOARCH=arm64 $(GO) build -o /dev/null $(MAIN_PACKAGE)
 	@echo "Building for linux/386..." && GOOS=linux GOARCH=386 $(GO) build -o /dev/null $(MAIN_PACKAGE)
-	@echo "All platform builds succeeded!"
+	@echo "=== Testing test compilation ==="
+	@echo "Compiling tests for darwin/amd64..." && GOOS=darwin GOARCH=amd64 $(GO) test -c ./pkg/... && rm -f *.test
+	@echo "Compiling tests for darwin/arm64..." && GOOS=darwin GOARCH=arm64 $(GO) test -c ./pkg/... && rm -f *.test
+	@echo "Compiling tests for linux/amd64..." && GOOS=linux GOARCH=amd64 $(GO) test -c ./pkg/... && rm -f *.test
+	@echo "Compiling tests for linux/arm64..." && GOOS=linux GOARCH=arm64 $(GO) test -c ./pkg/... && rm -f *.test
+	@echo "Compiling tests for linux/386..." && GOOS=linux GOARCH=386 $(GO) test -c ./pkg/... && rm -f *.test
+	@echo "All platform builds and test compilations succeeded!"
 
 # Run all tests and checks (comprehensive)
 test-all: fmt vet lint test test-race test-integration test-builds

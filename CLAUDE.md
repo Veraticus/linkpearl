@@ -27,7 +27,11 @@ This script performs:
 6. Integration tests
 7. Test coverage analysis
 8. **Cross-platform build verification** (Darwin/Linux, multiple architectures)
+   - Binary builds for darwin/amd64, darwin/arm64, linux/amd64, linux/arm64, linux/386
+   - **Test compilation** for each platform to catch platform-specific syntax errors
 9. Code quality checks (TODOs, fmt.Print usage)
+
+The test script now catches platform-specific compilation errors that only appear when building for specific GOOS/GOARCH combinations.
 
 ## Common Issues to Avoid
 
@@ -163,6 +167,12 @@ make lint       # Run linters
 make build      # Build binary
 make clean      # Clean build artifacts
 make coverage   # Generate coverage report
+make test-builds # Test cross-platform builds and test compilation
+make test-all   # Run comprehensive test suite (fmt, vet, lint, test, race, integration, builds)
 ```
 
-Remember: Always run `./scripts/test-all.sh` before committing!
+The `test-builds` target now includes:
+- Binary compilation for all supported platforms
+- Test compilation for all platforms (catches platform-specific syntax errors)
+
+Remember: Always run `./scripts/test-all.sh` or `make test-all` before committing!
