@@ -268,6 +268,10 @@
           
           vendorHash = "sha256-Y6/dBYyG252dmyVhcmN+25lqD4E0e9Vm5x8aFYC7J/I=";
           
+          # Disable tests on Darwin as they require pbcopy/pbpaste
+          # which aren't available in the sandbox
+          doCheck = !pkgs.stdenv.isDarwin;
+          
           ldflags = [
             "-s"
             "-w"
