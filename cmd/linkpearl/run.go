@@ -76,8 +76,11 @@ func runDaemon(_ *cobra.Command, _ []string) error {
 	// Load environment variables
 	runCfg.LoadFromEnv()
 
-	// Set join addresses
-	runCfg.Join = joinAddrs
+	// Set join addresses from command line flags, but only if they were provided
+	// This allows LINKPEARL_JOIN environment variable to work when no --join flags are given
+	if len(joinAddrs) > 0 {
+		runCfg.Join = joinAddrs
+	}
 
 	// Auto-determine mode based on listen flag
 	if runCfg.Listen != "" {
