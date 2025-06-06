@@ -2,7 +2,6 @@
 
 [![Go Version](https://img.shields.io/badge/go-1.24.3+-blue.svg)](https://golang.org/dl/)
 [![Build Status](https://github.com/Veraticus/linkpearl/actions/workflows/test.yml/badge.svg)](https://github.com/Veraticus/linkpearl/actions/workflows/test.yml)
-[![Release](https://img.shields.io/github/release/Veraticus/linkpearl.svg)](https://github.com/Veraticus/linkpearl/releases/latest)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Go Report Card](https://goreportcard.com/badge/github.com/Veraticus/linkpearl)](https://goreportcard.com/report/github.com/Veraticus/linkpearl)
 [![GoDoc](https://pkg.go.dev/badge/github.com/Veraticus/linkpearl)](https://pkg.go.dev/github.com/Veraticus/linkpearl)
