@@ -112,12 +112,12 @@ func (c *Client) CopyAsync(content string) error {
 	}
 	defer func() { _ = conn.Close() }()
 
-	// Send COPY_ASYNC command with size
-	if _, writeErr := fmt.Fprintf(conn, "COPY_ASYNC %d\n%s", len(content), content); writeErr != nil {
+	// Send COPY command with size
+	if _, writeErr := fmt.Fprintf(conn, "COPY %d\n%s", len(content), content); writeErr != nil {
 		return fmt.Errorf("failed to send copy command: %w", writeErr)
 	}
 
-	// Don't wait for response - just return immediately
+	// Return immediately without waiting for response
 	// The server will process the copy in the background
 	return nil
 }

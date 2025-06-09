@@ -216,8 +216,6 @@ func (s *Server) handleConnection(conn net.Conn) {
 	switch req.Command {
 	case CommandCopy:
 		s.handleCopy(conn, req, reader)
-	case CommandCopyAsync:
-		s.handleCopyAsync(req, reader)
 	case CommandPaste:
 		s.handlePaste(conn)
 	case CommandStatus:
@@ -251,42 +249,6 @@ func (s *Server) handleCopy(conn net.Conn, req *Request, reader *bufio.Reader) {
 
 	// Send success response
 	s.sendOK(conn, nil)
-}
-
-// handleCopyAsync processes a COPY_ASYNC command.
-// This is a fire-and-forget operation that doesn't wait for clipboard write completion.
-func (s *Server) handleCopyAsync(req *Request, reader *bufio.Reader) {
-	// Read content based on size
-	content := make([]byte, req.Size)
-	// Read from the buffered reader to get the content
-	if _, err := io.ReadFull(reader, content); err != nil {
-		s.logger.Error("failed to read content for async copy",
-			"error", err,
-			"size", req.Size)
-		return
-	}
-
-	// Validate content
-	if err := ValidateContent(content); err != nil {
-		s.logger.Error("content validation failed for async copy",
-			"error", err,
-			"size", len(content))
-		return
-	}
-
-	// Write to clipboard in background
-	// We don't wait for this to complete
-	go func() {
-		s.logger.Debug("writing to clipboard asynchronously",
-			"size", len(content))
-		if err := s.clipboard.Write(string(content)); err != nil {
-			s.logger.Error("failed to write to clipboard in async copy",
-				"error", err)
-		}
-	}()
-
-	// Connection will be closed immediately by client
-	// No response needed
 }
 
 // handlePaste processes a PASTE command.
