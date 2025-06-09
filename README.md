@@ -109,8 +109,8 @@ let
   linkpearl = pkgs.callPackage (pkgs.fetchFromGitHub {
     owner = "Veraticus";
     repo = "linkpearl";
-    rev = "d0d602f7de11d17240435f5ecee4531ebf426465";
-    sha256 = "sha256-0ciklsc1llgcbw12ch4mr78h7mg7q411il2qzff88qvmbnsmh8d4";
+    rev = "55ab9a29679b1e9bb14bd54e073a0b80617aff23";
+    sha256 = "sha256-04l5260gcfdl0ir3wdgl67knlbjcvbjkjlpnawdmymmn9hnvws1v";
   } + "/default.nix") { };
 in
 {
