@@ -241,9 +241,15 @@ func (s *Server) handleCopy(conn net.Conn, req *Request, reader *bufio.Reader) {
 		return
 	}
 
-	// Send to sync engine for processing and broadcasting
+	// Write to clipboard first
+	if err := s.clipboard.Write(string(content)); err != nil {
+		s.sendError(conn, fmt.Sprintf("failed to write to clipboard: %v", err))
+		return
+	}
+	
+	// Then notify sync engine for broadcasting
 	if err := s.engine.SetClipboard(string(content)); err != nil {
-		s.sendError(conn, fmt.Sprintf("failed to set clipboard: %v", err))
+		s.sendError(conn, fmt.Sprintf("failed to notify sync engine: %v", err))
 		return
 	}
 
