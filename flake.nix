@@ -334,7 +334,7 @@
           
           src = ./.;
           
-          vendorHash = "sha256-jNYqTWJU+1qSOg7lvnE9yZR4walii1yyp52M6ihHRr4=";
+          vendorHash = "sha256-Wa0uvrk6zrGx2Uh2CrUeL7LFQf1+S4NeOLEQYxEP/fU=";
           
           # Disable tests on Darwin as they require pbcopy/pbpaste
           # which aren't available in the sandbox
