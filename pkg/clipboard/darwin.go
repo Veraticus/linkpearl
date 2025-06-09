@@ -109,7 +109,9 @@ func (c *DarwinClipboard) Write(content string) error {
 	// Update our tracking state only after successful write
 	c.mu.Lock()
 	c.lastHash = c.hashContent(content)
-	c.lastChangeCount = c.getChangeCount()
+	// Note: We intentionally don't update lastChangeCount here.
+	// This allows the Watch() method to detect the change made by pbcopy.
+	// The sync engine will handle deduplication to prevent sync loops.
 	c.sequenceNumber.Add(1)
 	c.lastModified = time.Now()
 	c.mu.Unlock()
