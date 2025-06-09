@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"os"
 	"path/filepath"
@@ -26,20 +27,22 @@ type Server struct {
 	engine     linksync.Engine
 	listener   net.Listener
 	ctx        context.Context
+	logger     *slog.Logger
 	cancel     context.CancelFunc
 	socketPath string
-	nodeID     string
 	mode       string
 	version    string
+	nodeID     string
 	wg         sync.WaitGroup
 	mu         sync.RWMutex
 }
 
 // ServerConfig contains configuration for the API server.
 type ServerConfig struct {
-	SocketPath string
 	Clipboard  clipboard.Clipboard
 	Engine     linksync.Engine
+	Logger     *slog.Logger
+	SocketPath string
 	NodeID     string
 	Mode       string
 	Version    string
@@ -57,6 +60,12 @@ func NewServer(cfg *ServerConfig) (*Server, error) {
 		return nil, fmt.Errorf("sync engine is required")
 	}
 
+	// Create a discard logger if none provided
+	logger := cfg.Logger
+	if logger == nil {
+		logger = slog.New(slog.NewTextHandler(io.Discard, nil))
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Server{
 		socketPath: cfg.SocketPath,
@@ -65,6 +74,7 @@ func NewServer(cfg *ServerConfig) (*Server, error) {
 		nodeID:     cfg.NodeID,
 		mode:       cfg.Mode,
 		version:    cfg.Version,
+		logger:     logger.With("component", "api"),
 		uptime:     time.Now(),
 		ctx:        ctx,
 		cancel:     cancel,
@@ -159,8 +169,7 @@ func (s *Server) acceptLoop() {
 				return
 			default:
 				if !isClosedNetworkError(err) {
-					// Log error but continue accepting
-					// In production, this would use a logger
+					s.logger.Error("failed to accept connection", "error", err)
 					continue
 				}
 				return
@@ -207,6 +216,8 @@ func (s *Server) handleConnection(conn net.Conn) {
 	switch req.Command {
 	case CommandCopy:
 		s.handleCopy(conn, req, reader)
+	case CommandCopyAsync:
+		s.handleCopyAsync(req, reader)
 	case CommandPaste:
 		s.handlePaste(conn)
 	case CommandStatus:
@@ -240,6 +251,42 @@ func (s *Server) handleCopy(conn net.Conn, req *Request, reader *bufio.Reader) {
 
 	// Send success response
 	s.sendOK(conn, nil)
+}
+
+// handleCopyAsync processes a COPY_ASYNC command.
+// This is a fire-and-forget operation that doesn't wait for clipboard write completion.
+func (s *Server) handleCopyAsync(req *Request, reader *bufio.Reader) {
+	// Read content based on size
+	content := make([]byte, req.Size)
+	// Read from the buffered reader to get the content
+	if _, err := io.ReadFull(reader, content); err != nil {
+		s.logger.Error("failed to read content for async copy",
+			"error", err,
+			"size", req.Size)
+		return
+	}
+
+	// Validate content
+	if err := ValidateContent(content); err != nil {
+		s.logger.Error("content validation failed for async copy",
+			"error", err,
+			"size", len(content))
+		return
+	}
+
+	// Write to clipboard in background
+	// We don't wait for this to complete
+	go func() {
+		s.logger.Debug("writing to clipboard asynchronously",
+			"size", len(content))
+		if err := s.clipboard.Write(string(content)); err != nil {
+			s.logger.Error("failed to write to clipboard in async copy",
+				"error", err)
+		}
+	}()
+
+	// Connection will be closed immediately by client
+	// No response needed
 }
 
 // handlePaste processes a PASTE command.

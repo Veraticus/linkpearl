@@ -98,6 +98,30 @@ func (c *Client) Copy(content string) error {
 	return nil
 }
 
+// CopyAsync sends text to the daemon's clipboard without waiting for confirmation.
+// This provides much faster response times for interactive use (e.g., in Neovim).
+func (c *Client) CopyAsync(content string) error {
+	// Validate content size
+	if err := api.ValidateContent([]byte(content)); err != nil {
+		return fmt.Errorf("content validation failed: %w", err)
+	}
+
+	conn, err := c.dial()
+	if err != nil {
+		return c.handleDialError(err)
+	}
+	defer func() { _ = conn.Close() }()
+
+	// Send COPY_ASYNC command with size
+	if _, writeErr := fmt.Fprintf(conn, "COPY_ASYNC %d\n%s", len(content), content); writeErr != nil {
+		return fmt.Errorf("failed to send copy command: %w", writeErr)
+	}
+
+	// Don't wait for response - just return immediately
+	// The server will process the copy in the background
+	return nil
+}
+
 // Paste retrieves the current clipboard content from the daemon.
 func (c *Client) Paste() (string, error) {
 	conn, err := c.dial()

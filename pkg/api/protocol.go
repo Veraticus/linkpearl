@@ -14,9 +14,10 @@ type Command string
 
 // Command constants define the available commands in the protocol.
 const (
-	CommandCopy   Command = "COPY"
-	CommandPaste  Command = "PASTE"
-	CommandStatus Command = "STATUS"
+	CommandCopy      Command = "COPY"
+	CommandCopyAsync Command = "COPY_ASYNC"
+	CommandPaste     Command = "PASTE"
+	CommandStatus    Command = "STATUS"
 )
 
 // Response represents the type of response sent by the server.
@@ -73,9 +74,9 @@ func ParseRequest(line string) (*Request, error) {
 
 	command := Command(cmd)
 	switch command {
-	case CommandCopy:
+	case CommandCopy, CommandCopyAsync:
 		if n < 2 || size < 0 {
-			return nil, fmt.Errorf("COPY requires size parameter")
+			return nil, fmt.Errorf("%s requires size parameter", command)
 		}
 		return &Request{Command: command, Size: size}, nil
 	case CommandPaste, CommandStatus:

@@ -12,6 +12,10 @@ import (
 	"github.com/Veraticus/linkpearl/pkg/client"
 )
 
+var (
+	copySync bool
+)
+
 var copyCmd = &cobra.Command{
 	Use:   "copy [text]",
 	Short: "Copy text to clipboard",
@@ -20,10 +24,13 @@ var copyCmd = &cobra.Command{
 If text is provided as an argument, it will be copied directly.
 If no argument is provided, text will be read from stdin.
 
+By default, copy operations are asynchronous (fire-and-forget) for better performance.
+Use --sync to wait for confirmation from the daemon.
+
 This command requires the linkpearl daemon to be running.
 
 Examples:
-  # Copy text directly
+  # Copy text directly (async by default)
   linkpearl copy "Hello, World!"
 
   # Copy from stdin
@@ -33,9 +40,16 @@ Examples:
   cat file.txt | linkpearl copy
 
   # Copy command output
-  ls -la | linkpearl copy`,
+  ls -la | linkpearl copy
+
+  # Copy with confirmation (synchronous mode)
+  linkpearl copy --sync "Hello, World!"`,
 	RunE: runCopy,
 	Args: cobra.MaximumNArgs(1),
+}
+
+func init() {
+	copyCmd.Flags().BoolVar(&copySync, "sync", false, "Wait for confirmation from daemon (default: async)")
 }
 
 func runCopy(_ *cobra.Command, args []string) error {
@@ -73,14 +87,26 @@ func runCopy(_ *cobra.Command, args []string) error {
 		}
 	}
 
+	// Check for environment variable override for sync mode
+	if os.Getenv("LINKPEARL_SYNC") == "1" {
+		copySync = true
+	}
+
 	// Create client
 	c := client.New(&client.Config{
 		SocketPath: socketPath,
 	})
 
 	// Copy to clipboard
-	if err := c.Copy(content); err != nil {
-		return err
+	// Default is async (fire-and-forget) for better performance
+	if copySync {
+		if err := c.Copy(content); err != nil {
+			return err
+		}
+	} else {
+		if err := c.CopyAsync(content); err != nil {
+			return err
+		}
 	}
 
 	// Success - no output for Unix philosophy
