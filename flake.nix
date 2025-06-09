@@ -330,7 +330,7 @@
         
         linkpearl = pkgs.buildGoModule rec {
           pname = "linkpearl";
-          version = "0.1.0";
+          version = if (self ? rev) then self.rev else "dev-${self.lastModifiedDate or "unknown"}";
           
           src = ./.;
           
