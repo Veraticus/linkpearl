@@ -484,3 +484,75 @@ func TestEngineStats(t *testing.T) {
 	stats2 := engine.Stats()
 	assert.Equal(t, uint64(0), stats2.MessagesSent)
 }
+
+func TestEngineSetClipboard(t *testing.T) {
+	t.Run("successful set", func(t *testing.T) {
+		clipboard := newMockClipboard()
+		topology := newMockTopology()
+
+		config := &Config{
+			NodeID:    "test-node",
+			Clipboard: clipboard,
+			Topology:  topology,
+		}
+
+		engine, err := NewEngine(config)
+		require.NoError(t, err)
+
+		// Test setting clipboard content
+		content := "test content from API"
+		err = engine.SetClipboard(content)
+		assert.NoError(t, err)
+
+		// Start the engine to process the content
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		go func() {
+			// Let the engine process one cycle
+			time.Sleep(100 * time.Millisecond)
+			cancel()
+		}()
+
+		err = engine.Run(ctx)
+		assert.ErrorIs(t, err, context.Canceled)
+
+		// Verify the content was broadcast
+		assert.Len(t, topology.broadcasts, 1)
+
+		// Verify the broadcast message
+		syncMsg, ok := topology.broadcasts[0].(mesh.ClipboardSyncMessage)
+		require.True(t, ok, "broadcast should be a ClipboardSyncMessage")
+
+		var clipMsg ClipboardMessage
+		err = json.Unmarshal(syncMsg.MessageData, &clipMsg)
+		require.NoError(t, err)
+		assert.Equal(t, content, clipMsg.Content)
+		assert.Equal(t, "test-node", clipMsg.NodeID)
+	})
+
+	t.Run("channel full", func(t *testing.T) {
+		config := &Config{
+			NodeID:    "test-node",
+			Clipboard: newMockClipboard(),
+			Topology:  newMockTopology(),
+		}
+
+		eng, err := NewEngine(config)
+		require.NoError(t, err)
+
+		// Cast to access internal channel
+		e, ok := eng.(*engine)
+		require.True(t, ok, "should be able to cast to *engine")
+
+		// Fill the channel
+		for i := 0; i < cap(e.clipboardCh); i++ {
+			e.clipboardCh <- "filling channel"
+		}
+
+		// Try to set clipboard when channel is full
+		err = eng.SetClipboard("should fail")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "clipboard update channel full")
+	})
+}

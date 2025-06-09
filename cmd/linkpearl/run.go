@@ -180,7 +180,7 @@ func runDaemonWithConfig(cfg *config.Config, log *logger) error {
 
 	// Create and start API server
 	log.Info("initializing API server", "socket", socketPath)
-	
+
 	// Create slog logger for API server
 	var slogLogger *slog.Logger
 	if cfg.Verbose {
@@ -192,7 +192,7 @@ func runDaemonWithConfig(cfg *config.Config, log *logger) error {
 			Level: slog.LevelInfo,
 		}))
 	}
-	
+
 	apiServer, err := api.NewServer(&api.ServerConfig{
 		SocketPath: socketPath,
 		Clipboard:  clip,

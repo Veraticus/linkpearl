@@ -246,7 +246,7 @@ func (s *Server) handleCopy(conn net.Conn, req *Request, reader *bufio.Reader) {
 		s.sendError(conn, fmt.Sprintf("failed to set clipboard: %v", err))
 		return
 	}
-	
+
 	// Send success response
 	s.sendOK(conn, nil)
 }

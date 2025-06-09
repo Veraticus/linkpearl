@@ -129,11 +129,9 @@ func (c *Client) CopyAsync(content string) error {
 	// Shutdown the write side of the connection to signal we're done sending
 	// This ensures the server receives EOF on its read
 	if tcpConn, ok := conn.(*net.UnixConn); ok {
-		if err := tcpConn.CloseWrite(); err != nil {
-			// Ignore error, connection will close anyway
-		}
+		_ = tcpConn.CloseWrite() // Ignore error, connection will close anyway
 	}
-	
+
 	// Connection closes on return, but data is already in kernel
 	return nil
 }

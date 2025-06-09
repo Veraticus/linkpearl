@@ -55,12 +55,12 @@ import (
 // It maintains internal state for efficient change detection using both
 // content hashing and NSPasteboard's changeCount.
 type DarwinClipboard struct {
-	mu              sync.RWMutex
-	lastHash        string // SHA-256 hash of last known clipboard content
-	lastChangeCount int    // NSPasteboard changeCount value
-	sequenceNumber  atomic.Uint64
 	lastModified    time.Time
-	cmdConfig       *CommandConfig // Configuration for command execution
+	cmdConfig       *CommandConfig
+	lastHash        string
+	lastChangeCount int
+	sequenceNumber  atomic.Uint64
+	mu              sync.RWMutex
 }
 
 // newPlatformClipboard returns a macOS clipboard implementation.
@@ -128,7 +128,7 @@ func (c *DarwinClipboard) Write(content string) error {
 //   - Active: 500ms (when changes are detected)
 //   - Idle: 2s (after 10 consecutive polls with no changes)
 //
-// The channel is closed when the context is cancelled.
+// The channel is closed when the context is canceled.
 func (c *DarwinClipboard) Watch(ctx context.Context) <-chan struct{} {
 	// Use buffered channel to prevent blocking the watcher goroutine
 	// Buffer size of 10 allows for burst of changes without blocking
@@ -258,7 +258,7 @@ func (c *DarwinClipboard) hashContent(content string) string {
 	return hex.EncodeToString(h[:])
 }
 
-// GetState returns current state information
+// GetState returns current state information.
 func (c *DarwinClipboard) GetState() State {
 	c.mu.RLock()
 	defer c.mu.RUnlock()

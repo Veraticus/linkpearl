@@ -53,8 +53,9 @@ func (m *mockClipboard) GetState() clipboard.State {
 
 // mockEngine implements linksync.Engine for testing.
 type mockEngine struct {
-	topology linksync.MockTopology
-	stats    linksync.Stats
+	clipboard clipboard.Clipboard
+	topology  linksync.MockTopology
+	stats     linksync.Stats
 }
 
 func (m *mockEngine) Run(ctx context.Context) error {
@@ -68,6 +69,14 @@ func (m *mockEngine) Stats() *linksync.Stats {
 
 func (m *mockEngine) Topology() linksync.Topology {
 	return &m.topology
+}
+
+func (m *mockEngine) SetClipboard(content string) error {
+	// For testing, write directly to clipboard to satisfy test expectations
+	if m.clipboard != nil {
+		return m.clipboard.Write(content)
+	}
+	return nil
 }
 
 func TestNewServer(t *testing.T) {
@@ -267,7 +276,7 @@ func TestServerCommands(t *testing.T) {
 				err: fmt.Errorf("clipboard error"),
 			},
 			engineState:  &mockEngine{},
-			wantResponse: "ERROR failed to write to clipboard: clipboard error\n",
+			wantResponse: "ERROR failed to set clipboard: clipboard error\n",
 		},
 		{
 			name:    "PASTE with clipboard error",
@@ -290,6 +299,9 @@ func TestServerCommands(t *testing.T) {
 				tt.engineState.topology.Peers = []string{"peer1"}
 				tt.engineState.topology.JoinAddrs = []string{"host1:8080"}
 			}
+
+			// Set clipboard in mock engine for testing
+			tt.engineState.clipboard = tt.clipboardState
 
 			server, err := NewServer(&ServerConfig{
 				SocketPath: socketPath,

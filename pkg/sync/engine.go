@@ -53,14 +53,14 @@ type engine struct {
 	clipboard        clipboard.Clipboard
 	topology         mesh.Topology
 	logger           Logger
-	config           *Config
 	dedupe           *lruCache
+	config           *Config
+	clipboardCh      chan string
 	current          string
 	checksum         string
 	stats            Stats
 	timestamp        int64
 	mu               sync.RWMutex
-	clipboardCh      chan string  // Channel for all clipboard updates (OS or API)
 }
 
 // NewEngine creates a new sync engine with the provided configuration.
@@ -215,7 +215,7 @@ func (e *engine) SetClipboard(content string) error {
 // watchClipboard monitors the OS clipboard and sends changes to the unified channel.
 func (e *engine) watchClipboard(ctx context.Context) {
 	clipCh := e.clipboard.Watch(ctx)
-	
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -231,7 +231,7 @@ func (e *engine) watchClipboard(ctx context.Context) {
 				e.logger.Error("failed to read clipboard", "error", err)
 				continue
 			}
-			
+
 			// Send to the same channel that API uses
 			select {
 			case e.clipboardCh <- content:

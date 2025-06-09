@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-// TestPbcopyPbpaste tests if pbcopy and pbpaste work in the current environment
+// TestPbcopyPbpaste tests if pbcopy and pbpaste work in the current environment.
 func TestPbcopyPbpaste(t *testing.T) {
 	// Test 1: Check if pbcopy exists
 	if _, err := exec.LookPath("pbcopy"); err != nil {
@@ -31,22 +31,23 @@ func TestPbcopyPbpaste(t *testing.T) {
 		t.Fatalf("Failed to create stdin pipe: %v", err)
 	}
 
-	if err := cmd.Start(); err != nil {
-		t.Fatalf("Failed to start pbcopy: %v", err)
+	if startErr := cmd.Start(); startErr != nil {
+		t.Fatalf("Failed to start pbcopy: %v", startErr)
 	}
 
-	if _, err := stdin.Write([]byte(testContent)); err != nil {
-		t.Fatalf("Failed to write to pbcopy: %v", err)
+	if _, writeErr := stdin.Write([]byte(testContent)); writeErr != nil {
+		t.Fatalf("Failed to write to pbcopy: %v", writeErr)
 	}
 
-	stdin.Close()
+	_ = stdin.Close()
 
-	if err := cmd.Wait(); err != nil {
-		t.Fatalf("pbcopy failed: %v", err)
+	if waitErr := cmd.Wait(); waitErr != nil {
+		t.Fatalf("pbcopy failed: %v", waitErr)
 	}
 
 	// Read using pbpaste
-	output, err := exec.Command("pbpaste").Output()
+	// Direct use of exec.Command for testing pbpaste availability
+	output, err := exec.Command("pbpaste").Output() //nolint:forbidigo
 	if err != nil {
 		t.Fatalf("pbpaste failed: %v", err)
 	}
@@ -59,7 +60,7 @@ func TestPbcopyPbpaste(t *testing.T) {
 	t.Logf("pbcopy/pbpaste test successful: wrote and read %q", result)
 }
 
-// TestDarwinClipboardBasic tests basic Darwin clipboard operations
+// TestDarwinClipboardBasic tests basic Darwin clipboard operations.
 func TestDarwinClipboardBasic(t *testing.T) {
 	clip, err := newPlatformClipboard()
 	if err != nil {
@@ -68,8 +69,8 @@ func TestDarwinClipboardBasic(t *testing.T) {
 
 	// Test write
 	testContent := "Test content"
-	if err := clip.Write(testContent); err != nil {
-		t.Fatalf("Failed to write to clipboard: %v", err)
+	if writeErr := clip.Write(testContent); writeErr != nil {
+		t.Fatalf("Failed to write to clipboard: %v", writeErr)
 	}
 
 	// Test read
@@ -83,7 +84,7 @@ func TestDarwinClipboardBasic(t *testing.T) {
 	}
 }
 
-// TestDarwinClipboardChangeCount tests the change count mechanism
+// TestDarwinClipboardChangeCount tests the change count mechanism.
 func TestDarwinClipboardChangeCount(t *testing.T) {
 	clip := &DarwinClipboard{
 		cmdConfig: DefaultCommandConfig(),
