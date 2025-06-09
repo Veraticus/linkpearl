@@ -241,12 +241,12 @@ func (s *Server) handleCopy(conn net.Conn, req *Request, reader *bufio.Reader) {
 		return
 	}
 
-	// Write to clipboard
-	if err := s.clipboard.Write(string(content)); err != nil {
-		s.sendError(conn, fmt.Sprintf("failed to write to clipboard: %v", err))
+	// Send to sync engine for processing and broadcasting
+	if err := s.engine.SetClipboard(string(content)); err != nil {
+		s.sendError(conn, fmt.Sprintf("failed to set clipboard: %v", err))
 		return
 	}
-
+	
 	// Send success response
 	s.sendOK(conn, nil)
 }

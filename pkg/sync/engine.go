@@ -60,6 +60,7 @@ type engine struct {
 	stats            Stats
 	timestamp        int64
 	mu               sync.RWMutex
+	clipboardCh      chan string  // Channel for all clipboard updates (OS or API)
 }
 
 // NewEngine creates a new sync engine with the provided configuration.
@@ -83,11 +84,12 @@ func NewEngine(config *Config) (Engine, error) {
 	}
 
 	return &engine{
-		config:    config,
-		clipboard: config.Clipboard,
-		topology:  config.Topology,
-		logger:    config.Logger,
-		dedupe:    dedupe,
+		config:      config,
+		clipboard:   config.Clipboard,
+		topology:    config.Topology,
+		logger:      config.Logger,
+		dedupe:      dedupe,
+		clipboardCh: make(chan string, 100), // Buffered to prevent blocking
 		stats: Stats{
 			StartTime: time.Now(),
 		},
@@ -117,8 +119,8 @@ func (e *engine) Run(ctx context.Context) error {
 		return fmt.Errorf("failed to initialize state: %w", err)
 	}
 
-	// Watch local clipboard
-	clipCh := e.clipboard.Watch(ctx)
+	// Start clipboard watcher that sends to our unified channel
+	go e.watchClipboard(ctx)
 
 	// Watch topology events
 	eventCh := e.topology.Events()
@@ -129,16 +131,8 @@ func (e *engine) Run(ctx context.Context) error {
 	// Main event loop
 	for {
 		select {
-		case _, ok := <-clipCh:
-			if !ok {
-				return fmt.Errorf("clipboard watch channel closed")
-			}
-			// Notification received - pull current state
-			content, err := e.clipboard.Read()
-			if err != nil {
-				e.logger.Error("failed to read clipboard", "error", err)
-				continue
-			}
+		case content := <-e.clipboardCh:
+			// Clipboard update from OS watcher or API server
 			state := e.clipboard.GetState()
 			e.handleLocalChange(content, state)
 
@@ -206,6 +200,49 @@ func (e *engine) Stats() *Stats {
 func (e *engine) Topology() Topology {
 	// Return a simple adapter that uses the mesh topology methods we need
 	return &meshTopologyAdapter{topology: e.topology}
+}
+
+// SetClipboard enqueues a clipboard change for synchronization.
+func (e *engine) SetClipboard(content string) error {
+	select {
+	case e.clipboardCh <- content:
+		return nil
+	default:
+		return fmt.Errorf("clipboard update channel full")
+	}
+}
+
+// watchClipboard monitors the OS clipboard and sends changes to the unified channel.
+func (e *engine) watchClipboard(ctx context.Context) {
+	clipCh := e.clipboard.Watch(ctx)
+	
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case _, ok := <-clipCh:
+			if !ok {
+				e.logger.Error("clipboard watch channel closed")
+				return
+			}
+			// Notification received - read content and send to unified channel
+			content, err := e.clipboard.Read()
+			if err != nil {
+				e.logger.Error("failed to read clipboard", "error", err)
+				continue
+			}
+			
+			// Send to the same channel that API uses
+			select {
+			case e.clipboardCh <- content:
+				// Successfully sent
+			case <-ctx.Done():
+				return
+			default:
+				e.logger.Error("clipboard channel full, dropping OS clipboard change")
+			}
+		}
+	}
 }
 
 // initializeState reads current clipboard state.

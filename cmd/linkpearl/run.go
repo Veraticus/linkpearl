@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -179,6 +180,19 @@ func runDaemonWithConfig(cfg *config.Config, log *logger) error {
 
 	// Create and start API server
 	log.Info("initializing API server", "socket", socketPath)
+	
+	// Create slog logger for API server
+	var slogLogger *slog.Logger
+	if cfg.Verbose {
+		slogLogger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+			Level: slog.LevelDebug,
+		}))
+	} else {
+		slogLogger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+			Level: slog.LevelInfo,
+		}))
+	}
+	
 	apiServer, err := api.NewServer(&api.ServerConfig{
 		SocketPath: socketPath,
 		Clipboard:  clip,
@@ -186,6 +200,7 @@ func runDaemonWithConfig(cfg *config.Config, log *logger) error {
 		NodeID:     cfg.NodeID,
 		Mode:       string(cfg.Mode),
 		Version:    version,
+		Logger:     slogLogger.With("component", "api"),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create API server: %w", err)

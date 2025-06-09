@@ -86,6 +86,11 @@ type Engine interface {
 
 	// Topology returns the underlying mesh topology
 	Topology() Topology
+
+	// SetClipboard enqueues a local clipboard change for synchronization.
+	// This method is used by both the clipboard watcher and the API server
+	// to notify the sync engine of new clipboard content.
+	SetClipboard(content string) error
 }
 
 // Stats contains sync engine statistics.
