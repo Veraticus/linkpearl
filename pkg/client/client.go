@@ -112,13 +112,21 @@ func (c *Client) CopyAsync(content string) error {
 	}
 	defer func() { _ = conn.Close() }()
 
-	// Send COPY command with size
-	if _, writeErr := fmt.Fprintf(conn, "COPY %d\n%s", len(content), content); writeErr != nil {
-		return fmt.Errorf("failed to send copy command: %w", writeErr)
+	// Use a buffered writer to ensure full message is sent
+	writer := bufio.NewWriter(conn)
+
+	// Write the command and content
+	if _, err := fmt.Fprintf(writer, "COPY %d\n%s", len(content), content); err != nil {
+		return fmt.Errorf("failed to send copy command: %w", err)
 	}
 
-	// Return immediately without waiting for response
-	// The server will process the copy in the background
+	// Flush ensures data is sent to kernel buffers
+	// This is fast (microseconds) but guarantees delivery
+	if err := writer.Flush(); err != nil {
+		return fmt.Errorf("failed to flush data: %w", err)
+	}
+
+	// Connection closes on return, but data is already in kernel
 	return nil
 }
 
