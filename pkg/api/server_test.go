@@ -71,7 +71,7 @@ func (m *mockEngine) Topology() linksync.Topology {
 	return &m.topology
 }
 
-func (m *mockEngine) SetClipboard(content string) error {
+func (m *mockEngine) SetClipboard(content string, _ linksync.ClipboardSource) error {
 	// For testing, write directly to clipboard to satisfy test expectations
 	if m.clipboard != nil {
 		return m.clipboard.Write(content)
@@ -79,8 +79,15 @@ func (m *mockEngine) SetClipboard(content string) error {
 	return nil
 }
 
+func (m *mockEngine) GetClipboard() string {
+	if m.clipboard != nil {
+		content, _ := m.clipboard.Read()
+		return content
+	}
+	return ""
+}
+
 func TestNewServer(t *testing.T) {
-	clip := &mockClipboard{}
 	engine := &mockEngine{}
 
 	tests := []struct {
@@ -93,7 +100,6 @@ func TestNewServer(t *testing.T) {
 			name: "valid config",
 			cfg: &ServerConfig{
 				SocketPath: "/tmp/test.sock",
-				Clipboard:  clip,
 				Engine:     engine,
 				NodeID:     "test-node",
 				Mode:       "full",
@@ -104,26 +110,15 @@ func TestNewServer(t *testing.T) {
 		{
 			name: "missing socket path",
 			cfg: &ServerConfig{
-				Clipboard: clip,
-				Engine:    engine,
+				Engine: engine,
 			},
 			wantErr: true,
 			errMsg:  "socket path is required",
 		},
 		{
-			name: "missing clipboard",
-			cfg: &ServerConfig{
-				SocketPath: "/tmp/test.sock",
-				Engine:     engine,
-			},
-			wantErr: true,
-			errMsg:  "clipboard is required",
-		},
-		{
 			name: "missing engine",
 			cfg: &ServerConfig{
 				SocketPath: "/tmp/test.sock",
-				Clipboard:  clip,
 			},
 			wantErr: true,
 			errMsg:  "sync engine is required",
@@ -159,7 +154,6 @@ func TestServerStartStop(t *testing.T) {
 
 	server, err := NewServer(&ServerConfig{
 		SocketPath: socketPath,
-		Clipboard:  &mockClipboard{},
 		Engine:     &mockEngine{},
 		NodeID:     "test-node",
 		Mode:       "full",
@@ -285,7 +279,7 @@ func TestServerCommands(t *testing.T) {
 				err: fmt.Errorf("clipboard error"),
 			},
 			engineState:  &mockEngine{},
-			wantResponse: "ERROR failed to read clipboard: clipboard error\n",
+			wantResponse: "OK 0\n",
 		},
 	}
 
@@ -305,7 +299,6 @@ func TestServerCommands(t *testing.T) {
 
 			server, err := NewServer(&ServerConfig{
 				SocketPath: socketPath,
-				Clipboard:  tt.clipboardState,
 				Engine:     tt.engineState,
 				NodeID:     "test-node",
 				Mode:       "full",
@@ -392,11 +385,9 @@ func TestServerCommands(t *testing.T) {
 func TestServerConcurrentConnections(t *testing.T) {
 	socketPath := testutil.SocketPath(t)
 
-	clipboard := &mockClipboard{content: "shared content"}
 	server, err := NewServer(&ServerConfig{
 		SocketPath: socketPath,
-		Clipboard:  clipboard,
-		Engine:     &mockEngine{},
+		Engine:     &mockEngine{clipboard: &mockClipboard{content: "shared content"}},
 		NodeID:     "test-node",
 		Mode:       "full",
 		Version:    "1.0.0",
@@ -460,7 +451,6 @@ func TestServerSocketPermissions(t *testing.T) {
 
 	server, err := NewServer(&ServerConfig{
 		SocketPath: socketPath,
-		Clipboard:  &mockClipboard{},
 		Engine:     &mockEngine{},
 		NodeID:     "test-node",
 		Mode:       "full",
@@ -499,7 +489,6 @@ func TestServerContentSizeLimit(t *testing.T) {
 
 	server, err := NewServer(&ServerConfig{
 		SocketPath: socketPath,
-		Clipboard:  &mockClipboard{},
 		Engine:     &mockEngine{},
 		NodeID:     "test-node",
 		Mode:       "full",

@@ -195,7 +195,6 @@ func runDaemonWithConfig(cfg *config.Config, log *logger) error {
 
 	apiServer, err := api.NewServer(&api.ServerConfig{
 		SocketPath: socketPath,
-		Clipboard:  clip,
 		Engine:     engine,
 		NodeID:     cfg.NodeID,
 		Mode:       string(cfg.Mode),

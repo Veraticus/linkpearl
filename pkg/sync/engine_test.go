@@ -3,12 +3,14 @@ package sync
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/Veraticus/linkpearl/pkg/clipboard"
 	"github.com/Veraticus/linkpearl/pkg/mesh"
 )
 
@@ -501,7 +503,7 @@ func TestEngineSetClipboard(t *testing.T) {
 
 		// Test setting clipboard content
 		content := "test content from API"
-		err = engine.SetClipboard(content)
+		err = engine.SetClipboard(content, SourceCLI)
 		assert.NoError(t, err)
 
 		// Start the engine to process the content
@@ -531,7 +533,7 @@ func TestEngineSetClipboard(t *testing.T) {
 		assert.Equal(t, "test-node", clipMsg.NodeID)
 	})
 
-	t.Run("channel full", func(t *testing.T) {
+	t.Run("invalid content", func(t *testing.T) {
 		config := &Config{
 			NodeID:    "test-node",
 			Clipboard: newMockClipboard(),
@@ -541,18 +543,10 @@ func TestEngineSetClipboard(t *testing.T) {
 		eng, err := NewEngine(config)
 		require.NoError(t, err)
 
-		// Cast to access internal channel
-		e, ok := eng.(*engine)
-		require.True(t, ok, "should be able to cast to *engine")
-
-		// Fill the channel
-		for i := 0; i < cap(e.clipboardCh); i++ {
-			e.clipboardCh <- "filling channel"
-		}
-
-		// Try to set clipboard when channel is full
-		err = eng.SetClipboard("should fail")
+		// Try to set clipboard with content that's too large
+		largeContent := strings.Repeat("x", clipboard.MaxClipboardSize+1)
+		err = eng.SetClipboard(largeContent, SourceCLI)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "clipboard update channel full")
+		assert.Contains(t, err.Error(), "invalid clipboard content")
 	})
 }

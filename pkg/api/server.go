@@ -14,7 +14,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Veraticus/linkpearl/pkg/clipboard"
 	linksync "github.com/Veraticus/linkpearl/pkg/sync"
 )
 
@@ -23,7 +22,6 @@ import (
 // with the running daemon.
 type Server struct {
 	uptime     time.Time
-	clipboard  clipboard.Clipboard
 	engine     linksync.Engine
 	listener   net.Listener
 	ctx        context.Context
@@ -39,7 +37,6 @@ type Server struct {
 
 // ServerConfig contains configuration for the API server.
 type ServerConfig struct {
-	Clipboard  clipboard.Clipboard
 	Engine     linksync.Engine
 	Logger     *slog.Logger
 	SocketPath string
@@ -52,9 +49,6 @@ type ServerConfig struct {
 func NewServer(cfg *ServerConfig) (*Server, error) {
 	if cfg.SocketPath == "" {
 		return nil, fmt.Errorf("socket path is required")
-	}
-	if cfg.Clipboard == nil {
-		return nil, fmt.Errorf("clipboard is required")
 	}
 	if cfg.Engine == nil {
 		return nil, fmt.Errorf("sync engine is required")
@@ -69,7 +63,6 @@ func NewServer(cfg *ServerConfig) (*Server, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Server{
 		socketPath: cfg.SocketPath,
-		clipboard:  cfg.Clipboard,
 		engine:     cfg.Engine,
 		nodeID:     cfg.NodeID,
 		mode:       cfg.Mode,
@@ -241,15 +234,11 @@ func (s *Server) handleCopy(conn net.Conn, req *Request, reader *bufio.Reader) {
 		return
 	}
 
-	// Write to clipboard first
-	if err := s.clipboard.Write(string(content)); err != nil {
-		s.sendError(conn, fmt.Sprintf("failed to write to clipboard: %v", err))
-		return
-	}
-	
-	// Then notify sync engine for broadcasting
-	if err := s.engine.SetClipboard(string(content)); err != nil {
-		s.sendError(conn, fmt.Sprintf("failed to notify sync engine: %v", err))
+	// Set clipboard through sync engine with SourceCLI
+	// The sync engine will handle writing to the physical clipboard
+	// and broadcasting to peers
+	if err := s.engine.SetClipboard(string(content), linksync.SourceCLI); err != nil {
+		s.sendError(conn, fmt.Sprintf("failed to set clipboard: %v", err))
 		return
 	}
 
@@ -259,12 +248,9 @@ func (s *Server) handleCopy(conn net.Conn, req *Request, reader *bufio.Reader) {
 
 // handlePaste processes a PASTE command.
 func (s *Server) handlePaste(conn net.Conn) {
-	// Read from clipboard
-	content, err := s.clipboard.Read()
-	if err != nil {
-		s.sendError(conn, fmt.Sprintf("failed to read clipboard: %v", err))
-		return
-	}
+	// Get clipboard content from sync engine
+	// This allows paste to work even on headless systems
+	content := s.engine.GetClipboard()
 
 	// Send content
 	s.sendOK(conn, content)

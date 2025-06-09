@@ -76,6 +76,18 @@ var (
 	ErrSyncLoop = errors.New("sync loop detected")
 )
 
+// ClipboardSource identifies where a clipboard update originated from.
+type ClipboardSource int
+
+const (
+	// SourceOS indicates the change came from the OS clipboard (e.g., Cmd+C).
+	SourceOS ClipboardSource = iota
+	// SourceCLI indicates the change came from the linkpearl copy command.
+	SourceCLI
+	// SourceRemote indicates the change came from a remote peer.
+	SourceRemote
+)
+
 // Engine coordinates clipboard synchronization across the mesh.
 type Engine interface {
 	// Run starts the sync engine main loop
@@ -87,10 +99,17 @@ type Engine interface {
 	// Topology returns the underlying mesh topology
 	Topology() Topology
 
-	// SetClipboard enqueues a local clipboard change for synchronization.
-	// This method is used by both the clipboard watcher and the API server
-	// to notify the sync engine of new clipboard content.
-	SetClipboard(content string) error
+	// SetClipboard handles all clipboard updates, regardless of source.
+	// The source parameter indicates where the update originated:
+	// - SourceOS: From OS clipboard (Cmd+C) - already in clipboard, just broadcast
+	// - SourceCLI: From linkpearl copy command - write to clipboard then broadcast
+	// - SourceRemote: From remote peer - write to clipboard, don't broadcast
+	SetClipboard(content string, source ClipboardSource) error
+
+	// GetClipboard returns the current clipboard content from the sync engine's state.
+	// This is used by the paste command to retrieve clipboard content without
+	// directly accessing the physical clipboard.
+	GetClipboard() string
 }
 
 // Stats contains sync engine statistics.
